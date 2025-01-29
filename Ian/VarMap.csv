@@ -1,0 +1,7 @@
+Name,Table,Variable
+Undergraduate Size,DRVEFyyyy,EFUG
+Incoming Freshman Size,DRVEFyyyy,EFUG1ST
+Incoming Transfer Size,DRVEFyyyy,EFUGTRN
+Percentage of White,DRVEFyyyy,PctEnrWh
+Percentage of Women,DRVEFyyyy,PCTENRW
+Percentage of Pell,SFAxxxx_P1,PGRNT_P
