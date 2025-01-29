@@ -168,6 +168,48 @@ class CompIntel_DB:
         file = f'Percent of 2020-21 Student Body Receiving Pell and Change Since {base_year}.csv'
         df.to_csv(os.path.join(self.output_path, file), index=True)
 
+    def saveRetention(self, base_year):
+        years = list(range(base_year, 2021 + 1))
+        tables = [self.readSQL(year)(self.value_df(year, 'Retention Rate', year)) for year in years]
+        df = reduce(lambda df1, df2: pd.merge(df1, df2, on='INSTNM'), tables).map(lambda x: int(x))
+        file = f"Freshman to Sophomore Retention Rates - {base_year} to 2021.csv"
+        df.to_csv(os.path.join(self.output_path, file), index=True)
+
+    def saveGrad4(self, base_year):
+        years = list(range(base_year, 2021 + 1))
+        tables = [self.readSQL(year)(self.value_df(year, 'Graduate Rate - 4 Years', year)) for year in years]
+        df = reduce(lambda df1, df2: pd.merge(df1, df2, on='INSTNM'), tables).map(lambda x: int(x))
+        file = f"4-YR Graduation Rates - {base_year} to 2021.csv"
+        df.to_csv(os.path.join(self.output_path, file), index=True)
+
+    def saveGrad6(self, base_year):
+        years = list(range(base_year, 2021 + 1))
+        tables = [self.readSQL(year)(self.value_df(year, 'Graduate Rate - 6 Years', year)) for year in years]
+        df = reduce(lambda df1, df2: pd.merge(df1, df2, on='INSTNM'), tables).map(lambda x: int(x))
+        file = f"6-YR Graduation Rates - {base_year} to 2021.csv"
+        df.to_csv(os.path.join(self.output_path, file), index=True)
+
+    def savePrice(self, year):
+        out_of_state = self.readSQL(year)(self.value_df(year, 'Out-of-State'))
+        in_state = self.readSQL(year)(self.value_df(year, 'In-State'))
+        df = pd.merge(out_of_state, in_state, on='INSTNM').map(lambda x: int(x))
+        file = f"Total Annual Price (Sticker Price) {year}-{str(year + 1)[2:]}.csv"
+        df.to_csv(os.path.join(self.output_path, file), index=True)
+
+    def savePriceChange(self, start, end):
+        start_df = self.readSQL(start)(self.value_df(start, 'Out-of-State')).map(lambda x: int(x))
+        end_df = self.readSQL(end)(self.value_df(end, 'Out-of-State')).map(lambda x: int(x))
+        schools = start_df.index
+        df = pd.DataFrame(
+            data=[{f'Change': end_df.at[school, 'Out-of-State'] / start_df.at[school, 'Out-of-State'] - 1}
+                  for school in schools],
+            index=schools
+        )
+        ay_plus = lambda year: f"{year}-{str(year + 1)[2:]}"
+        file = f"Percent Change in Total Price (Out-of-State) from {ay_plus(start)} to {ay_plus(end)}.csv"
+        df.to_csv(os.path.join(self.output_path, file), index=True)
+
+
 
 
 
