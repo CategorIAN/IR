@@ -21,6 +21,7 @@ class CompIntel_DB:
         )
         self.varmap = pd.read_csv(os.path.join(self.folder, "varmap.csv"), index_col=0)
         self.output_path = "\\".join([os.getcwd(), self.folder, "Data"])
+        self.analysis_path = "\\".join([os.getcwd(), "Analysis"])
 
     def queried_df(self, cursor, query, index_col = False):
         cursor.execute(query)
@@ -94,6 +95,13 @@ class CompIntel_DB:
         return execute
 
     #=================================================================================================================
+    def x(self, name):
+        years = list(range(2018, 2022 + 1))
+        tables = [self.readSQL(year)(self.value_df(year, name, year)) for year in years]
+        df = reduce(lambda df1, df2: pd.merge(df1, df2, on='INSTNM'), tables).map(lambda x: int(x))
+        print(df)
+        df.to_csv(os.path.join(self.analysis_path, f"{name}.csv"), index=True)
+
 
     def saveInstitutionSize(self, year):
         df = self.readSQL(year)(self.value_df(year, 'Undergraduate Size', year))

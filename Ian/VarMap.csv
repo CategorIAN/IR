@@ -11,3 +11,7 @@ Graduate Rate - 6 Years,DRVGRyyyy,GBA6RTT
 Out-of-State,DRVICyyyy,COTSON
 In-State,DRVICyyyy,CINSON
 Net Price,SFAxxxx_P2,NPGRN2
+FTE Undergraduates (Start Last Fall),EFIAyyyy,FTEUG
+FTE Estimated Undergraduates (Start Last Fall),EFIAyyyy,EFTEUG
+FTE Enrollment (Start This Fall),DRVEFyyyy,FTE
+FTE Enrollment (Start Last Fall),DRVEF12yyyy,FTE12MN
