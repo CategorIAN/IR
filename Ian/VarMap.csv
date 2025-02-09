@@ -1,20 +1,24 @@
 ﻿Name,Table,Variable,Start
-Undergraduate Size,DRVEFyyyy,EFUG,
-Incoming Freshman Size,DRVEFyyyy,EFUG1ST,
-Incoming Transfer Size,DRVEFyyyy,EFUGTRN,
-Percentage of White,DRVEFyyyy,PctEnrWh,
-Percentage of Women,DRVEFyyyy,PCTENRW,
-Percentage of Pell,SFAxxxx_P1,PGRNT_P,
-Retention Rate,EFyyyyD,RET_PCF,
+Board Charges,Icyyyy,BOARDAMT,This Fall
+FTE Enrollment,DRVEF12yyyy,FTE12MN,Last Fall
+FTE Undergraduates,EFIAyyyy,FTEUG,Last Fall
 Graduate Rate - 4 Years,DRVGRyyyy,GBA4RTT,
 Graduate Rate - 6 Years,DRVGRyyyy,GBA6RTT,
-Total Price (Out-of-State),DRVICyyyy,COTSON,
-Total Price (In-State),DRVICyyyy,CINSON,
+Incoming Freshman Size,DRVEFyyyy,EFUG1ST,
+Incoming Transfer Size,DRVEFyyyy,EFUGTRN,
 Net Price,SFAxxxx_P2,NPGRN2,
-FTE Undergraduates,EFIAyyyy,FTEUG,Last Fall
-FTE Enrollment,DRVEF12yyyy,FTE12MN,Last Fall
-Tuition (In-State),ICyyyy_AY,TUITION2,This Fall
-Tuition (Out-Of-State),ICyyyy_AY,TUITION3,This Fall
-Required Fees (In-State),ICyyyy_AY,FEE2,This Fall
+"Percent Granted Institutional Aid, FFUG",SFAxxxx_P1,IGRNT_P,Last Fall
+"Percent Granted Pell Aid, FFUG",SFAxxxx_P1,PGRNT_P,Last Fall
+"Percent Granted Pell Aid, UG",SFAxxxx_P1,UPGRNTP,Last Fall
+Percent of White,DRVEFyyyy,PctEnrWh,
+Percent of Women,DRVEFyyyy,PCTENRW,
+"Required Fees, In-State",ICyyyy_AY,FEE2,This Fall
+Retention Rate,EFyyyyD,RET_PCF,
 Room Charges,ICyyyy,ROOMAMT,This Fall
-Board Charges,Icyyyy,BOARDAMT,This Fall
+"Total Price, In-State",DRVICyyyy,CINSON,
+"Total Price, Out-of-State",DRVICyyyy,COTSON,
+"Tuition, In-State",ICyyyy_AY,TUITION2,This Fall
+"Tuition, Out-Of-State",ICyyyy_AY,TUITION3,This Fall
+Undergraduate Size,DRVEFyyyy,EFUG,
+Percent Admitted,DRVADMyyyy,DVADM01,This Fall
+Percent Yield,DRVADMyyyy,DVADM04,This Fall
