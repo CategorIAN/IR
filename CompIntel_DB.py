@@ -40,9 +40,14 @@ class CompIntel_DB:
             print(self.queried_df(cursor, stmt))
         return execute
 
+    def academic_year(self, start):
+        def f(year):
+            return f"{year}-{str(year + 1)[2:]}" if start == "This Fall" else f"{year - 1}-{str(year)[2:]}"
+        return f
+
     def value_df(self, year, name, alias = None):
-        alias = name if alias is None else alias
-        table, variable = self.varmap.loc[name, :]
+        table, variable, start = self.varmap.loc[name, :]
+        alias = self.academic_year(start)(year) if alias is None else alias
         year_table = table.replace("yyyy", str(year)).replace("xxxx", str(year - 1)[2:] + str(year)[2:])
         def execute(cursor):
             stmt = f"""
@@ -95,11 +100,14 @@ class CompIntel_DB:
         return execute
 
     #=================================================================================================================
+
+
     def x(self, name):
         years = list(range(2018, 2022 + 1))
-        tables = [self.readSQL(year)(self.value_df(year, name, year)) for year in years]
-        df = reduce(lambda df1, df2: pd.merge(df1, df2, on='INSTNM'), tables).map(lambda x: int(x))
+        tables = [self.readSQL(year)(self.value_df(year, name)) for year in years]
+        df = reduce(lambda df1, df2: pd.merge(df1, df2, on='INSTNM'), tables)
         print(df)
+        df = df.map(lambda x: x if x == "None" else int(x))
         df.to_csv(os.path.join(self.analysis_path, f"{name}.csv"), index=True)
 
 

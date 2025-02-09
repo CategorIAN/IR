@@ -6,7 +6,7 @@ import pandas as pd
 def f(i):
     if i == 1:
         DB = CompIntel_DB("Ian")
-        DB.x("FTE Enrollment (Start Last Fall)")
+        DB.x("Board Charges")
 
 if __name__ == '__main__':
     f(1)

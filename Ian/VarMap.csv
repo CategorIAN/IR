@@ -1,17 +1,20 @@
-﻿Name,Table,Variable
-Undergraduate Size,DRVEFyyyy,EFUG
-Incoming Freshman Size,DRVEFyyyy,EFUG1ST
-Incoming Transfer Size,DRVEFyyyy,EFUGTRN
-Percentage of White,DRVEFyyyy,PctEnrWh
-Percentage of Women,DRVEFyyyy,PCTENRW
-Percentage of Pell,SFAxxxx_P1,PGRNT_P
-Retention Rate,EFyyyyD,RET_PCF
-Graduate Rate - 4 Years,DRVGRyyyy,GBA4RTT
-Graduate Rate - 6 Years,DRVGRyyyy,GBA6RTT
-Out-of-State,DRVICyyyy,COTSON
-In-State,DRVICyyyy,CINSON
-Net Price,SFAxxxx_P2,NPGRN2
-FTE Undergraduates (Start Last Fall),EFIAyyyy,FTEUG
-FTE Estimated Undergraduates (Start Last Fall),EFIAyyyy,EFTEUG
-FTE Enrollment (Start This Fall),DRVEFyyyy,FTE
-FTE Enrollment (Start Last Fall),DRVEF12yyyy,FTE12MN
+﻿Name,Table,Variable,Start
+Undergraduate Size,DRVEFyyyy,EFUG,
+Incoming Freshman Size,DRVEFyyyy,EFUG1ST,
+Incoming Transfer Size,DRVEFyyyy,EFUGTRN,
+Percentage of White,DRVEFyyyy,PctEnrWh,
+Percentage of Women,DRVEFyyyy,PCTENRW,
+Percentage of Pell,SFAxxxx_P1,PGRNT_P,
+Retention Rate,EFyyyyD,RET_PCF,
+Graduate Rate - 4 Years,DRVGRyyyy,GBA4RTT,
+Graduate Rate - 6 Years,DRVGRyyyy,GBA6RTT,
+Total Price (Out-of-State),DRVICyyyy,COTSON,
+Total Price (In-State),DRVICyyyy,CINSON,
+Net Price,SFAxxxx_P2,NPGRN2,
+FTE Undergraduates,EFIAyyyy,FTEUG,Last Fall
+FTE Enrollment,DRVEF12yyyy,FTE12MN,Last Fall
+Tuition (In-State),ICyyyy_AY,TUITION2,This Fall
+Tuition (Out-Of-State),ICyyyy_AY,TUITION3,This Fall
+Required Fees (In-State),ICyyyy_AY,FEE2,This Fall
+Room Charges,ICyyyy,ROOMAMT,This Fall
+Board Charges,Icyyyy,BOARDAMT,This Fall
