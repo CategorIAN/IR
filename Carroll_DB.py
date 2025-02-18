@@ -23,6 +23,21 @@ class Carroll_DB:
             print(insert_row(row))
             cursor.execute(insert_row(row))
 
+    def insert_rows2(self, cursor):
+        df = pd.read_csv("\\".join([os.getcwd(), "2025SP_SNAPSHOT Metadata Guide.csv"]))
+        print(df)
+        def insert_row(row):
+            return f"""
+                    INSERT INTO Variables (Name, TableName, DataType) VALUES (
+                    '{row['TABLE_NAME']}.{row['COLUMN_NAME']}',
+                    '{row['TABLE_NAME']}',
+                    '{row['DATA_TYPE']}'
+                    )
+                    """.replace("'nan'", "NULL")
+
+        for index, row in df.iterrows():
+            print(insert_row(row))
+            cursor.execute(insert_row(row))
 
     def queried_df(self, cursor, query, index_col=False):
         cursor.execute(query)
