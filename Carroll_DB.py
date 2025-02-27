@@ -39,6 +39,34 @@ class Carroll_DB:
             print(insert_row(row))
             cursor.execute(insert_row(row))
 
+    def insert_rows3(self, cursor):
+        df = pd.read_csv("\\".join([os.getcwd(), "IPEDS_Tables.csv"]))
+        def insert_row(row):
+            return f"""
+                    INSERT INTO IPEDS_Tables (Name, SurveyNumber, DESCRIPTION, YearType, AY_Start) VALUES (?,?,?,?,?)
+                    """.replace("'nan'", "NULL")
+
+        for index, row in df.iterrows():
+            print(insert_row(row))
+            values = [None if pd.isna(x) else x for x in row]
+            print(values)
+            cursor.execute(insert_row(row), values)
+
+    def set_empty(self, cursor):
+        df = pd.read_csv("\\".join([os.getcwd(), "Empty Tables.csv"]))
+        def to_empty(table):
+            return f"""
+                    UPDATE Tables
+                    SET Empty = 1,
+                    Reviewed = GETDATE()
+                    WHERE Name = '{table}'
+                    """
+        for table in df['TableName']:
+            print(10 * "=")
+            print(to_empty(table))
+            cursor.execute(to_empty(table))
+
+
     def queried_df(self, cursor, query, index_col=False):
         cursor.execute(query)
         columns = [column[0] for column in cursor.description]
