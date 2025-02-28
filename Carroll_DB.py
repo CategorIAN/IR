@@ -52,6 +52,17 @@ class Carroll_DB:
             print(values)
             cursor.execute(insert_row(row), values)
 
+    def insert_rows4(self, cursor):
+        df = pd.read_csv("\\".join([os.getcwd(), "IPEDS_Variables.csv"]))
+        script = ("INSERT INTO IPEDS_Variables (Name, TableName, DESCRIPTION, DataType, YearType, FallsPrior) "
+                  "VALUES (?,?,?,?,?,?)")
+        for index, row in df.iterrows():
+            values = [None if pd.isna(x) else x for x in row]
+            var = f"{values[1]}.{values[0]}"
+            our_values = [var] + values[1:]
+            print(our_values)
+            cursor.execute(script, our_values)
+
     def set_empty(self, cursor):
         df = pd.read_csv("\\".join([os.getcwd(), "Empty Tables.csv"]))
         def to_empty(table):

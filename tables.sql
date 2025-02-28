@@ -51,6 +51,8 @@ CREATE TABLE Request_Variables (
     VarName nvarchar(255) references Variables(Name),
 )
 
+--------------------------------------------------------------------------------------------------
+
 CREATE TABLE IPEDS_Tables (
     Name NVARCHAR(255) PRIMARY KEY,
     DESCRIPTION NVARCHAR(255),
@@ -66,10 +68,23 @@ add YearType nvarchar(50)
 Alter Table IPEDS_Tables
 add AY_Start nvarchar(50)
 
+----------------------------------------------------------------------------------------
+
 CREATE TABLE IPEDS_Surveys (
     ID Int primary key,
     Name nvarchar(50)
 )
+
+CREATE TABLE IPEDS_Variables (
+    Name nvarchar(50) primary key,
+    TableName nvarchar(255) references IPEDS_Tables(Name),
+    DESCRIPTION nvarchar(255),
+    DataType nvarchar(20),
+    YearType nvarchar(50),
+    FallsPrior int,
+    Reviewed Date
+)
+
 
 
 

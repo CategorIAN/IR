@@ -13,7 +13,7 @@ def f(i):
         DB.executeSQL([DB.set_empty])
     if i == 3:
         DB = Carroll_DB()
-        DB.executeSQL([DB.insert_rows3])
+        DB.executeSQL([DB.insert_rows4])
 
 
 if __name__ == '__main__':
