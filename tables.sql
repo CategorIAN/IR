@@ -85,6 +85,69 @@ CREATE TABLE IPEDS_Variables (
     Reviewed Date
 )
 
+CREATE TABLE IPEDS_Sections (
+    Name nvarchar(50) primary key,
+    SurveyNumber  int references IPEDS_Surveys(ID),
+    Part nvarchar(2)
+)
+
+CREATE TABLE Departments (
+    Name nvarchar(50) primary key
+)
+
+ALTER TABLE Person
+ADD CONSTRAINT person_dept
+FOREIGN KEY (Department) REFERENCES Departments (Name);
+
+
+CREATE TABLE Departments_IPEDS_Sections (
+    Department nvarchar(50) references Departments(Name),
+    IPEDS_Section nvarchar(50) references IPEDS_Sections(Name)
+)
+
+CREATE TABLE IPEDS_Collections (
+    Name nvarchar(50) primary key
+)
+
+CREATE TABLE IPEDS_Collection_Components (
+    Collection nvarchar(50) references IPEDS_Collections(name),
+    SurveyNumber int references IPEDS_Surveys(ID)
+)
+
+CREATE TABLE IPEDS_Collection_Calendar (
+    Name nvarchar(50) primary key,
+    Collection nvarchar(50) references IPEDS_Collections(name),
+    Year nvarchar(4),
+    Deadline Date
+)
+
+CREATE TABLE IPEDS_Collection_Checklist (
+    Name nvarchar(100) primary key,
+    Collection_Calendar nvarchar(50) references IPEDS_Collection_Calendar,
+    Section nvarchar(50) references IPEDS_Sections(Name),
+    Start Date,
+    Finish Date
+)
+
+CREATE TABLE My_IPEDS_Requests (
+    ID int primary key,
+    DESCRIPTION nvarchar(255),
+    IPEDS_Item nvarchar(100) references IPEDS_Collection_Checklist,
+    Person nvarchar(50) references Person(Name),
+    Start Date,
+    Finish Date,
+    Notes nvarchar(255),
+    Follow_Up int references My_IPEDS_Requests (ID)
+)
+
+CREATE TABLE IPEDS_Collection_Forms (
+    Name nvarchar(100) primary key,
+    Collection_Section nvarchar(100) references IPEDS_Collection_Checklist,
+    Subsection nvarchar(5),
+    Start Date,
+    Finish Date,
+    Notes nvarchar(255)
+)
 
 
 

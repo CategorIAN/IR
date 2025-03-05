@@ -1,6 +1,4 @@
-from CompIntel_DV import CompIntel_DV
 from CompIntel_DB import CompIntel_DB
-import pandas as pd
 from Carroll_DB import Carroll_DB
 
 

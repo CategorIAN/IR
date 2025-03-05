@@ -31,6 +31,14 @@ CREATE VIEW Filled_Descriptions as
     FROM Tables as Outer_Tables
     where Empty = 0 and Not_applicable = 0
 
+CREATE VIEW Filled_Descriptions_Used_Tables as
+    Select Tables.Name, Filled_Table_Description, Filled_All_Variable_Descriptions
+    From Tables
+    JOIN Variables on Tables.Name = Variables.TableName
+    JOIN Request_Variables on Variables.Name = Request_Variables.VarName
+    JOIN Filled_Descriptions on Tables.Name = Filled_Descriptions.Name
+    GROUP BY Tables.Name, Filled_Table_Description, Filled_All_Variable_Descriptions
+
 
 CREATE VIEW Table_Relevance_Count AS
     SELECT Relevance,
