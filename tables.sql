@@ -75,6 +75,9 @@ CREATE TABLE IPEDS_Surveys (
     Name nvarchar(50)
 )
 
+ALTER TABLE IPEDS_Surveys
+add Collection nvarchar(50) references IPEDS_Collections(Name)
+
 CREATE TABLE IPEDS_Variables (
     Name nvarchar(50) primary key,
     TableName nvarchar(255) references IPEDS_Tables(Name),
