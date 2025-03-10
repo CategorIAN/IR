@@ -1,8 +1,3 @@
-
-
-
-
-
 SELECT RACE,
        [First-time],
        [Transfer-in],
