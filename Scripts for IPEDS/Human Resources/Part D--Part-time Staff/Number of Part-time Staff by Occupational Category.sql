@@ -65,6 +65,16 @@ SELECT PERSON.ID,
             THEN 'Service Occupations'
             WHEN POS_TITLE IN ('Administrative Assistant - Registrar')
                 THEN 'Office and Administrative Support Occupations'
+            WHEN POS_TITLE IN ('Assistant Coach - Women''s Basketball',
+                               'Assistant VB Coach Part Time',
+                               'Women''s Basketball JV Head Coach',
+                               'Head Coach - Dance',
+                               'Assistant Coach - Cross Country',
+                               'Coaching - Cheerleading',
+                               'Assistant Coach - Men''s Basketball',
+                               'Assistant WB Coach Part Time',
+                               'Golf Coach')
+                THEN 'Community, Social Service, Legal, Arts, Design, Entertainment, Sports, and Media Occupations'
             END AS IPEDS_OCCUPATION_CATEGORY
 
 FROM PERSTAT
@@ -91,7 +101,8 @@ WHERE PERSTAT_END_DATE IS NULL
 AND PERSTAT_START_DATE <= '2024-11-01'
 AND PERSTAT_STATUS NOT IN ('FT', 'VOL', 'STU')
 AND POS_SOC_CODE IS NULL
-AND POS_RANK != 'A'
+AND POS_RANK IS NULL
+
 
 
 
