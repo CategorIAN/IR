@@ -1,5 +1,6 @@
 from CompIntel_DB import CompIntel_DB
 from Carroll_DB import Carroll_DB
+from IPEDS import IPEDS
 
 
 def f(i):
@@ -10,8 +11,8 @@ def f(i):
         DB = Carroll_DB()
         DB.executeSQL([DB.set_empty])
     if i == 3:
-        DB = Carroll_DB()
-        DB.executeSQL([DB.insert_rows4])
+        X = IPEDS()
+        X.f()
 
 
 if __name__ == '__main__':

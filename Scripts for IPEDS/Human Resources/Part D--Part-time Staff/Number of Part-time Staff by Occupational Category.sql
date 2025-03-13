@@ -1,11 +1,22 @@
+
+SELECT *
+FROM
+(SELECT ID,
+       POSITION_ID
+FROM (
 SELECT PERSON.ID,
        PERSON.LAST_NAME,
        PERSON.FIRST_NAME,
        IPEDS_RACE_ETHNIC_DESC AS RACE,
+       POSITION_ID,
        POS_SOC_CODE,
        POS_TITLE,
        CASE
-           WHEN POS_RANK = 'A' THEN 'Instructional Staff'
+           WHEN (
+               POS_RANK = 'A'
+                OR POS_CLASS = 'FAC'
+                OR POS_EEO_RANK = 'INS'
+               ) THEN 'Instructional Staff'
             WHEN POS_SOC_CODE LIKE '25-401%' THEN 'Archivists, Curators, and Museum Technicians'
             WHEN POS_SOC_CODE LIKE '25-402%' THEN 'Librarians and Media Collections Specialists'
             WHEN POS_SOC_CODE LIKE '25-403%' THEN 'Library Technicians'
@@ -65,17 +76,13 @@ SELECT PERSON.ID,
             THEN 'Service Occupations'
             WHEN POS_TITLE IN ('Administrative Assistant - Registrar')
                 THEN 'Office and Administrative Support Occupations'
-            WHEN POS_TITLE IN ('Assistant Coach - Women''s Basketball',
-                               'Assistant VB Coach Part Time',
-                               'Women''s Basketball JV Head Coach',
-                               'Head Coach - Dance',
-                               'Assistant Coach - Cross Country',
-                               'Coaching - Cheerleading',
-                               'Assistant Coach - Men''s Basketball',
-                               'Assistant WB Coach Part Time',
-                               'Golf Coach')
+            WHEN POS_TITLE LIKE '%Coach%'
                 THEN 'Community, Social Service, Legal, Arts, Design, Entertainment, Sports, and Media Occupations'
-            END AS IPEDS_OCCUPATION_CATEGORY
+            END AS IPEDS_OCCUPATION_CATEGORY,
+    POS_TYPE,
+    POS_RANK,
+    POS_CLASS,
+    PERSTAT_STATUS
 
 FROM PERSTAT
 JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
@@ -84,7 +91,23 @@ JOIN Z01_ALL_RACE_ETHNIC_W_FLAGS AS RACE ON PERSON.ID = RACE.ID
 WHERE PERSTAT_END_DATE IS NULL
 AND PERSTAT_START_DATE <= '2024-11-01'
 AND PERSTAT_STATUS NOT IN ('FT', 'VOL', 'STU')
-ORDER BY PERSTAT_STATUS
+AND POS_TYPE != 'TPT'
+AND POS_TITLE NOT IN ('Part Time Grounds Worker', 'Fitness Instructor')
+AND POS_TITLE NOT LIKE '%Lab Coordinator%'
+AND POS_TITLE NOT LIKE '%Announcer%'
+) AS X
+WHERE IPEDS_OCCUPATION_CATEGORY IS NULL) AS Y
+JOIN (
+    SELECT *
+    FROM POSITION
+) AS Z ON Y.POSITION_ID = Z.POSITION_ID
+
+
+
+SELECT * FROM VALS
+
+
+SELECT * FROM VALCODES
 
 
 SELECT PERSON.ID,
@@ -104,9 +127,7 @@ AND POS_SOC_CODE IS NULL
 AND POS_RANK IS NULL
 
 
-
-
-
 SELECT * FROM PERSTAT WHERE PERSTAT_HRP_ID = '6189695'
 
-SELECT * FROM POSITION WHERE POS_RANK = 'A'
+SELECT * FROM POSITION
+WHERE POS_TITLE LIKE '%Part Time Grounds Worker%'

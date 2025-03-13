@@ -33,3 +33,6 @@ Thumbs.db
 *.tmp
 *.swp
 *.~*
+
+# Ignore Private Spreadsheets
+MyData/
