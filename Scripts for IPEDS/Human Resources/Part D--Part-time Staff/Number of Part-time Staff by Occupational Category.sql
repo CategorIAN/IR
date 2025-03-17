@@ -1,16 +1,8 @@
 
-SELECT *
-FROM
-(SELECT ID,
-       POSITION_ID
-FROM (
 SELECT PERSON.ID,
        PERSON.LAST_NAME,
        PERSON.FIRST_NAME,
        IPEDS_RACE_ETHNIC_DESC AS RACE,
-       POSITION_ID,
-       POS_SOC_CODE,
-       POS_TITLE,
        CASE
            WHEN (
                POS_RANK = 'A'
@@ -56,6 +48,7 @@ SELECT PERSON.ID,
                 POS_SOC_CODE LIKE '51%'
                 OR POS_SOC_CODE LIKE '53%'
                 ) THEN 'Production, Transportation, and Material Moving Occupations'
+-------------------------------------------------------------------------------------------------------------------
             WHEN POS_TITLE IN ('Assistant Director of Academic Support',
                     'Assistant Director of Institutional Research',
                     'Director of Academic Technology',
@@ -66,10 +59,12 @@ SELECT PERSON.ID,
                               'Accounting Techician',
                               'Marketing Technology Specialist',
                               'Prospect Research Specialist',
-                              'Saints Shoppe Coordinator') THEN 'Business and Financial Operations Occupations'
+                              'Saints Shoppe Coordinator'
+                              ) THEN 'Business and Financial Operations Occupations'
             WHEN POS_TITLE IN ('IT Business System Analyst') THEN 'Computer, Engineering, and Science Occupations'
             WHEN POS_TITLE IN ('Athletic Eligibility Coordinator',
-                              'Sports Information Director'
+                              'Sports Information Director',
+                              'Special Populations Coordinator - Registrar'
                                 ) THEN
                 'Community, Social Service, Legal, Arts, Design, Entertainment, Sports, and Media Occupations'
             WHEN POS_TITLE IN ('Assistant Director of Residential Life & Housing')
@@ -92,15 +87,11 @@ WHERE PERSTAT_END_DATE IS NULL
 AND PERSTAT_START_DATE <= '2024-11-01'
 AND PERSTAT_STATUS NOT IN ('FT', 'VOL', 'STU')
 AND POS_TYPE != 'TPT'
-AND POS_TITLE NOT IN ('Part Time Grounds Worker', 'Fitness Instructor')
+AND POS_TITLE NOT IN ('Part Time Grounds Worker', 'Fitness Instructor', 'PT Librarian')
 AND POS_TITLE NOT LIKE '%Lab Coordinator%'
 AND POS_TITLE NOT LIKE '%Announcer%'
-) AS X
-WHERE IPEDS_OCCUPATION_CATEGORY IS NULL) AS Y
-JOIN (
-    SELECT *
-    FROM POSITION
-) AS Z ON Y.POSITION_ID = Z.POSITION_ID
+AND POS_TITLE NOT LIKE '%Administrative Assistant%'
+
 
 
 
