@@ -1,5 +1,5 @@
 SELECT  POS_EEO_RANK,
-        COUNT(*) AS COUNT
+        COUNT(*) AS TEN_MONTHS
 
 FROM PERSTAT
 JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
@@ -10,9 +10,9 @@ AND PERSTAT_STATUS = 'FT'
 AND POS_CLASS = 'FAC'
 AND GENDER = 'M'
 GROUP BY POS_EEO_RANK --Men
-
+----------------------------------------------------------------------------------------------------------------------
 SELECT  POS_EEO_RANK,
-        COUNT(*) AS COUNT
+        COUNT(*) AS TEN_MONTHS
 
 FROM PERSTAT
 JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
