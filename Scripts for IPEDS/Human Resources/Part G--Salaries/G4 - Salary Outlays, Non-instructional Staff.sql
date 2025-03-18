@@ -12,11 +12,17 @@ SELECT PPWG_HRP_ID,
        'Library Technicians',
        'Student and Academic Affairs and Other Education Services Occupations'
        ) THEN 'Library and Student and Academic Affairs and Other Education Services'
-       ELSE IPEDS_OCCUPATION_CATEGORY END AS IPEDS_OCCUPATION_CATEGORY
+       ELSE IPEDS_OCCUPATION_CATEGORY END AS IPEDS_OCCUPATION_CATEGORY,
+
 
 FROM
 (SELECT PPWG_HRP_ID,
         PPWG_ANNUALIZED_AMT,
+        PERSON.LAST_NAME,
+        PERSON.FIRST_NAME,
+        POS_SOC_CODE,
+        POS_TITLE,
+        PERSTAT_END_DATE,
 
         CASE
 ----------------------------------------------------------------------------------------------------------------------
@@ -106,7 +112,11 @@ FROM PERSTAT
 JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
 JOIN POSITION ON PERSTAT.PERSTAT_PRIMARY_POS_ID = POSITION.POSITION_ID
 JOIN PERPOSWG ON PERSTAT.PERSTAT_HRP_ID = PPWG_HRP_ID AND PERSTAT_PRIMARY_POS_ID = PERPOSWG.PPWG_POSITION_ID
-WHERE PERSTAT_END_DATE IS NULL
+WHERE (PERSTAT_END_DATE IS NULL OR PERSTAT_END_DATE >= (
+          SELECT TOP 1 TERM_START_DATE
+          FROM TERMS
+          WHERE TERMS_ID = '2024FA'
+          ))
 AND PERSTAT_START_DATE <= '2024-11-01'
 AND PERSTAT_STATUS = 'FT'
 AND POSITION.POS_CLASS != 'FAC'
@@ -117,3 +127,6 @@ AND (
     )) AS X) AS X
 GROUP BY IPEDS_OCCUPATION_CATEGORY
 -----------------------------------------------------------------------------------------------------------------------
+SELECT *
+FROM PERSTAT
+WHERE PERSTAT_HRP_ID = '5069648'
