@@ -74,10 +74,11 @@ SELECT
 ----------------------------------------------------------------------------------------------------------------------
             WHEN POS_TITLE IN ('IT Business System Analyst') THEN 'Computer, Engineering, and Science Occupations'
 ----------------------------------------------------------------------------------------------------------------------
-            WHEN POS_TITLE IN ('Athletic Eligibility Coordinator',
-                              'Sports Information Director'
-                                ) THEN
-                'Community, Social Service, Legal, Arts, Design, Entertainment, Sports, and Media Occupations'
+                 WHEN POS_TITLE IN ('Athletic Eligibility Coordinator',
+                                    'Sports Information Director',
+                                    'Special Populations Coordinator - Registrar'
+                     ) THEN
+                     'Community, Social Service, Legal, Arts, Design, Entertainment, Sports, and Media Occupations'
 ----------------------------------------------------------------------------------------------------------------------
             WHEN POS_TITLE IN ('Assistant Director of Residential Life & Housing')
             THEN 'Service Occupations'
@@ -85,6 +86,9 @@ SELECT
             WHEN POS_TITLE IN ('Administrative Assistant - Registrar')
                 THEN 'Office and Administrative Support Occupations'
 ----------------------------------------------------------------------------------------------------------------------
+         WHEN POS_TITLE LIKE '%Coach%'
+             THEN 'Community, Social Service, Legal, Arts, Design, Entertainment, Sports, and Media Occupations'
+-----------------------------------------------------------------------------------------------------------------------
         END AS IPEDS_OCCUPATION_CATEGORY
 
 FROM PERSTAT
