@@ -1,16 +1,31 @@
-SELECT RACE_ETHNICITY,
-    [Service Occupations],
-    [Sales and Related Occupations],
-    [Office and Administrative Support Occupations],
-    [Natural Resources, Construction, and Maintenance Occupations],
-    [Production, Transportation, and Material Moving Occupations]
+SELECT IPEDS_OCCUPATION_CATEGORY,
+       COUNT(PPWG_HRP_ID) AS COUNT,
+       SUM(PPWG_ANNUALIZED_AMT) AS SALARY_OUTLAYS
+FROM
+(
+SELECT PPWG_HRP_ID,
+       PPWG_ANNUALIZED_AMT,
+       CASE
+       WHEN IPEDS_OCCUPATION_CATEGORY IN (
+       'Archivists, Curators, and Museum Technicians',
+       'Librarians and Media Collections Specialists',
+       'Library Technicians',
+       'Student and Academic Affairs and Other Education Services Occupations'
+       ) THEN 'Library and Student and Academic Affairs and Other Education Services'
+       ELSE IPEDS_OCCUPATION_CATEGORY END AS IPEDS_OCCUPATION_CATEGORY
 
 
-FROM (
-SELECT
-        PERSTAT_HRP_ID,
-        RACE.IPEDS_RACE_ETHNIC_DESC AS RACE_ETHNICITY,
+FROM
+(SELECT PPWG_HRP_ID,
+        PPWG_ANNUALIZED_AMT,
+
         CASE
+-----------------------------------------------------------------------------------------------------------------------
+                 WHEN (
+                     POS_RANK = 'A'
+                         OR POS_CLASS = 'FAC'
+                         OR POS_EEO_RANK = 'INS'
+                     ) THEN 'Instructional Staff'
 ----------------------------------------------------------------------------------------------------------------------
             WHEN POS_SOC_CODE LIKE '25-401%' THEN 'Archivists, Curators, and Museum Technicians'
 ----------------------------------------------------------------------------------------------------------------------
@@ -102,9 +117,8 @@ SELECT
 
 FROM PERSTAT
 JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
-JOIN Z01_ALL_RACE_ETHNIC_W_FLAGS AS RACE ON PERSON.ID = RACE.ID
 JOIN POSITION ON PERSTAT.PERSTAT_PRIMARY_POS_ID = POSITION.POSITION_ID
-LEFT JOIN SOC_CODES ON POSITION.POS_SOC_CODE = SOC_CODES.SOC_CODES_ID
+LEFT JOIN PERPOSWG ON PERSTAT.PERSTAT_HRP_ID = PPWG_HRP_ID AND PERSTAT_PRIMARY_POS_ID = PERPOSWG.PPWG_POSITION_ID
 WHERE (PERSTAT_END_DATE IS NULL OR PERSTAT_END_DATE >= (
           SELECT TOP 1 TERM_START_DATE
           FROM TERMS
@@ -112,38 +126,29 @@ WHERE (PERSTAT_END_DATE IS NULL OR PERSTAT_END_DATE >= (
           ))
 AND PERSTAT_START_DATE <= '2024-11-01'
 AND PERSTAT_STATUS = 'FT'
-AND POS_CLASS != 'FAC'
-AND GENDER = 'M') AS Q1
-PIVOT (COUNT(PERSTAT_HRP_ID) FOR IPEDS_OCCUPATION_CATEGORY IN (
-        [Archivists, Curators, and Museum Technicians],
-       [Business and Financial Operations Occupations],
-       [Community, Social Service, Legal, Arts, Design, Entertainment, Sports, and Media Occupations],
-       [Computer, Engineering, and Science Occupations],
-       [Healthcare Practitioners and Technical Occupations],
-       [Librarians and Media Collections Specialists],
-        [Library Technicians],
-       [Management Occupations],
-       [Natural Resources, Construction, and Maintenance Occupations],
-       [Office and Administrative Support Occupations],
-       [Production, Transportation, and Material Moving Occupations],
-    [Sales and Related Occupations],
-       [Service Occupations],
-       [Student and Academic Affairs and Other Education Services Occupations]
-        )) AS Q2  --Men
-----------------------------------------------------------------------------
-SELECT RACE_ETHNICITY,
-    [Service Occupations],
-    [Sales and Related Occupations],
-    [Office and Administrative Support Occupations],
-    [Natural Resources, Construction, and Maintenance Occupations],
-    [Production, Transportation, and Material Moving Occupations]
+AND POSITION.POS_CLASS != 'FAC'
+AND PPWG_PAYCLASS_ID IS NOT NULL
+AND (
+    PPWG_END_DATE IS NULL
+    OR PPWG_END_DATE > '2024-11-01'
+    )) AS X) AS X
+GROUP BY IPEDS_OCCUPATION_CATEGORY
+-----------------------------------------------------------------------------------------------------------------------
 
 
-FROM (
-SELECT
-        PERSTAT_HRP_ID,
-        RACE.IPEDS_RACE_ETHNIC_DESC AS RACE_ETHNICITY,
+SELECT PPWG_HRP_ID,
+        PPWG_ANNUALIZED_AMT,
+        PERSON.LAST_NAME,
+        PERSON.FIRST_NAME,
+        GENDER,
+
         CASE
+-----------------------------------------------------------------------------------------------------------------------
+                 WHEN (
+                     POS_RANK = 'A'
+                         OR POS_CLASS = 'FAC'
+                         OR POS_EEO_RANK = 'INS'
+                     ) THEN 'Instructional Staff'
 ----------------------------------------------------------------------------------------------------------------------
             WHEN POS_SOC_CODE LIKE '25-401%' THEN 'Archivists, Curators, and Museum Technicians'
 ----------------------------------------------------------------------------------------------------------------------
@@ -235,9 +240,8 @@ SELECT
 
 FROM PERSTAT
 JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
-JOIN Z01_ALL_RACE_ETHNIC_W_FLAGS AS RACE ON PERSON.ID = RACE.ID
 JOIN POSITION ON PERSTAT.PERSTAT_PRIMARY_POS_ID = POSITION.POSITION_ID
-LEFT JOIN SOC_CODES ON POSITION.POS_SOC_CODE = SOC_CODES.SOC_CODES_ID
+JOIN PERPOSWG ON PERSTAT.PERSTAT_HRP_ID = PPWG_HRP_ID AND PERSTAT_PRIMARY_POS_ID = PERPOSWG.PPWG_POSITION_ID
 WHERE (PERSTAT_END_DATE IS NULL OR PERSTAT_END_DATE >= (
           SELECT TOP 1 TERM_START_DATE
           FROM TERMS
@@ -245,21 +249,12 @@ WHERE (PERSTAT_END_DATE IS NULL OR PERSTAT_END_DATE >= (
           ))
 AND PERSTAT_START_DATE <= '2024-11-01'
 AND PERSTAT_STATUS = 'FT'
-AND POS_CLASS != 'FAC'
-AND GENDER = 'F') AS Q1
-PIVOT (COUNT(PERSTAT_HRP_ID) FOR IPEDS_OCCUPATION_CATEGORY IN (
-        [Archivists, Curators, and Museum Technicians],
-       [Business and Financial Operations Occupations],
-       [Community, Social Service, Legal, Arts, Design, Entertainment, Sports, and Media Occupations],
-       [Computer, Engineering, and Science Occupations],
-       [Healthcare Practitioners and Technical Occupations],
-       [Librarians and Media Collections Specialists],
-        [Library Technicians],
-       [Management Occupations],
-       [Natural Resources, Construction, and Maintenance Occupations],
-       [Office and Administrative Support Occupations],
-       [Production, Transportation, and Material Moving Occupations],
-    [Sales and Related Occupations],
-       [Service Occupations],
-       [Student and Academic Affairs and Other Education Services Occupations]
-        )) AS Q2  --Women
+AND POSITION.POS_CLASS != 'FAC'
+AND PPWG_PAYCLASS_ID IS NOT NULL
+AND (
+    PPWG_END_DATE IS NULL
+    OR PPWG_END_DATE > '2024-11-01'
+    )
+
+SELECT *
+FROM PERPOSWG

@@ -76,9 +76,11 @@ SELECT
                               'Accounting Techician',
                               'Marketing Technology Specialist',
                               'Prospect Research Specialist',
-                              'Saints Shoppe Coordinator') THEN 'Business and Financial Operations Occupations'
+                              'Saints Shoppe Coordinator',
+                              'Digital Marketing Specialist') THEN 'Business and Financial Operations Occupations'
 ----------------------------------------------------------------------------------------------------------------------
-            WHEN POS_TITLE IN ('IT Business System Analyst') THEN 'Computer, Engineering, and Science Occupations'
+            WHEN POS_TITLE IN ('IT Business System Analyst',
+                              'Senior Designer/Web Manager') THEN 'Computer, Engineering, and Science Occupations'
 ----------------------------------------------------------------------------------------------------------------------
                  WHEN POS_TITLE IN ('Athletic Eligibility Coordinator',
                                     'Sports Information Director',
@@ -92,8 +94,8 @@ SELECT
             WHEN POS_TITLE IN ('Administrative Assistant - Registrar')
                 THEN 'Office and Administrative Support Occupations'
 ----------------------------------------------------------------------------------------------------------------------
-         WHEN POS_TITLE LIKE '%Coach%'
-             THEN 'Community, Social Service, Legal, Arts, Design, Entertainment, Sports, and Media Occupations'
+                 WHEN POS_TITLE LIKE '%Coach%'
+                THEN 'Community, Social Service, Legal, Arts, Design, Entertainment, Sports, and Media Occupations'
 -----------------------------------------------------------------------------------------------------------------------
         END AS IPEDS_OCCUPATION_CATEGORY
 
@@ -102,7 +104,11 @@ JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
 JOIN Z01_ALL_RACE_ETHNIC_W_FLAGS AS RACE ON PERSON.ID = RACE.ID
 JOIN POSITION ON PERSTAT.PERSTAT_PRIMARY_POS_ID = POSITION.POSITION_ID
 LEFT JOIN SOC_CODES ON POSITION.POS_SOC_CODE = SOC_CODES.SOC_CODES_ID
-WHERE PERSTAT_END_DATE IS NULL
+WHERE (PERSTAT_END_DATE IS NULL OR PERSTAT_END_DATE >= (
+          SELECT TOP 1 TERM_START_DATE
+          FROM TERMS
+          WHERE TERMS_ID = '2024FA'
+          ))
 AND PERSTAT_START_DATE <= '2024-11-01'
 AND PERSTAT_STATUS = 'FT'
 AND POS_CLASS != 'FAC'
@@ -202,9 +208,11 @@ SELECT
                               'Accounting Techician',
                               'Marketing Technology Specialist',
                               'Prospect Research Specialist',
-                              'Saints Shoppe Coordinator') THEN 'Business and Financial Operations Occupations'
+                              'Saints Shoppe Coordinator',
+                              'Digital Marketing Specialist') THEN 'Business and Financial Operations Occupations'
 ----------------------------------------------------------------------------------------------------------------------
-            WHEN POS_TITLE IN ('IT Business System Analyst') THEN 'Computer, Engineering, and Science Occupations'
+            WHEN POS_TITLE IN ('IT Business System Analyst',
+                              'Senior Designer/Web Manager') THEN 'Computer, Engineering, and Science Occupations'
 ----------------------------------------------------------------------------------------------------------------------
                  WHEN POS_TITLE IN ('Athletic Eligibility Coordinator',
                                     'Sports Information Director',
@@ -218,8 +226,8 @@ SELECT
             WHEN POS_TITLE IN ('Administrative Assistant - Registrar')
                 THEN 'Office and Administrative Support Occupations'
 ----------------------------------------------------------------------------------------------------------------------
-         WHEN POS_TITLE LIKE '%Coach%'
-             THEN 'Community, Social Service, Legal, Arts, Design, Entertainment, Sports, and Media Occupations'
+                 WHEN POS_TITLE LIKE '%Coach%'
+                THEN 'Community, Social Service, Legal, Arts, Design, Entertainment, Sports, and Media Occupations'
 -----------------------------------------------------------------------------------------------------------------------
         END AS IPEDS_OCCUPATION_CATEGORY
 
@@ -228,7 +236,11 @@ JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
 JOIN Z01_ALL_RACE_ETHNIC_W_FLAGS AS RACE ON PERSON.ID = RACE.ID
 JOIN POSITION ON PERSTAT.PERSTAT_PRIMARY_POS_ID = POSITION.POSITION_ID
 LEFT JOIN SOC_CODES ON POSITION.POS_SOC_CODE = SOC_CODES.SOC_CODES_ID
-WHERE PERSTAT_END_DATE IS NULL
+WHERE (PERSTAT_END_DATE IS NULL OR PERSTAT_END_DATE >= (
+          SELECT TOP 1 TERM_START_DATE
+          FROM TERMS
+          WHERE TERMS_ID = '2024FA'
+          ))
 AND PERSTAT_START_DATE <= '2024-11-01'
 AND PERSTAT_STATUS = 'FT'
 AND POS_CLASS != 'FAC'

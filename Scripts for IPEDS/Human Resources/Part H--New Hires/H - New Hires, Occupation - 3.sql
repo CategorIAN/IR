@@ -22,7 +22,13 @@ SELECT
         PERSTAT_HRP_ID,
         RACE.IPEDS_RACE_ETHNIC_DESC AS RACE_ETHNICITY,
         CASE
- ----------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------------------
+                 WHEN (
+                     POS_RANK = 'A'
+                         OR POS_CLASS = 'FAC'
+                         OR POS_EEO_RANK = 'INS'
+                     ) THEN 'Instructional Staff'
+----------------------------------------------------------------------------------------------------------------------
             WHEN POS_SOC_CODE LIKE '25-401%' THEN 'Archivists, Curators, and Museum Technicians'
 ----------------------------------------------------------------------------------------------------------------------
             WHEN POS_SOC_CODE LIKE '25-402%' THEN 'Librarians and Media Collections Specialists'
@@ -88,9 +94,11 @@ SELECT
                               'Accounting Techician',
                               'Marketing Technology Specialist',
                               'Prospect Research Specialist',
-                              'Saints Shoppe Coordinator') THEN 'Business and Financial Operations Occupations'
+                              'Saints Shoppe Coordinator',
+                              'Digital Marketing Specialist') THEN 'Business and Financial Operations Occupations'
 ----------------------------------------------------------------------------------------------------------------------
-            WHEN POS_TITLE IN ('IT Business System Analyst') THEN 'Computer, Engineering, and Science Occupations'
+            WHEN POS_TITLE IN ('IT Business System Analyst',
+                              'Senior Designer/Web Manager') THEN 'Computer, Engineering, and Science Occupations'
 ----------------------------------------------------------------------------------------------------------------------
                  WHEN POS_TITLE IN ('Athletic Eligibility Coordinator',
                                     'Sports Information Director',
@@ -104,8 +112,8 @@ SELECT
             WHEN POS_TITLE IN ('Administrative Assistant - Registrar')
                 THEN 'Office and Administrative Support Occupations'
 ----------------------------------------------------------------------------------------------------------------------
-             WHEN POS_TITLE LIKE '%Coach%'
-                 THEN 'Community, Social Service, Legal, Arts, Design, Entertainment, Sports, and Media Occupations'
+                 WHEN POS_TITLE LIKE '%Coach%'
+                THEN 'Community, Social Service, Legal, Arts, Design, Entertainment, Sports, and Media Occupations'
 -----------------------------------------------------------------------------------------------------------------------
         END AS IPEDS_OCCUPATION_CATEGORY
 
@@ -162,6 +170,12 @@ SELECT
         PERSTAT_HRP_ID,
         RACE.IPEDS_RACE_ETHNIC_DESC AS RACE_ETHNICITY,
         CASE
+-----------------------------------------------------------------------------------------------------------------------
+                 WHEN (
+                     POS_RANK = 'A'
+                         OR POS_CLASS = 'FAC'
+                         OR POS_EEO_RANK = 'INS'
+                     ) THEN 'Instructional Staff'
 ----------------------------------------------------------------------------------------------------------------------
             WHEN POS_SOC_CODE LIKE '25-401%' THEN 'Archivists, Curators, and Museum Technicians'
 ----------------------------------------------------------------------------------------------------------------------
@@ -228,9 +242,11 @@ SELECT
                               'Accounting Techician',
                               'Marketing Technology Specialist',
                               'Prospect Research Specialist',
-                              'Saints Shoppe Coordinator') THEN 'Business and Financial Operations Occupations'
+                              'Saints Shoppe Coordinator',
+                              'Digital Marketing Specialist') THEN 'Business and Financial Operations Occupations'
 ----------------------------------------------------------------------------------------------------------------------
-            WHEN POS_TITLE IN ('IT Business System Analyst') THEN 'Computer, Engineering, and Science Occupations'
+            WHEN POS_TITLE IN ('IT Business System Analyst',
+                              'Senior Designer/Web Manager') THEN 'Computer, Engineering, and Science Occupations'
 ----------------------------------------------------------------------------------------------------------------------
                  WHEN POS_TITLE IN ('Athletic Eligibility Coordinator',
                                     'Sports Information Director',
@@ -244,8 +260,8 @@ SELECT
             WHEN POS_TITLE IN ('Administrative Assistant - Registrar')
                 THEN 'Office and Administrative Support Occupations'
 ----------------------------------------------------------------------------------------------------------------------
-             WHEN POS_TITLE LIKE '%Coach%'
-                 THEN 'Community, Social Service, Legal, Arts, Design, Entertainment, Sports, and Media Occupations'
+                 WHEN POS_TITLE LIKE '%Coach%'
+                THEN 'Community, Social Service, Legal, Arts, Design, Entertainment, Sports, and Media Occupations'
 -----------------------------------------------------------------------------------------------------------------------
         END AS IPEDS_OCCUPATION_CATEGORY
 
