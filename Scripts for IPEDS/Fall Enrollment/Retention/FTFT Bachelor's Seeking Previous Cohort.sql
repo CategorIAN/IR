@@ -1,25 +1,20 @@
 SELECT STTR_STUDENT,
-        LAST_NAME,
-        FIRST_NAME,
         STP_PROGRAM_TITLE
-
 
 FROM STUDENT_TERMS_VIEW
 JOIN PERSON ON STTR_STUDENT = PERSON.ID
-JOIN (SELECT *
+      JOIN (SELECT *
            FROM (SELECT STUDENT_ID,
                         STP_ACADEMIC_PROGRAM,
                         STP_PROGRAM_TITLE,
-                        STP_START_DATE,
                         STP_CURRENT_STATUS,
                         ROW_NUMBER() OVER (PARTITION BY STUDENT_ID
-                            ORDER BY STP_START_DATE DESC) AS rn
+                            ORDER BY CASE WHEN STP_END_DATE IS NULL THEN 0 ELSE 1 END, STP_END_DATE DESC) AS rn
                  FROM STUDENT_ACAD_PROGRAMS_VIEW
                  WHERE STP_CURRENT_STATUS != 'Changed Program'
-                 AND STP_START_DATE <= (
-                     SELECT TOP 1 TERM_END_DATE
-                     FROM TERMS
-                     WHERE TERMS_ID = '2023FA')
+                 AND STP_START_DATE <= (SELECT TOP 1 TERMS.TERM_END_DATE
+                                        FROM TERMS
+                                        WHERE TERMS_ID = '2023FA')
                  ) ranked
             WHERE rn = 1)
             AS SAPV ON STUDENT_TERMS_VIEW.STTR_STUDENT = SAPV.STUDENT_ID
@@ -38,14 +33,14 @@ LEFT JOIN (SELECT DISTINCT STPR_STUDENT, STPR_ADMIT_STATUS
 WHERE STUDENT_TERMS_VIEW.STTR_TERM = '2023FA'
 AND STUDENT_TERMS_VIEW.STTR_ACAD_LEVEL = 'UG'
 AND STUDENT_TERMS_VIEW.STTR_STUDENT_LOAD IN ('F', 'O')
-AND SAPV.STP_CURRENT_STATUS != 'Not Returned'
+AND SAPV.STP_CURRENT_STATUS != 'Did Not Enroll'
 AND (
     STP_PROGRAM_TITLE != 'Non-Degree Seeking Students'
     AND FM.TERM = '2023FA'
     AND STPR_ADMIT_STATUS = 'FY'
     ) --Previous Cohort
 
-
+-----------------------------------------------------------------------------------------------------------------
 SELECT *
 FROM (
 SELECT STUDENT_TERMS_VIEW.STTR_STUDENT,
@@ -60,16 +55,14 @@ JOIN (SELECT *
            FROM (SELECT STUDENT_ID,
                         STP_ACADEMIC_PROGRAM,
                         STP_PROGRAM_TITLE,
-                        STP_START_DATE,
                         STP_CURRENT_STATUS,
                         ROW_NUMBER() OVER (PARTITION BY STUDENT_ID
-                            ORDER BY STP_START_DATE DESC) AS rn
+                            ORDER BY CASE WHEN STP_END_DATE IS NULL THEN 0 ELSE 1 END, STP_END_DATE DESC) AS rn
                  FROM STUDENT_ACAD_PROGRAMS_VIEW
                  WHERE STP_CURRENT_STATUS != 'Changed Program'
-                 AND STP_START_DATE <= (
-                     SELECT TOP 1 TERM_END_DATE
-                     FROM TERMS
-                     WHERE TERMS_ID = '2023FA')
+                 AND STP_START_DATE <= (SELECT TOP 1 TERMS.TERM_END_DATE
+                                        FROM TERMS
+                                        WHERE TERMS_ID = '2023FA')
                  ) ranked
             WHERE rn = 1)
             AS SAPV ON STUDENT_TERMS_VIEW.STTR_STUDENT = SAPV.STUDENT_ID
@@ -102,7 +95,7 @@ LEFT JOIN (
 WHERE STUDENT_TERMS_VIEW.STTR_TERM = '2023FA'
 AND STUDENT_TERMS_VIEW.STTR_ACAD_LEVEL = 'UG'
 AND STUDENT_TERMS_VIEW.STTR_STUDENT_LOAD IN ('F', 'O')
-AND SAPV.STP_CURRENT_STATUS != 'Not Returned'
+AND SAPV.STP_CURRENT_STATUS != 'Did Not Enroll'
 AND (
     STP_PROGRAM_TITLE != 'Non-Degree Seeking Students'
     AND FM.TERM = '2023FA'

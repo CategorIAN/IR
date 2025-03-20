@@ -1,9 +1,20 @@
+SELECT DISTANCE_STATUS,
+       [Degree Seeking],
+       [Non-Degree Seeking],
+       [Graduate Students]
+FROM
+(SELECT *
+FROM
+(
+SELECT *
+FROM
+(
 SELECT STTR_STUDENT,
        DEGREE_STATUS,
        CASE
            WHEN DISTANCE = 1 AND NOT_DISTANCE = 0 THEN 'Enrolled exclusively in distance education courses'
            WHEN DISTANCE = 1 AND NOT_DISTANCE = 1 THEN 'Enrolled in at least one but not all distance education courses'
-           ELSE 'Not enrolled in any distance education courses' END AS DISTANCE_STATUS
+           END AS DISTANCE_STATUS
 FROM (
 SELECT STTR_STUDENT,
         CASE
@@ -53,19 +64,44 @@ JOIN (SELECT *
             WHERE rn = 1)
             AS SAPV ON STUDENT_TERMS_VIEW.STTR_STUDENT = SAPV.STUDENT_ID
 WHERE STUDENT_TERMS_VIEW.STTR_TERM = '2024FA'
+AND SAPV.STP_CURRENT_STATUS != 'Did Not Enroll') AS X) AS X) AS X
+WHERE DISTANCE_STATUS IS NOT NULL) AS X
+PIVOT (COUNT(STTR_STUDENT) FOR DEGREE_STATUS IN (
+     [Degree Seeking],
+       [Non-Degree Seeking],
+       [Graduate Students]
+    )) AS X
+
+
+--Why are there 1237 students here?
+SELECT STTR_STUDENT,
+       COUNT(*)
+FROM (
+SELECT STTR_STUDENT
+FROM STUDENT_TERMS_VIEW
+JOIN PERSON ON STTR_STUDENT = PERSON.ID
+JOIN (SELECT *
+           FROM (SELECT STUDENT_ID,
+                        STP_ACADEMIC_PROGRAM,
+                        STP_PROGRAM_TITLE,
+                        STP_CURRENT_STATUS,
+                        ROW_NUMBER() OVER (PARTITION BY STUDENT_ID
+                            ORDER BY CASE WHEN STP_END_DATE IS NULL THEN 0 ELSE 1 END, STP_END_DATE DESC) AS rn
+                 FROM STUDENT_ACAD_PROGRAMS_VIEW
+                 WHERE STP_CURRENT_STATUS != 'Changed Program'
+                 AND STP_START_DATE <= (SELECT TOP 1 TERMS.TERM_END_DATE
+                                        FROM TERMS
+                                        WHERE TERMS_ID = '2024FA')
+                 ) ranked
+            WHERE rn = 1)
+            AS SAPV ON STUDENT_TERMS_VIEW.STTR_STUDENT = SAPV.STUDENT_ID
+WHERE STUDENT_TERMS_VIEW.STTR_TERM = '2024FA'
 AND SAPV.STP_CURRENT_STATUS != 'Did Not Enroll') AS X
+GROUP BY STTR_STUDENT
+---------------------------------------------------------------------------------------------------------------------
 
-
-
-SELECT *
-FROM STUDENT_ENROLLMENT_VIEW
-
-
-SELECT *
-FROM COURSE_SECTIONS
-WHERE SEC_TERM = '2024FA'
-
-
-SELECT COURSE_SECTIONS_ID, CSM_INSTR_METHOD
-FROM Z01_RHC_CLASS_SCHEDULE
-WHERE SEC_TERM = '2024FA'
+SELECT CSM_INSTR_METHOD
+                FROM STUDENT_ENROLLMENT_VIEW
+                JOIN Z01_RHC_CLASS_SCHEDULE AS CLASSES
+                    ON STUDENT_ENROLLMENT_VIEW.SECTION_COURSE_ID = CLASSES.COURSE_SECTIONS_ID
+            WHERE ENROLL_TERM = '2024FA'
