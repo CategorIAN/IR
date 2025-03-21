@@ -1,20 +1,6 @@
-SELECT DISTANCE_STATUS,
-       [Degree Seeking],
-       [Non-Degree Seeking],
-       [Graduate Students]
-FROM
-(SELECT *
-FROM
-(
-SELECT *
-FROM
-(
 SELECT STTR_STUDENT,
        DEGREE_STATUS,
-       CASE
-           WHEN DISTANCE = 1 AND NOT_DISTANCE = 0 THEN 'Enrolled exclusively in distance education courses'
-           WHEN DISTANCE = 1 AND NOT_DISTANCE = 1 THEN 'Enrolled in at least one but not all distance education courses'
-           END AS DISTANCE_STATUS
+       STATE
 FROM (
 SELECT STTR_STUDENT,
         CASE
@@ -43,7 +29,8 @@ SELECT STTR_STUDENT,
             WHERE ENROLL_TERM = '2024FA'
             AND STUDENT_ENROLLMENT_VIEW.STUDENT_ID = STTR_STUDENT
             AND CSM_INSTR_METHOD NOT IN ('REMOT', 'CYBER', 'HYBRD')
-            ) THEN 1 ELSE 0 END AS NOT_DISTANCE
+            ) THEN 1 ELSE 0 END AS NOT_DISTANCE,
+        STATE
 
 
 FROM STUDENT_TERMS_VIEW
@@ -63,22 +50,8 @@ JOIN (SELECT *
                  ) ranked
             WHERE rn = 1)
             AS SAPV ON STUDENT_TERMS_VIEW.STTR_STUDENT = SAPV.STUDENT_ID
+LEFT JOIN PERSON_ADDRESSES_VIEW AS PAV ON STUDENT_TERMS_VIEW.STTR_STUDENT = PAV.ID
 WHERE STUDENT_TERMS_VIEW.STTR_TERM = '2024FA'
-AND SAPV.STP_CURRENT_STATUS != 'Did Not Enroll') AS X) AS X) AS X
-WHERE DISTANCE_STATUS IS NOT NULL) AS X
-PIVOT (COUNT(STTR_STUDENT) FOR DEGREE_STATUS IN (
-     [Degree Seeking],
-       [Non-Degree Seeking],
-       [Graduate Students]
-    )) AS X
-
----------------------------------------------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-
+AND SAPV.STP_CURRENT_STATUS != 'Did Not Enroll'
+AND IS_PREFERRED_RESIDENCE = 'Y') AS X
+WHERE DISTANCE = 1 AND NOT_DISTANCE = 0
