@@ -12,7 +12,7 @@ def f(i):
         DB.executeSQL([DB.set_empty])
     if i == 3:
         X = IPEDS()
-        X.f()
+        X.g()
 
 
 if __name__ == '__main__':

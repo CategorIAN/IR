@@ -17,3 +17,14 @@ class IPEDS:
         state_count.to_excel('\\'.join([os.getcwd(), 'MyData', 'state_count.xlsx']))
         print(state_count)
 
+    def g(self):
+        my_students_df = pd.read_csv("\\".join([os.getcwd(), "MyData", "My_Queried_Students.csv"]))
+        eric_students_df = pd.read_csv("\\".join([os.getcwd(), "MyData", "2024FA FY Cohort.csv"])).loc[:, ['STUDENT_ID']]
+        print(my_students_df)
+        print(eric_students_df)
+        ian_eric_df = my_students_df.merge(eric_students_df, "left", left_on='STTR_STUDENT', right_on='STUDENT_ID')
+        print(ian_eric_df)
+        eric_ian_df = eric_students_df.merge(my_students_df, 'left', left_on='STUDENT_ID', right_on='STTR_STUDENT')
+        print(eric_ian_df)
+        ian_eric_df.to_csv("\\".join([os.getcwd(), "MyData", "Ian_Eric_Students.csv"]))
+        eric_ian_df.to_csv("\\".join([os.getcwd(), "MyData", "Eric_Ian_Students.csv"]))
