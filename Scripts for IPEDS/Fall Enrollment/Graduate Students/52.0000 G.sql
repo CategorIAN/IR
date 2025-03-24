@@ -52,6 +52,7 @@ JOIN (SELECT *
             '6189973'))) AS X
 PIVOT (COUNT(STTR_STUDENT) FOR STATUS IN ([Full-Time], [Part-Time])) AS Y
 
+
 SELECT RACE,
        [Full-Time],
        [Part-Time]
@@ -85,7 +86,7 @@ JOIN (SELECT *
         AND SAPV.STP_CURRENT_STATUS != 'Did Not Enroll'
         AND STTR_ACAD_LEVEL = 'GR'
         AND ACPG_CIP LIKE '52%'
-        AND (GENDER = 'F'
+        AND (PERSON.GENDER = 'F'
     OR STTR_STUDENT IN ('6184697',
             '6184977',
             '6189250',
@@ -118,5 +119,6 @@ JOIN (SELECT *
             '6178066',
             '6188264',
             '6189575',
-            '6190234'))) AS X
+            '6190234',
+            '6188723'))) AS X
 PIVOT (COUNT(STTR_STUDENT) FOR STATUS IN ([Full-Time], [Part-Time])) AS Y

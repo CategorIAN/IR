@@ -22,41 +22,41 @@ FROM (SELECT DISTINCT SEV.STUDENT_ID,
                                 '6190236',
                                 '6189662',
                                 '6189973')) THEN 'M'
-                        WHEN (GENDER = 'F'
-                        OR STTR_STUDENT IN (
-                                '6184697',
-                                '6184977',
-                                '6189250',
-                                '6185039',
-                                '6178065',
-                                '6178068',
-                                '6189523',
-                                '6190232',
-                                '6190233',
-                                '6190235',
-                                '6190242',
-                                '6189571',
-                                '6187470',
-                                '6187467',
-                                '6188541',
-                                '6188544',
-                                '6188940',
-                                '6189317',
-                                '6188731',
-                                '6188797',
-                                '6189969',
-                                '6189970',
-                                '6189971',
-                                '6189972',
-                                '6189978',
-                                '6190240',
-                                '6186670',
-                                '6184447',
-                                '6189976',
-                                '6178066',
-                                '6188264',
-                                '6189575',
-                                '6190234')) THEN 'F'
+                        WHEN (PERSON.GENDER = 'F'
+    OR STTR_STUDENT IN ('6184697',
+            '6184977',
+            '6189250',
+            '6185039',
+            '6178065',
+            '6178068',
+            '6189523',
+            '6190232',
+            '6190233',
+            '6190235',
+            '6190242',
+            '6189571',
+            '6187470',
+            '6187467',
+            '6188541',
+            '6188544',
+            '6188940',
+            '6189317',
+            '6188731',
+            '6188797',
+            '6189969',
+            '6189970',
+            '6189971',
+            '6189972',
+            '6189978',
+            '6190240',
+            '6186670',
+            '6184447',
+            '6189976',
+            '6178066',
+            '6188264',
+            '6189575',
+            '6190234',
+            '6188723')) THEN 'F'
                       END AS ADJUSTED_GENDER,
                       CASE
                           WHEN STUDENT_AGE < 18 THEN 'Under 18'
@@ -71,9 +71,12 @@ FROM (SELECT DISTINCT SEV.STUDENT_ID,
                           WHEN STUDENT_AGE >= 65 THEN '65 and over'
                           WHEN STUDENT_AGE IS NULL THEN 'Age unknown/unreported'
                           END AS AGE_CATEGORY
-      FROM STUDENT_ENROLLMENT_VIEW AS SEV
+      FROM (
+          SELECT DISTINCT STUDENT_ID, STUDENT_AGE
+          FROM STUDENT_ENROLLMENT_VIEW
+           ) AS SEV
                JOIN PERSON ON STUDENT_ID = PERSON.ID
-               JOIN STUDENT_TERMS_VIEW AS STV ON SEV.STUDENT_ID = STV.STTR_STUDENT AND SEV.ENROLL_TERM = STV.STTR_TERM
+               JOIN STUDENT_TERMS_VIEW AS STV ON SEV.STUDENT_ID = STV.STTR_STUDENT
       JOIN (SELECT *
            FROM (SELECT STUDENT_ID,
                         STP_ACADEMIC_PROGRAM,
@@ -89,9 +92,14 @@ FROM (SELECT DISTINCT SEV.STUDENT_ID,
                  ) ranked
             WHERE rn = 1)
             AS SAPV ON STV.STTR_STUDENT = SAPV.STUDENT_ID
-      WHERE SEV.ENROLL_TERM = '2024FA'
-        AND STV.STTR_TERM = '2024FA'
+      WHERE STV.STTR_TERM = '2024FA'
         AND SAPV.STP_CURRENT_STATUS != 'Did Not Enroll'
         AND STV.STTR_ACAD_LEVEL = 'GR'
-        AND STV.STTR_STUDENT_LOAD NOT IN ('F', 'O')) AS X
+        AND STV.STTR_STUDENT_LOAD NOT IN ('F', 'O')
+      AND EXISTS (
+      SELECT 1
+      FROM STUDENT_ENROLLMENT_VIEW
+      WHERE (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)
+      AND ENROLL_TERM = '2024FA'
+      AND STUDENT_ID = STTR_STUDENT)) AS X
 PIVOT (COUNT(STUDENT_ID) FOR ADJUSTED_GENDER IN ([M], [F])) AS X
