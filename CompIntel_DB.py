@@ -184,11 +184,11 @@ class CompIntel_DB:
         file = f'Percent of 2020-21 Student Body Receiving Pell and Change Since {base_year}.csv'
         df.to_csv(os.path.join(self.output_path, file), index=True)
 
-    def saveRetention(self, base_year):
-        years = list(range(base_year, 2021 + 1))
+    def saveRetention(self, base_year, end_year):
+        years = list(range(base_year, end_year + 1))
         tables = [self.readSQL(year)(self.value_df(year, 'Retention Rate', year)) for year in years]
         df = reduce(lambda df1, df2: pd.merge(df1, df2, on='INSTNM'), tables).map(lambda x: int(x))
-        file = f"Freshman to Sophomore Retention Rates - {base_year} to 2021.csv"
+        file = f"Freshman to Sophomore Retention Rates - {base_year} to {end_year}.csv"
         df.to_csv(os.path.join(self.output_path, file), index=True)
 
     def saveGrad4(self, base_year):
