@@ -1,0 +1,276 @@
+SELECT STV.STTR_STUDENT,
+        STP_PROGRAM_TITLE,
+       CASE
+           WHEN STILL_ENROLLED.STTR_STUDENT IS NULL THEN 0 ELSE 1 END AS STILL_ENROLLED,
+        CASE
+            WHEN SINCE_GRADUATED.STUDENT_ID IS NULL THEN 0 ELSE 1 END AS SINCE_GRADUATED
+
+FROM STUDENT_TERMS_VIEW AS STV
+JOIN PERSON ON STTR_STUDENT = PERSON.ID
+JOIN (SELECT *
+           FROM (SELECT STUDENT_ID,
+                        STP_ACADEMIC_PROGRAM,
+                        STP_PROGRAM_TITLE,
+                        STP_CURRENT_STATUS,
+                        ROW_NUMBER() OVER (PARTITION BY STUDENT_ID
+                            ORDER BY CASE WHEN STP_END_DATE IS NULL THEN 0 ELSE 1 END, STP_END_DATE DESC) AS rn
+                 FROM STUDENT_ACAD_PROGRAMS_VIEW
+                 WHERE STP_START_DATE <= (SELECT TOP 1 TERMS.TERM_END_DATE
+                                        FROM TERMS
+                                        WHERE TERMS_ID = '2023FA')
+                 ) ranked
+            WHERE rn = 1 AND STP_CURRENT_STATUS != 'Did Not Enroll'
+            AND STP_PROGRAM_TITLE != 'Non-Degree Seeking Students'
+            )
+            AS SAPV ON STV.STTR_STUDENT = SAPV.STUDENT_ID
+JOIN Z01_AAV_STUDENT_FIRST_MATRIC AS FM ON STV.STTR_STUDENT = FM.ID
+JOIN (SELECT DISTINCT STPR_STUDENT, STPR_ADMIT_STATUS
+           FROM (
+               SELECT   STPR_STUDENT,
+                        STPR_ADMIT_STATUS,
+                        ROW_NUMBER() OVER (PARTITION BY STPR_STUDENT
+                        ORDER BY STUDENT_PROGRAMS_ADDDATE) AS rn
+               FROM STUDENT_PROGRAMS_VIEW
+               WHERE STPR_ADMIT_STATUS IN ('FY', 'TR', 'RE')
+               ) ranked
+               WHERE rn = 1
+               AND STPR_ADMIT_STATUS = 'FY')
+    AS FIRST_ADMIT ON STV.STTR_STUDENT = FIRST_ADMIT.STPR_STUDENT
+LEFT JOIN (
+    SELECT STTR_STUDENT
+    FROM STUDENT_TERMS_VIEW
+    WHERE STTR_TERM = '2024FA'
+) AS STILL_ENROLLED ON STV.STTR_STUDENT = STILL_ENROLLED.STTR_STUDENT
+LEFT JOIN (
+    SELECT STUDENT_ID
+    FROM STUDENT_ACAD_PROGRAMS_VIEW
+    WHERE STP_CURRENT_STATUS_DATE >= (
+                     SELECT TOP 1 TERM_START_DATE
+                     FROM TERMS
+                     WHERE TERMS_ID = '2023FA')
+    AND STP_CURRENT_STATUS = 'Graduated'
+) AS SINCE_GRADUATED ON STV.STTR_STUDENT = SINCE_GRADUATED.STUDENT_ID
+WHERE STV.STTR_TERM = '2023FA'
+AND STV.STTR_ACAD_LEVEL = 'UG'
+AND STV.STTR_STUDENT_LOAD IN ('F', 'O')
+AND FM.TERM = '2023FA'
+---------------------------------------------------------------------------------------------------------------------
+--Got Rid of the Status Joins (249 Students)
+SELECT STV.STTR_STUDENT,
+        STP_PROGRAM_TITLE
+
+FROM STUDENT_TERMS_VIEW AS STV
+JOIN PERSON ON STTR_STUDENT = PERSON.ID
+JOIN (SELECT *
+           FROM (SELECT STUDENT_ID,
+                        STP_ACADEMIC_PROGRAM,
+                        STP_PROGRAM_TITLE,
+                        STP_CURRENT_STATUS,
+                        ROW_NUMBER() OVER (PARTITION BY STUDENT_ID
+                            ORDER BY CASE WHEN STP_END_DATE IS NULL THEN 0 ELSE 1 END, STP_END_DATE DESC) AS rn
+                 FROM STUDENT_ACAD_PROGRAMS_VIEW
+                 WHERE STP_START_DATE <= (SELECT TOP 1 TERMS.TERM_END_DATE
+                                        FROM TERMS
+                                        WHERE TERMS_ID = '2023FA')
+                 ) ranked
+            WHERE rn = 1 AND STP_CURRENT_STATUS != 'Did Not Enroll'
+            AND STP_PROGRAM_TITLE != 'Non-Degree Seeking Students'
+            )
+            AS SAPV ON STV.STTR_STUDENT = SAPV.STUDENT_ID
+JOIN Z01_AAV_STUDENT_FIRST_MATRIC AS FM ON STV.STTR_STUDENT = FM.ID
+JOIN (SELECT DISTINCT STPR_STUDENT, STPR_ADMIT_STATUS
+           FROM (
+               SELECT   STPR_STUDENT,
+                        STPR_ADMIT_STATUS,
+                        ROW_NUMBER() OVER (PARTITION BY STPR_STUDENT
+                        ORDER BY STUDENT_PROGRAMS_ADDDATE) AS rn
+               FROM STUDENT_PROGRAMS_VIEW
+               WHERE STPR_ADMIT_STATUS IN ('FY', 'TR', 'RE')
+               ) ranked
+               WHERE rn = 1
+               AND STPR_ADMIT_STATUS = 'FY')
+    AS FIRST_ADMIT ON STV.STTR_STUDENT = FIRST_ADMIT.STPR_STUDENT
+WHERE STV.STTR_TERM = '2023FA'
+AND STV.STTR_ACAD_LEVEL = 'UG'
+AND STV.STTR_STUDENT_LOAD IN ('F', 'O')
+AND FM.TERM = '2023FA'
+---------------------------------------------------------------------------------------------------------------------
+--Got Rid of the Student_Acad_Programs_View (249 Students)
+SELECT STV.STTR_STUDENT
+
+FROM STUDENT_TERMS_VIEW AS STV
+JOIN PERSON ON STTR_STUDENT = PERSON.ID
+JOIN Z01_AAV_STUDENT_FIRST_MATRIC AS FM ON STV.STTR_STUDENT = FM.ID
+JOIN (SELECT DISTINCT STPR_STUDENT, STPR_ADMIT_STATUS
+           FROM (
+               SELECT   STPR_STUDENT,
+                        STPR_ADMIT_STATUS,
+                        ROW_NUMBER() OVER (PARTITION BY STPR_STUDENT
+                        ORDER BY STUDENT_PROGRAMS_ADDDATE) AS rn
+               FROM STUDENT_PROGRAMS_VIEW
+               WHERE STPR_ADMIT_STATUS IN ('FY', 'TR', 'RE')
+               ) ranked
+               WHERE rn = 1
+               AND STPR_ADMIT_STATUS = 'FY')
+    AS FIRST_ADMIT ON STV.STTR_STUDENT = FIRST_ADMIT.STPR_STUDENT
+WHERE STV.STTR_TERM = '2023FA'
+AND STV.STTR_ACAD_LEVEL = 'UG'
+AND STV.STTR_STUDENT_LOAD IN ('F', 'O')
+AND FM.TERM = '2023FA'
+---------------------------------------------------------------------------------------------------------------------
+SELECT STV.STTR_STUDENT
+
+FROM STUDENT_TERMS_VIEW AS STV
+JOIN PERSON ON STTR_STUDENT = PERSON.ID
+JOIN Z01_AAV_STUDENT_FIRST_MATRIC AS FM ON STV.STTR_STUDENT = FM.ID
+JOIN (SELECT DISTINCT STPR_STUDENT, STPR_ADMIT_STATUS
+           FROM (
+               SELECT   STPR_STUDENT,
+                        STPR_ADMIT_STATUS,
+                        ROW_NUMBER() OVER (PARTITION BY STPR_STUDENT
+                        ORDER BY STUDENT_PROGRAMS_ADDDATE) AS rn
+               FROM STUDENT_PROGRAMS_VIEW
+               WHERE STPR_ADMIT_STATUS IN ('FY', 'TR', 'RE')
+               ) ranked
+               WHERE rn = 1
+               AND STPR_ADMIT_STATUS = 'FY')
+    AS FIRST_ADMIT ON STV.STTR_STUDENT = FIRST_ADMIT.STPR_STUDENT
+WHERE STV.STTR_TERM = '2023FA'
+AND FM.TERM = '2023FA'
+-------------------------------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------------------
+
+--273 Students---------------------------------------------------------------------------
+SELECT ID,
+        CASE
+           WHEN STILL_ENROLLED.STTR_STUDENT IS NULL THEN 0 ELSE 1 END AS STILL_ENROLLED,
+        CASE
+            WHEN SINCE_GRADUATED.STUDENT_ID IS NULL THEN 0 ELSE 1 END AS SINCE_GRADUATED
+FROM Z01_AAV_STUDENT_FIRST_MATRIC AS FM
+JOIN (SELECT STPR_STUDENT
+           FROM (
+               SELECT   STPR_STUDENT,
+                        STPR_ADMIT_STATUS,
+                        ROW_NUMBER() OVER (PARTITION BY STPR_STUDENT
+                        ORDER BY STUDENT_PROGRAMS_ADDDATE) AS ADMIT_RANK
+               FROM STUDENT_PROGRAMS_VIEW
+               WHERE STPR_ADMIT_STATUS IN ('FY', 'TR', 'RE')
+               ) AS X
+               WHERE ADMIT_RANK = 1
+               AND STPR_ADMIT_STATUS = 'FY'
+               ) AS FIRST_ADMIT ON FM.ID = FIRST_ADMIT.STPR_STUDENT
+LEFT JOIN (
+    SELECT STTR_STUDENT
+    FROM STUDENT_TERMS_VIEW
+    WHERE STTR_TERM = '2024FA'
+) AS STILL_ENROLLED ON FM.ID = STILL_ENROLLED.STTR_STUDENT
+LEFT JOIN (
+    SELECT STUDENT_ID
+    FROM STUDENT_ACAD_PROGRAMS_VIEW
+    WHERE STP_CURRENT_STATUS_DATE >= (
+                     SELECT TOP 1 TERM_START_DATE
+                     FROM TERMS
+                     WHERE TERMS_ID = '2023FA')
+    AND STP_CURRENT_STATUS = 'Graduated'
+) AS SINCE_GRADUATED ON FM.ID = SINCE_GRADUATED.STUDENT_ID
+WHERE FM.TERM = '2023FA'
+
+
+---------------------------------------------------------------------------------------------------------------------
+SELECT ID,
+       CASE WHEN EXISTS (
+           SELECT 1
+           FROM STUDENT_TERMS_VIEW
+           WHERE STTR_TERM = '2024FA'
+           AND STTR_STUDENT = ID
+       ) THEN 1 ELSE 0 END AS STILL_ENROLLED
+FROM Z01_AAV_STUDENT_FIRST_MATRIC AS FM
+JOIN (SELECT STPR_STUDENT
+           FROM (
+               SELECT   STPR_STUDENT,
+                        STPR_ADMIT_STATUS,
+                        ROW_NUMBER() OVER (PARTITION BY STPR_STUDENT
+                        ORDER BY STUDENT_PROGRAMS_ADDDATE) AS ADMIT_RANK
+               FROM STUDENT_PROGRAMS_VIEW
+               WHERE STPR_ADMIT_STATUS IN ('FY', 'TR', 'RE')
+               ) AS X
+               WHERE ADMIT_RANK = 1
+               AND STPR_ADMIT_STATUS = 'FY'
+               ) AS FIRST_ADMIT ON FM.ID = FIRST_ADMIT.STPR_STUDENT
+LEFT JOIN (
+    SELECT STTR_STUDENT
+    FROM STUDENT_TERMS_VIEW
+    WHERE STTR_TERM = '2024FA'
+) AS STILL_ENROLLED ON FM.ID = STILL_ENROLLED.STTR_STUDENT
+LEFT JOIN (
+    SELECT STUDENT_ID
+    FROM STUDENT_ACAD_PROGRAMS_VIEW
+    WHERE STP_CURRENT_STATUS_DATE >= (
+                     SELECT TOP 1 TERM_START_DATE
+                     FROM TERMS
+                     WHERE TERMS_ID = '2023FA')
+    AND STP_CURRENT_STATUS = 'Graduated'
+) AS SINCE_GRADUATED ON FM.ID = SINCE_GRADUATED.STUDENT_ID
+WHERE FM.TERM = '2023FA'
+
+
+SELECT ID,
+       CASE WHEN EXISTS (
+           SELECT 1
+           FROM STUDENT_ENROLLMENT_VIEW
+           WHERE ENROLL_TERM = '2024FA'
+           AND STUDENT_ID = ID
+           AND ENROLL_CURRENT_STATUS IN ('Add', 'New')
+           AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)
+           AND ENROLL_CREDITS > 0
+       ) THEN 1 ELSE 0 END AS STILL_ENROLLED
+FROM Z01_AAV_STUDENT_FIRST_MATRIC AS FM
+JOIN (SELECT STPR_STUDENT
+           FROM (
+               SELECT   STPR_STUDENT,
+                        STPR_ADMIT_STATUS,
+                        ROW_NUMBER() OVER (PARTITION BY STPR_STUDENT
+                        ORDER BY STUDENT_PROGRAMS_ADDDATE) AS ADMIT_RANK
+               FROM STUDENT_PROGRAMS_VIEW
+               WHERE STPR_ADMIT_STATUS IN ('FY', 'TR', 'RE')
+               ) AS X
+               WHERE ADMIT_RANK = 1
+               AND STPR_ADMIT_STATUS = 'FY'
+               ) AS FIRST_ADMIT ON FM.ID = FIRST_ADMIT.STPR_STUDENT
+LEFT JOIN (
+    SELECT STTR_STUDENT
+    FROM STUDENT_TERMS_VIEW
+    WHERE STTR_TERM = '2024FA'
+) AS STILL_ENROLLED ON FM.ID = STILL_ENROLLED.STTR_STUDENT
+LEFT JOIN (
+    SELECT STUDENT_ID
+    FROM STUDENT_ACAD_PROGRAMS_VIEW
+    WHERE STP_CURRENT_STATUS_DATE >= (
+                     SELECT TOP 1 TERM_START_DATE
+                     FROM TERMS
+                     WHERE TERMS_ID = '2023FA')
+    AND STP_CURRENT_STATUS = 'Graduated'
+) AS SINCE_GRADUATED ON FM.ID = SINCE_GRADUATED.STUDENT_ID
+WHERE FM.TERM = '2023FA'
+
+SELECT *
+FROM STUDENT_ENROLLMENT_VIEW
+
+
+---------------------------------------------------------------------------------------------------------------------
+
+SELECT APPL_APPLICANT,
+       COUNT(*)
+FROM (
+SELECT DISTINCT APPL_APPLICANT,
+       APPL_START_TERM,
+       APPL_STUDENT_LOAD_INTENT,
+       APPL_PRIORITY,
+       APPL_STUDENT_TYPE,
+       APPL_ADMIT_STATUS
+FROM APPLICATIONS
+WHERE APPL_START_TERM = '2023FA'
+AND APPL_ADMIT_STATUS = 'FY'
+) AS X
+GROUP BY APPL_APPLICANT

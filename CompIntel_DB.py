@@ -226,6 +226,58 @@ class CompIntel_DB:
         df.to_csv(os.path.join(self.output_path, file), index=True)
 
 
+    def value_df(self, year, name, alias = None):
+        table, variable, start = self.varmap.loc[name, :]
+        alias = self.academic_year(start)(year) if alias is None else alias
+        year_table = table.replace("yyyy", str(year)).replace("xxxx", str(year - 1)[2:] + str(year)[2:])
+        def execute(cursor):
+            stmt = f"""
+            SELECT [HD{year}.INSTNM], [{year_table}].[{variable}] AS [{alias}]
+            FROM [HD{year}] INNER JOIN [{year_table}] ON HD{year}.UNITID = {year_table}.UNITID
+            WHERE INSTNM IN {self.schools}
+            """
+            print(100 * "-" + "Executing" + 100 * "-" + "\n" + stmt + "\n" + 2 * 100 * "-")
+            df = self.queried_df(cursor, stmt, index_col=True)
+            return df
+        return execute
+
+
+    def saveRetention(self, base_year, end_year):
+        years = list(range(base_year, end_year + 1))
+        tables = [self.readSQL(year)(self.value_df(year, 'Retention Rate', year)) for year in years]
+        df = reduce(lambda df1, df2: pd.merge(df1, df2, on='INSTNM'), tables).map(lambda x: int(x))
+        file = f"Freshman to Sophomore Retention Rates - {base_year} to {end_year}.csv"
+        df.to_csv(os.path.join(self.output_path, file), index=True)
+
+    def y(self, year):
+        year_table = lambda year, table: table.replace("yyyy", str(year)).replace("xxxx", str(year - 1)[2:] + str(year)[2:])
+        def execute(cursor):
+            stmt = f"""
+            SELECT '{year}FA' AS COHORT, 
+            {year_table(year, 'DRVEFyyyy')}.EFUG1SFT AS HEADCOUNT,
+            {year_table(year, 'EFyyyyD')}.RET_PCF AS RATE
+            FROM (HD{year}
+            INNER JOIN {year_table(year, 'DRVEFyyyy')}
+            ON HD{year}.UNITID = {year_table(year, 'DRVEFyyyy')}.UNITID)
+            INNER JOIN {year_table(year, 'EFyyyyD')}
+            ON HD{year}.UNITID = {year_table(year, 'EFyyyyD')}.UNITID
+            WHERE INSTNM = 'Carroll College'
+            """
+            print(100 * "-" + "Executing" + 100 * "-" + "\n" + stmt + "\n" + 2 * 100 * "-")
+            df = self.queried_df(cursor, stmt, index_col=True)
+            return df
+        return execute
+
+    def saveCarrollValues(self, base_year, end_year):
+        years = list(range(base_year, end_year + 1))
+        tables = [self.readSQL(year)(self.y(year)) for year in years]
+        df = pd.concat(tables, axis = 0)
+        file = f"Retention - Fall Cohort Returning 2nd Year.csv"
+        df.to_csv(os.path.join(self.output_path, file), index=True)
+
+
+
+
 
 
 

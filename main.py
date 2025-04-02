@@ -26,7 +26,10 @@ def f(i):
     if i == 7:
         X = CompIntel_DV("Ian")
         X.bar_chart_grouped("Freshman to Sophomore Retention Rates - 2019 to 2023.csv")
+    if i == 8:
+        X = CompIntel_DB("Ian")
+        X.saveCarrollValues(2013, 2023)
 
 
 if __name__ == '__main__':
-    f(7)
+    f(8)

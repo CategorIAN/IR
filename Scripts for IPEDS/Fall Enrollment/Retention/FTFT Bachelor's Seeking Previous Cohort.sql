@@ -119,10 +119,4 @@ AND FM.TERM = '2023FA'
 AND STPR_ADMIT_STATUS = 'FY'
 )) AS X
 WHERE STILL_ENROLLED = 1 OR SINCE_GRADUATED = 1 --Previous Cohort Retained
-
-
-SELECT *
-FROM STUDENT_PROGRAMS_VIEW
-
-
-SELECT * FROM UNDERGRADS_ENROLLMENT_DETAIL
+-----------------------------------------------------------------------------------------------------------------
