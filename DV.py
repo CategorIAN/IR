@@ -94,12 +94,8 @@ class DV:
         target = df.columns[0]
         df = df.sort_values(by=target, ascending=False)
         plt.figure(figsize=(10, 5))
-        if len(df.index) > 5:
-            params = {"y": df.columns[0], "legend": True, "labels": None}
-            label_length = 5
-        else:
-            params = {"y": df.columns[0], "legend": True, "labels": None}
-            label_length = len(df.index)
+        params = {"y": df.columns[0], "legend": True, "labels": None}
+        label_length = len(df.index)
         colors = cm.Purples(np.linspace(0.9, 0.3, label_length))
         df.plot.pie(**(params | {"colors": colors}))
         labels_values = list(zip(df.index, df[df.columns[0]]))[:label_length]
