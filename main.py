@@ -4,7 +4,6 @@ from Carroll_DB import Carroll_DB
 from IPEDS import IPEDS
 from DV import DV
 
-
 def f(i):
     if i == 1:
         pass
@@ -20,6 +19,7 @@ def f(i):
         X = DV("DataPacket")
         for pie_data in ["Gender.csv", "Home State.csv", "Load.csv", "Race.csv", "Status.csv"]:
             X.pie_chart(pie_data)
+        X.bar_chart_v("Enrollment.csv")
     if i == 6:
         X = CompIntel_DB("Ian")
         X.saveRetention(2019, 2023)
@@ -38,4 +38,4 @@ def f(i):
 
 
 if __name__ == '__main__':
-    f(4)
+    f(5)
