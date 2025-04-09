@@ -3,6 +3,7 @@ from CompIntel_DV import CompIntel_DV
 from Carroll_DB import Carroll_DB
 from IPEDS import IPEDS
 from DV import DV
+from Nursing_Data_Analysis import Nursing_Data_Analysis
 
 def f(i):
     if i == 1:
@@ -24,18 +25,14 @@ def f(i):
         X = CompIntel_DB("Ian")
         X.saveRetention(2019, 2023)
     if i == 7:
-        X = CompIntel_DV("Ian")
-        X.bar_chart_grouped("Freshman to Sophomore Retention Rates - 2019 to 2023.csv")
+        X = Nursing_Data_Analysis()
+        print(X.x())
+        df = X.readSQL(X.x())
+        print(df)
     if i == 8:
-        X = CompIntel_DB("Ian")
-        X.saveCarrollValues(2013, 2023)
-    if i == 9:
-        X = DV("DataPacket")
-        X.pie_chart("Status (Draft 2).csv")
-    if i == 10:
-        X = DV("DataPacket")
-        X.bar_chart_v("Enrollment (Draft 2).csv")
+        X = Nursing_Data_Analysis()
+        X.x()
 
 
 if __name__ == '__main__':
-    f(5)
+    f(8)

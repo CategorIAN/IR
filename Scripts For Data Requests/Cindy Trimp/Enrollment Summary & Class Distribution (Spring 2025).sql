@@ -116,7 +116,6 @@ FROM (
                                                                                        THEN 'Part-Time Female'
                                                                                     ELSE 'Unknown' END END AS LOAD_GENDER
                                                       FROM STUDENT_ENROLLMENT_VIEW AS SEV
-                                                               JOIN Z01_AAV_STUDENT_FIRST_MATRIC AS FM ON SEV.STUDENT_ID = FM.ID
                                                                LEFT JOIN (SELECT STPR_STUDENT, STPR_ADMIT_STATUS
                                                                           FROM (SELECT STPR_STUDENT,
                                                                                        STPR_ADMIT_STATUS,
