@@ -10,12 +10,12 @@ class Nursing_Data_Analysis:
         path = os.path.join(self.folder, "Survey Responses.csv")
         self.responses = pd.read_csv(path)
 
-    def y(self):
+    def save_cleaned_data(self):
         responses = f"""
         SELECT EMAIL, BI_201, BI_202, CH_111, CH_112, BI_214
         FROM (
         SELECT *,
-                ROW_NUMBER() OVER (PARTITION BY EMAIL ORDER BY TIMESTAMP DESC) AS TIME_RANK
+                ROW_NUMBER() OVER (PARTITION BY EMAIL ORDER BY CONVERT(DATETIME, TIMESTAMP) DESC) AS TIME_RANK
         FROM (VALUES {",\n".join([f"({", ".join([f"'{val}'" for val in self.responses.loc[i, :]])})"
                                   for i in self.responses.index])})
         AS RESPONSES(
@@ -41,7 +41,6 @@ class Nursing_Data_Analysis:
         """
         df = self.readSQL(query)
         df.to_csv(os.path.join(self.folder, "Cleaned_Survey_Data.csv"))
-
 
     def queried_df(self, cursor, query):
         cursor.execute(query)
