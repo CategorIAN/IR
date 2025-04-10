@@ -6,24 +6,42 @@ BASE_DIR = Path(__file__).resolve()
 
 class Nursing_Data_Analysis:
     def __init__(self):
-        path = "\\".join([os.getcwd(), "NursingDataAnalysis", "Data", "Survey Responses.csv"])
-        self.responses = pd.read_csv(path,  index_col=0)
+        self.folder = "\\".join([os.getcwd(), "NursingDataAnalysis", "Data"])
+        path = os.path.join(self.folder, "Survey Responses.csv")
+        self.responses = pd.read_csv(path)
 
-    def x(self):
-        emails = self.responses['Email Address']
-        print(len(set(emails)))
-        query = f"""
-        SELECT DISTINCT FIRST_NAME, LAST_NAME, PERSON_EMAIL_ADDRESSES AS EMAIL
-        FROM PEOPLE_EMAIL
-        JOIN PERSON ON PEOPLE_EMAIL.ID = PERSON.ID
-        WHERE PERSON_EMAIL_ADDRESSES IN ({",\n        ".join([f"'{email}'" for email in emails])})
-        AND LAST_NAME != 'Scheerer-Ws'
+    def y(self):
+        responses = f"""
+        SELECT EMAIL, BI_201, BI_202, CH_111, CH_112, BI_214
+        FROM (
+        SELECT *,
+                ROW_NUMBER() OVER (PARTITION BY EMAIL ORDER BY TIMESTAMP DESC) AS TIME_RANK
+        FROM (VALUES {",\n".join([f"({", ".join([f"'{val}'" for val in self.responses.loc[i, :]])})"
+                                  for i in self.responses.index])})
+        AS RESPONSES(
+                    TIMESTAMP,
+                    EMAIL,
+                    BI_201,
+                    BI_202,
+                    CH_111,
+                    CH_112,
+                    BI_214,
+                    NAME
+                    )
+        ) AS RANKED
+        WHERE TIME_RANK = 1
         """
-        print(query)
-        found_emails = self.readSQL(query)
-        print(found_emails)
-        df = self.responses.loc[lambda df: df['Email Address'] == 'ascheerer@carroll.edu']
-        print(df)
+        query = f"""
+        SELECT DISTINCT P.ID, P.FIRST_NAME, P.LAST_NAME, R.*
+        FROM ({responses}) AS R
+        JOIN PEOPLE_EMAIL ON R.EMAIL = PEOPLE_EMAIL.PERSON_EMAIL_ADDRESSES
+        JOIN PERSON AS P ON PEOPLE_EMAIL.ID = P.ID
+        WHERE P.ID NOT IN ('6181895')
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        df = self.readSQL(query)
+        df.to_csv(os.path.join(self.folder, "Cleaned_Survey_Data.csv"))
+
 
     def queried_df(self, cursor, query):
         cursor.execute(query)
