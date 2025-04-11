@@ -32,12 +32,11 @@ class Nursing_Data_Analysis:
         WHERE TIME_RANK = 1
         """
         query = f"""
-        SELECT DISTINCT P.ID, P.FIRST_NAME, P.LAST_NAME, R.*
+        SELECT DISTINCT P.ID, BI_201, BI_202, CH_111, CH_112, BI_214
         FROM ({responses}) AS R
         JOIN PEOPLE_EMAIL ON R.EMAIL = PEOPLE_EMAIL.PERSON_EMAIL_ADDRESSES
         JOIN PERSON AS P ON PEOPLE_EMAIL.ID = P.ID
-        WHERE P.ID NOT IN ('6181895')
-        ORDER BY LAST_NAME, FIRST_NAME
+        WHERE P.ID NOT IN ('6181895', '6188540')
         """
         df = self.readSQL(query)
         df.to_csv(os.path.join(self.folder, "Cleaned_Survey_Data.csv"))
