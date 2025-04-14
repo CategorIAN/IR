@@ -9,25 +9,29 @@ class Nursing_Data_Analysis:
         self.folder = "\\".join([os.getcwd(), "NursingDataAnalysis", "Data"])
         path = os.path.join(self.folder, "Survey Responses.csv")
         self.responses = pd.read_csv(path)
+        self.cols = ['ID', 'BI_201', 'BI_202', 'CH_111', 'CH_112', 'BI_214']
+        self.data = pd.read_csv(os.path.join(self.folder, "Cleaned_Survey_Data.csv"), index_col = 0)
+        print(self.data)
+        print(self.df_query(self.data))
+
+    def df_query(self, df, cols = None):
+        cols = df.columns if cols is None else cols
+        query = f"""
+        SELECT *
+        FROM (VALUES {",\n".join([f"({", ".join([f"'{val}'" for val in df.loc[i, :]])})"
+                                  for i in df.index])})
+        AS DF({", ".join(cols)})
+        """
+        return query
 
     def save_cleaned_data(self):
+        cols = ['TIMESTAMP', 'EMAIL','BI_201','BI_202','CH_111','CH_112','BI_214','NAME']
         responses = f"""
         SELECT EMAIL, BI_201, BI_202, CH_111, CH_112, BI_214
         FROM (
         SELECT *,
                 ROW_NUMBER() OVER (PARTITION BY EMAIL ORDER BY CONVERT(DATETIME, TIMESTAMP) DESC) AS TIME_RANK
-        FROM (VALUES {",\n".join([f"({", ".join([f"'{val}'" for val in self.responses.loc[i, :]])})"
-                                  for i in self.responses.index])})
-        AS RESPONSES(
-                    TIMESTAMP,
-                    EMAIL,
-                    BI_201,
-                    BI_202,
-                    CH_111,
-                    CH_112,
-                    BI_214,
-                    NAME
-                    )
+        FROM ({self.df_query(self.responses, cols)}) AS RESPONSES
         ) AS RANKED
         WHERE TIME_RANK = 1
         """
@@ -40,6 +44,57 @@ class Nursing_Data_Analysis:
         """
         df = self.readSQL(query)
         df.to_csv(os.path.join(self.folder, "Cleaned_Survey_Data.csv"))
+
+    def appendNurGPA(self):
+        query = f"""
+        SELECT ID, BI_201, BI_202, CH_111, CH_112, BI_214, ENROLL_GPA_CREDITS, ENROLL_CUM_CONTRIB_GRADE_POINTS
+        FROM ({self.df_query(self.data, self.cols)}) AS DF
+        JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON DF.ID = SEV.STUDENT_ID
+        WHERE SECTION_DEPARTMENT1 = 'NUR'
+        AND ENROLL_GPA_CREDITS IS NOT NULL
+        """
+        df = self.readSQL(query)
+        df.to_csv(os.path.join(self.folder, 'With_Credit_Points.csv'))
+
+
+    def appendNurGPA(self):
+        query = f"""
+        SELECT ID, 
+            SUM(ENROLL_CUM_CONTRIB_GRADE_POINTS) / SUM(ENROLL_GPA_CREDITS) AS NURSING_GPA,
+            BI_201, BI_202, CH_111, CH_112, BI_214
+        FROM (
+        SELECT ID, BI_201, BI_202, CH_111, CH_112, BI_214, ENROLL_GPA_CREDITS, ENROLL_CUM_CONTRIB_GRADE_POINTS
+        FROM ({self.df_query(self.data, self.cols)}) AS DF
+        JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON DF.ID = SEV.STUDENT_ID
+        WHERE SECTION_DEPARTMENT1 = 'NUR'
+        AND ENROLL_GPA_CREDITS IS NOT NULL
+        ) AS X
+        GROUP BY ID, BI_201, BI_202, CH_111, CH_112, BI_214
+        """
+        df = self.readSQL(query)
+        df.to_csv(os.path.join(self.folder, 'With_Nursing_GPA.csv'))
+
+    def avgCumGPA(self, course):
+        query = f"""
+        SELECT {course},
+                AVG(NURSING_GPA) AS AVG_NURSING_GPA
+        FROM (
+        SELECT ID, 
+            SUM(ENROLL_CUM_CONTRIB_GRADE_POINTS) / SUM(ENROLL_GPA_CREDITS) AS NURSING_GPA,
+            BI_201, BI_202, CH_111, CH_112, BI_214
+        FROM (
+        SELECT ID, BI_201, BI_202, CH_111, CH_112, BI_214, ENROLL_GPA_CREDITS, ENROLL_CUM_CONTRIB_GRADE_POINTS
+        FROM ({self.df_query(self.data, self.cols)}) AS DF
+        JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON DF.ID = SEV.STUDENT_ID
+        WHERE SECTION_DEPARTMENT1 = 'NUR'
+        AND ENROLL_GPA_CREDITS IS NOT NULL
+        ) AS X
+        GROUP BY ID, BI_201, BI_202, CH_111, CH_112, BI_214
+        ) AS X
+        GROUP BY {course}
+        """
+        df = self.readSQL(query)
+        df.to_csv(os.path.join(self.folder, f'Avg_GPA_{course}.csv'))
 
     def queried_df(self, cursor, query):
         cursor.execute(query)
