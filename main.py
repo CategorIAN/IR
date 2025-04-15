@@ -6,7 +6,6 @@ from DV import DV
 from Nursing_Data_Analysis import Nursing_Data_Analysis
 import pandas as pd
 
-
 def df_query(df, cols=None):
     cols = df.columns if cols is None else cols
     query = f"""
@@ -18,19 +17,17 @@ def df_query(df, cols=None):
     return query
 
 def f(i):
-    if i == 1:
-        X = Nursing_Data_Analysis()
-        X.appendNurGPA()
+    X = Nursing_Data_Analysis()
     if i == 2:
-        X = Nursing_Data_Analysis()
-        X.saveAvgCumGPAs()
+        print(X.readSQL(X.get_survey_data()))
     if i == 3:
-        X = Nursing_Data_Analysis()
-        X.unpivoted()
+        X.saveDF(X.scratch(), "scratch")
     if i == 4:
-        X = Nursing_Data_Analysis()
-        X.saveAvgCumGPA_by_Course()
+        print(X.SQL_values(X.students()))
+    if i == 5:
+        X.saveAvgProgramDuration_by_Course('Nursing')
+        X.saveAvgProgramDuration_by_Course('Accelerated Nursing')
 
 
 if __name__ == '__main__':
-    f(4)
+    f(5)
