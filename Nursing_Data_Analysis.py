@@ -9,10 +9,10 @@ class Nursing_Data_Analysis:
         self.folder = "\\".join([os.getcwd(), "NursingDataAnalysis", "Data"])
         path = os.path.join(self.folder, "Survey Responses.csv")
         self.responses = pd.read_csv(path)
-        self.cols = ['ID', 'BI_201', 'BI_202', 'CH_111', 'CH_112', 'BI_214']
+        self.courses = ['BI_201', 'BI_202', 'CH_111', 'CH_112', 'BI_214']
+        self.cols = ['ID'] + self.courses
         self.data = pd.read_csv(os.path.join(self.folder, "Cleaned_Survey_Data.csv"), index_col = 0)
-        print(self.data)
-        print(self.df_query(self.data))
+        self.data_unpivoted = pd.read_csv(os.path.join(self.folder, "Cleaned_Survey_Data_Unpivoted.csv"), index_col = 0)
 
     def df_query(self, df, cols = None):
         cols = df.columns if cols is None else cols
@@ -45,17 +45,14 @@ class Nursing_Data_Analysis:
         df = self.readSQL(query)
         df.to_csv(os.path.join(self.folder, "Cleaned_Survey_Data.csv"))
 
-    def appendNurGPA(self):
+    def unpivoted(self):
         query = f"""
-        SELECT ID, BI_201, BI_202, CH_111, CH_112, BI_214, ENROLL_GPA_CREDITS, ENROLL_CUM_CONTRIB_GRADE_POINTS
-        FROM ({self.df_query(self.data, self.cols)}) AS DF
-        JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON DF.ID = SEV.STUDENT_ID
-        WHERE SECTION_DEPARTMENT1 = 'NUR'
-        AND ENROLL_GPA_CREDITS IS NOT NULL
+        SELECT ID, COURSE, MODE
+        FROM ({self.df_query(self.data)}) AS DF
+        UNPIVOT ( MODE FOR COURSE IN ({", ".join(self.courses)}) ) AS X
         """
         df = self.readSQL(query)
-        df.to_csv(os.path.join(self.folder, 'With_Credit_Points.csv'))
-
+        df.to_csv(os.path.join(self.folder, 'Cleaned_Survey_Data_Unpivoted.csv'))
 
     def appendNurGPA(self):
         query = f"""
@@ -77,6 +74,7 @@ class Nursing_Data_Analysis:
     def avgCumGPA(self, course):
         query = f"""
         SELECT {course},
+                COUNT(*) AS MODE_COUNT,
                 AVG(NURSING_GPA) AS AVG_NURSING_GPA
         FROM (
         SELECT ID, 
@@ -93,8 +91,42 @@ class Nursing_Data_Analysis:
         ) AS X
         GROUP BY {course}
         """
+        with open(os.path.join(self.folder, f'Avg_GPA_{course}.txt'), "w", encoding="utf-8") as f:
+            f.write(query)
         df = self.readSQL(query)
         df.to_csv(os.path.join(self.folder, f'Avg_GPA_{course}.csv'))
+
+    def saveAvgCumGPAs(self):
+        for course in self.courses:
+            self.avgCumGPA(course)
+
+    def saveAvgCumGPA_by_Course(self):
+        query = f"""
+        SELECT COURSE,
+                MODE,
+                COUNT(*) AS STUDENT_COUNT,
+                AVG(NURSING_GPA) AS AVG_NURSING_GPA
+        FROM (
+        SELECT ID,
+               COURSE,
+               MODE,
+                SUM(ENROLL_CUM_CONTRIB_GRADE_POINTS) / SUM(ENROLL_GPA_CREDITS) AS NURSING_GPA
+        FROM (
+        SELECT ID, COURSE, MODE, ENROLL_GPA_CREDITS, ENROLL_CUM_CONTRIB_GRADE_POINTS
+        FROM ({self.df_query(self.data_unpivoted)}) AS DF
+        JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON DF.ID = SEV.STUDENT_ID
+        WHERE SECTION_DEPARTMENT1 = 'NUR'
+        AND ENROLL_GPA_CREDITS IS NOT NULL
+        ) AS X
+        GROUP BY ID, COURSE, MODE
+        ) AS X
+        GROUP BY COURSE, MODE
+        ORDER BY COURSE, MODE
+        """
+        with open(os.path.join(self.folder, f'Avg_GPA_by_Course.txt'), "w", encoding="utf-8") as f:
+            f.write(query)
+        df = self.readSQL(query)
+        df.to_csv(os.path.join(self.folder, f'Avg_GPA_by_Course.csv'))
 
     def queried_df(self, cursor, query):
         cursor.execute(query)
