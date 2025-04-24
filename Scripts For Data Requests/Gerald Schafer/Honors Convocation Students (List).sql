@@ -71,8 +71,3 @@
 ORDER BY NAME_FIRST
 
 
-
-
-
-
-
