@@ -2443,6 +2443,6 @@ AND DF.STUDENT_ID = SAPV.STUDENT_ID
            AND MAJORS.MAJ_DESC = 'Master of Social Work'
 --(End 1)------------------------------------------------------------------------------------------------------------
      ) AS X
-GROUP BY TERM, TERM_START_DATE
+GROUP BY TERM, TERM_START_DATE, PELL_STATUS
 --(End 2)------------------------------------------------------------------------------------------------------------
 ORDER BY TERM_START_DATE
