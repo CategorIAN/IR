@@ -21,7 +21,7 @@ def df_query(df, cols=None):
 def f(i):
     X = Nursing_Data_Analysis()
     if i == 2:
-        print(X.readSQL(X.get_survey_data()))
+        print(X.get_survey_data())
     if i == 3:
         X.saveDF(X.scratch(), "scratch")
     if i == 4:
@@ -33,6 +33,9 @@ def f(i):
         folder = "\\".join([os.getcwd(), "MyData"])
         df = pd.read_csv(os.path.join(folder, "Biology_Grads_2025SP.csv"))
         print(df_query(df))
+    if i == 7:
+        X.saveAvgProgramDuration_by_Course_inner("Nursing")
+
 
 
 def g(i):
@@ -48,4 +51,4 @@ def g(i):
 
 
 if __name__ == '__main__':
-    g(4)
+    f(7)

@@ -74,7 +74,7 @@ class Nursing_Data_Analysis:
                 SUM(ENROLL_CUM_CONTRIB_GRADE_POINTS) / SUM(ENROLL_GPA_CREDITS) AS NURSING_GPA
         FROM (
         SELECT ID, COURSE, MODE, ENROLL_GPA_CREDITS, ENROLL_CUM_CONTRIB_GRADE_POINTS
-        FROM ({self.get_survey_data}) AS DF
+        FROM ({self.get_survey_data()}) AS DF
         JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON DF.ID = SEV.STUDENT_ID
         WHERE SECTION_DEPARTMENT1 = 'NUR'
         AND ENROLL_GPA_CREDITS IS NOT NULL
@@ -107,6 +107,25 @@ class Nursing_Data_Analysis:
         ORDER BY COURSE, MODE
         """
         self.saveDF(query, f"Avg_Months_To_Graduate_Program_{program}")
+
+
+    def saveAvgProgramDuration_by_Course_inner(self, program):
+        query = f"""
+        SELECT *
+        FROM (
+        SELECT ID,
+                COURSE,
+                MODE,
+                DATEDIFF(MONTH, STP_START_DATE, STP_END_DATE) AS MONTHS_TO_GRADUATE_PROGRAM
+        FROM ({self.get_survey_data()}) AS DF
+        JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV ON SAPV.STUDENT_ID = DF.ID
+        WHERE STP_END_DATE IS NOT NULL
+        AND STP_CURRENT_STATUS = 'Graduated'
+        AND STP_PROGRAM_TITLE = '{program}'
+        ) AS X
+        WHERE 
+        """
+        self.saveDF(query, f"Avg_Months_To_Graduate_Program_{program}_inner")
 
 
 #=======================================================================================================================

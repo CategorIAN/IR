@@ -39,5 +39,3 @@ AND MAJORS.MAJ_DESC = 'Master of Social Work'
 GROUP BY TERM, TERM_START_DATE, LOAD
 --(End 2)------------------------------------------------------------------------------------------------------------
 ORDER BY TERM_START_DATE
-
-

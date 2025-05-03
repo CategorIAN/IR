@@ -6,7 +6,9 @@ FROM (
          SELECT TERMS.TERMS_ID  AS TERM,
                 TERMS.TERM_START_DATE,
                 MAJORS.MAJ_DESC AS MAJOR,
-                STUDENT_ID
+                STUDENT_ID,
+                STUDENT_LAST_NAME,
+                STUDENT_FIRST_NAME
          FROM MAJORS
                   CROSS JOIN TERMS
                   CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
@@ -33,3 +35,6 @@ FROM (
 GROUP BY TERM, TERM_START_DATE
 --(End 2)------------------------------------------------------------------------------------------------------------
 ORDER BY TERM_START_DATE
+
+
+

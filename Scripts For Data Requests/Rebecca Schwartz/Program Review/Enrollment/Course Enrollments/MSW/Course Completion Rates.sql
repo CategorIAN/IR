@@ -41,3 +41,4 @@ FROM (
      ) AS X
 GROUP BY COURSE_TITLE, COURSE_NAME
 --(End 2)--------------------------------------------------------------------------------------------------------------
+ORDER BY COURSE_NAME, COURSE_TITLE
