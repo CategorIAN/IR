@@ -8,7 +8,7 @@ import pandas as pd
 import os
 from Pell import Pell
 
-def df_query(df, cols=None):
+def df_query(df, cols  = None):
     cols = df.columns if cols is None else cols
     query = f"""
     SELECT *
@@ -19,24 +19,10 @@ def df_query(df, cols=None):
     return query
 
 def f(i):
-    X = Nursing_Data_Analysis()
-    if i == 2:
-        print(X.get_survey_data())
-    if i == 3:
-        X.saveDF(X.scratch(), "scratch")
-    if i == 4:
-        print(X.SQL_values(X.students()))
-    if i == 5:
-        X.saveAvgProgramDuration_by_Course('Nursing')
-        X.saveAvgProgramDuration_by_Course('Accelerated Nursing')
-    if i == 6:
-        folder = "\\".join([os.getcwd(), "MyData"])
-        df = pd.read_csv(os.path.join(folder, "Biology_Grads_2025SP.csv"))
+    if i == 1:
+        file = "\\".join([os.getcwd(), "MyData", "Grads_2025SP_W_IDS.csv"])
+        df = pd.read_csv(file)
         print(df_query(df))
-    if i == 7:
-        X.saveAvgProgramDuration_by_Course_inner("Nursing")
-
-
 
 def g(i):
     X = Pell()
@@ -51,4 +37,4 @@ def g(i):
 
 
 if __name__ == '__main__':
-    f(7)
+    f(1)
