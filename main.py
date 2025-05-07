@@ -23,6 +23,10 @@ def f(i):
         file = "\\".join([os.getcwd(), "MyData", "Grads_2025SP_W_IDS.csv"])
         df = pd.read_csv(file)
         print(df_query(df))
+    if i == 2:
+        file = "\\".join([os.getcwd(), "MyData", "Graduate_Program_2025SP.csv"])
+        df = pd.read_csv(file)
+        print(df_query(df))
 
 def g(i):
     X = Pell()
@@ -37,4 +41,4 @@ def g(i):
 
 
 if __name__ == '__main__':
-    f(1)
+    f(2)
