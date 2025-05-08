@@ -5,11 +5,14 @@ from IPEDS import IPEDS
 from DV import DV
 from Nursing_Data_Analysis import Nursing_Data_Analysis
 import pandas as pd
+import numpy as np
 import os
 from Pell import Pell
 
 def df_query(df, cols  = None):
     cols = df.columns if cols is None else cols
+    df['Grad_Student'] = df['Grad_Student'].map(lambda x: int(x) if not pd.isna(x) else 0)
+    print(df['Grad_Student'])
     query = f"""
     SELECT *
     FROM (VALUES {",\n".join([f"({", ".join([f"'{str(val).replace("'", "''")}'" for val in df.loc[i, :]])})"
@@ -27,6 +30,10 @@ def f(i):
         file = "\\".join([os.getcwd(), "MyData", "Graduate_Program_2025SP.csv"])
         df = pd.read_csv(file)
         print(df_query(df))
+    if i == 3:
+        file = "\\".join([os.getcwd(), "MyData", "UpdatedGrads_2025SP.csv"])
+        df = pd.read_csv(file)
+        print(df_query(df))
 
 def g(i):
     X = Pell()
@@ -41,4 +48,4 @@ def g(i):
 
 
 if __name__ == '__main__':
-    f(2)
+    f(3)
