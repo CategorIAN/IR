@@ -1,30 +1,6 @@
---(Begin 1)-------------------------------------------------------------------------------------------------------------
-                  SELECT Grad_Student,
-                         CASE
-                             WHEN GENDER = 'M' THEN 'Male'
-                             WHEN GENDER = 'F' THEN 'Female'
-                             WHEN DF.First_Name IN (
-                                                    'Abigail',
-                                                   'Alysha',
-                                                   'Annemarie',
-                                                   'Callie',
-                                                   'Cynthia',
-                                                   'Elizabeth',
-                                                   'Emma',
-                                                   'Eva',
-                                                   'Hailey',
-                                                   'Jasmine',
-                                                   'Julie',
-                                                   'Macy',
-                                                   'Madelin',
-                                                   'Shelley'
-                                                   ) THEN 'Female'
-                                 WHEN DF.First_Name IN (
-                                                        'Jacob Colter',
-                                                        'Timothy'
-                                                        )  THEN 'Male'
-                                ELSE 'Unknown' END AS GENDER
-FROM (VALUES ('Sophia', 'A', 'McAdam', 'Sophia A McAdam', 'BA', NULL, NULL, NULL, 'Portland, Oregon', '6177677', 'Business: Accounting and Strategic Finance', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+SELECT *
+FROM
+(VALUES ('Sophia', 'A', 'McAdam', 'Sophia A McAdam', 'BA', NULL, NULL, NULL, 'Portland, Oregon', '6177677', 'Business: Accounting and Strategic Finance', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 ('Isaac', 'Robert', 'Schilter', 'Isaac Robert Schilter', 'BA', NULL, NULL, NULL, 'Olympia, Washington', '6177146', 'Business: Accounting and Strategic Finance', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 ('Allison', 'Clare', 'Bullman', 'Allison Clare Bullman', 'BA', NULL, NULL, NULL, 'Billings, Montana', '6179703', 'Anthrozoology', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 ('Wade', 'S', 'Luly', 'Wade S Luly', 'BA', NULL, NULL, NULL, 'Shelby, Montana', '5885610', 'Biology', 'Health Sciences', NULL, NULL, NULL, NULL, NULL, NULL, NULL),
@@ -314,4 +290,3 @@ FROM (VALUES ('Sophia', 'A', 'McAdam', 'Sophia A McAdam', 'BA', NULL, NULL, NULL
 ('Lily', 'Marie', 'Oats', 'Lily Marie Oats', 'BA', NULL, NULL, NULL, 'Helena, Montana', '5734939', 'Public Health', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 ('Annemarie', 'Abigail', 'Johnson', 'AnneMarie Abigail Johnson', 'BA', NULL, NULL, NULL, 'Sheridan, Oregon, USA', '0', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL))
     AS DF(First_Name, Middle_Name, Last_Name, Grad_Diploma_Name, Degree_Type, Latin_Honors, With_Distinction, Honors_Scholars, Grad_Hometown, Grad_Student, Major1, Major2, Major3, Major4, Cohort1, Cohort2, Cohort3, Cohort4, Cohort5)
-    LEFT JOIN PERSON ON DF.Grad_Student = PERSON.ID

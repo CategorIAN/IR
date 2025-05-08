@@ -1,57 +1,34 @@
---(Begin 3)-------------------------------------------------------------------------------------------------------------
-         SELECT TOP 12
-                Major,
-                COUNT
-         FROM (
 --(Begin 2)-------------------------------------------------------------------------------------------------------------
-                  SELECT Major,
-                         COUNT(*) AS COUNT
-                  FROM (
+SELECT GENDER,
+       COUNT(*) AS COUNT
+FROM (
 --(Begin 1)-------------------------------------------------------------------------------------------------------------
-                           SELECT Majors.Major AS Major,
-                                  DF.Grad_Student
-                           FROM (VALUES ('Accelerated Nursing'),
-('Anthrozoology'),
-('Biochemistry/Molecular Biology'),
-('Biology'),
-('Business: Accounting and Strategic Finance'),
-('Business: Acctng & Stratg Finc'),
-('Business: Financial Planning'),
-('Business: Management and Marketing'),
-('Catholic Studies'),
-('Chemistry'),
-('Civil Engineering'),
-('Communication Studies'),
-('Computer Information Systems'),
-('Computer Science'),
-('Data Science'),
-('Elementary Educ & Special Educ'),
-('Elementary Education'),
-('Elementary Education K-8 & Special Education K-12'),
-('English Education (5-12)'),
-('English Literature'),
-('English Writing'),
-('Environmental Science'),
-('Health Sciences'),
-('Hispanic Studies and Languages'),
-('History'),
-('International Relations'),
-('Master of Social Work'),
-('Mathematics'),
-('Mathematics Education (5-12)'),
-('Nursing'),
-('Philosophy'),
-('Physics'),
-('Political Science'),
-('Psychology'),
-('Public Health'),
-('Self-Designed Major'),
-('Sociology'),
-('Theatre'),
-('Theology'))
-    AS Majors(Major)
-                                    CROSS JOIN
-                                (VALUES ('Sophia', 'A', 'McAdam', 'Sophia A McAdam', 'BA', NULL, NULL, NULL, 'Portland, Oregon', '6177677', 'Business: Accounting and Strategic Finance', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+                  SELECT Grad_Student,
+                         CASE
+                             WHEN GENDER = 'M' THEN 'Male'
+                             WHEN GENDER = 'F' THEN 'Female'
+                             WHEN DF.First_Name IN (
+                                                    'Abigail',
+                                                   'Alysha',
+                                                   'Annemarie',
+                                                   'Callie',
+                                                   'Cynthia',
+                                                   'Elizabeth',
+                                                   'Emma',
+                                                   'Eva',
+                                                   'Hailey',
+                                                   'Jasmine',
+                                                   'Julie',
+                                                   'Macy',
+                                                   'Madelin',
+                                                   'Shelley'
+                                                   ) THEN 'Female'
+                                 WHEN DF.First_Name IN (
+                                                        'Jacob Colter',
+                                                        'Timothy'
+                                                        )  THEN 'Male'
+                                ELSE 'Unknown' END AS GENDER
+FROM (VALUES ('Sophia', 'A', 'McAdam', 'Sophia A McAdam', 'BA', NULL, NULL, NULL, 'Portland, Oregon', '6177677', 'Business: Accounting and Strategic Finance', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 ('Isaac', 'Robert', 'Schilter', 'Isaac Robert Schilter', 'BA', NULL, NULL, NULL, 'Olympia, Washington', '6177146', 'Business: Accounting and Strategic Finance', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 ('Allison', 'Clare', 'Bullman', 'Allison Clare Bullman', 'BA', NULL, NULL, NULL, 'Billings, Montana', '6179703', 'Anthrozoology', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 ('Wade', 'S', 'Luly', 'Wade S Luly', 'BA', NULL, NULL, NULL, 'Shelby, Montana', '5885610', 'Biology', 'Health Sciences', NULL, NULL, NULL, NULL, NULL, NULL, NULL),
@@ -341,16 +318,8 @@
 ('Lily', 'Marie', 'Oats', 'Lily Marie Oats', 'BA', NULL, NULL, NULL, 'Helena, Montana', '5734939', 'Public Health', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 ('Annemarie', 'Abigail', 'Johnson', 'AnneMarie Abigail Johnson', 'BA', NULL, NULL, NULL, 'Sheridan, Oregon, USA', '0', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL))
     AS DF(First_Name, Middle_Name, Last_Name, Grad_Diploma_Name, Degree_Type, Latin_Honors, With_Distinction, Honors_Scholars, Grad_Hometown, Grad_Student, Major1, Major2, Major3, Major4, Cohort1, Cohort2, Cohort3, Cohort4, Cohort5)
-   WHERE Major = DF.Major1
-      OR Major = DF.Major2
-      OR Major = DF.Major3
-      OR Major = DF.Major4
---(End 1)---------------------------------------------------------------------------------------------------------------
-                       ) AS X
-                  GROUP BY Major
---(End 2)---------------------------------------------------------------------------------------------------------------
-              ) AS X
-         WHERE Major != 'Master of Social Work'
---(End 3)---------------------------------------------------------------------------------------------------------------
-ORDER BY COUNT DESC;
-
+    LEFT JOIN PERSON ON DF.Grad_Student = PERSON.ID
+--(End 1)--------------------------------------------------------------------------------------------------------------
+    ) AS X
+GROUP BY GENDER
+--(End 2)--------------------------------------------------------------------------------------------------------------

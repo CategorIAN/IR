@@ -1,10 +1,11 @@
 --(Begin 2)-------------------------------------------------------------------------------------------------------------
-SELECT HONORS,
-       COUNT(*) AS COUNT
-FROM (
+         SELECT 'Age Range'                                     AS X,
+                CONCAT(MIN(STUDENT_AGE), '-', MAX(STUDENT_AGE)) AS Y
+         FROM (
 --(Begin 1)-------------------------------------------------------------------------------------------------------------
-         SELECT Latin_Honors AS HONORS
-         FROM (VALUES ('Sophia', 'A', 'McAdam', 'Sophia A McAdam', 'BA', NULL, NULL, NULL, 'Portland, Oregon',
+                  SELECT DISTINCT Grad_Student,
+                                  STUDENT_AGE
+                  FROM (VALUES ('Sophia', 'A', 'McAdam', 'Sophia A McAdam', 'BA', NULL, NULL, NULL, 'Portland, Oregon',
                                 '6177677', 'Business: Accounting and Strategic Finance', NULL, NULL, NULL, NULL, NULL,
                                 NULL, NULL, NULL),
                                ('Isaac', 'Robert', 'Schilter', 'Isaac Robert Schilter', 'BA', NULL, NULL, NULL,
@@ -859,10 +860,7 @@ FROM (
                            AS DF(First_Name, Middle_Name, Last_Name, Grad_Diploma_Name, Degree_Type, Latin_Honors,
                                  With_Distinction, Honors_Scholars, Grad_Hometown, Grad_Student, Major1, Major2, Major3,
                                  Major4, Cohort1, Cohort2, Cohort3, Cohort4, Cohort5)
---(End 1)---------------------------------------------------------------------------------------------------------------
-     ) AS X
-JOIN (VALUES ('Summa Cum Laude', 1), ('Magna Cum Laude', 2), ('Cum Laude', 3))
-    AS MY_ORDER(LABEL, N) ON X.HONORS = MY_ORDER.LABEL
-GROUP BY HONORS, MY_ORDER.N
---(End 2)---------------------------------------------------------------------------------------------------------------
-ORDER BY MY_ORDER.N
+                           JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON DF.Grad_Student = SEV.STUDENT_ID
+--(End 1)--------------------------------------------------------------------------------------------------------------
+              ) AS X
+--(End 2)--------------------------------------------------------------------------------------------------------------
