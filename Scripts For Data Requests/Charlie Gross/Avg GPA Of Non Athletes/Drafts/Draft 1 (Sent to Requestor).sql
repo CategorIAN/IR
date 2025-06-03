@@ -10,3 +10,6 @@ WHERE STUDENT_TERM_GPA_VIEW.TERM = '2024FA' and
 		STA_OTHER_COHORT_GROUPS IS NULL OR
 		STA_OTHER_COHORT_END_DATES < GETDATE()
 	 )
+------------------------------------------------------------------------------------------------------------------------
+
+

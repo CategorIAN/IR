@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import os
 from Pell import Pell
+from Null_Analysis import Null_Analysis
 
 def df_query(df, cols  = None):
     cols = df.columns if cols is None else cols
@@ -38,16 +39,19 @@ def f(i):
         print(df_query(df))
 
 def g(i):
-    X = Pell()
+    X = Null_Analysis()
     if i == 1:
-        print(X.readSQL(X.year_query(19)))
+        print(X.snapshotSQL('SELECT * FROM PERSON'))
     if i == 2:
-        print(X.readSQL(X.pell()))
+        X = Null_Analysis()
+        print(X.irSQL('SELECT * FROM REQUEST'))
     if i == 3:
-        X.saveDF(X.pell(), "Pell")
+        print(X.nulls(2))
     if i == 4:
-        print(X.SQL_values(X.pell()))
+        print(X.query_count('Student_Cum_GPA_View.Student_Overall_Cum_GPA', 'STUDENT_CUM_GPA_VIEW'))
+
+
 
 
 if __name__ == '__main__':
-    f(4)
+    g(3)
