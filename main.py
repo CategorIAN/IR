@@ -46,12 +46,7 @@ def g(i):
         X = Null_Analysis()
         print(X.irSQL('SELECT * FROM REQUEST'))
     if i == 3:
-        print(X.nulls(2))
-    if i == 4:
-        print(X.query_count('Student_Cum_GPA_View.Student_Overall_Cum_GPA', 'STUDENT_CUM_GPA_VIEW'))
-
-
-
+        print(X.nulls(46))
 
 if __name__ == '__main__':
     g(3)

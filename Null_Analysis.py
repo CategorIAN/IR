@@ -78,6 +78,5 @@ class Null_Analysis:
         vars_tables = self.irSQL(query).set_index('VarName')['TableName'].to_dict().items()
         data = {var: [table, self.null_percentage(var, table)] for var, table in vars_tables}
         df = pd.DataFrame.from_dict(data, orient='index', columns = ['Table', 'Null Percentage']).rename_axis('Var')
-        df = df.loc[lambda df: df['Null Percentage'] > 0.15]
         df.to_csv(os.path.join(self.folder, f'Request_{request_id}_Nulls.csv'))
         return df

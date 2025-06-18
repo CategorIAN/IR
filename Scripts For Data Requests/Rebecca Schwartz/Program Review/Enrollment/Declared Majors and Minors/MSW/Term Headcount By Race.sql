@@ -8,7 +8,7 @@ FROM (
                 TERMS.TERM_START_DATE,
                 MAJORS.MAJ_DESC AS MAJOR,
                 STUDENT_ID,
-                IPEDS_RACE_ETHNIC_DESC AS RACE
+                SAPV.IPEDS_RACE_ETHNIC_DESC AS RACE
          FROM MAJORS
                   CROSS JOIN TERMS
                   CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
