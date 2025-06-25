@@ -9,6 +9,7 @@ import numpy as np
 import os
 from Pell import Pell
 from Null_Analysis import Null_Analysis
+from ConsumerReports import ConsumerReports
 
 def df_query(df, cols  = None):
     cols = df.columns if cols is None else cols
@@ -21,22 +22,10 @@ def df_query(df, cols  = None):
     return query
 
 def f(i):
+    X = ConsumerReports("StudentAchievementMeasures")
     if i == 1:
-        file = "\\".join([os.getcwd(), "MyData", "Grads_2025SP_W_IDS.csv"])
-        df = pd.read_csv(file)
-        print(df_query(df))
-    if i == 2:
-        file = "\\".join([os.getcwd(), "MyData", "Graduate_Program_2025SP.csv"])
-        df = pd.read_csv(file)
-        print(df_query(df))
-    if i == 3:
-        file = "\\".join([os.getcwd(), "MyData", "UpdatedGrads_2025SP.csv"])
-        df = pd.read_csv(file)
-        print(df_query(df))
-    if i == 4:
-        file = "\\".join([os.getcwd(), "MyData", "Majors.csv"])
-        df = pd.read_csv(file)
-        print(df_query(df))
+        X.x("Graduation Rate - 6 Years", 2023)
+
 
 def g(i):
     X = Null_Analysis()
@@ -49,4 +38,4 @@ def g(i):
         print(X.nulls(46))
 
 if __name__ == '__main__':
-    g(3)
+    f(1)

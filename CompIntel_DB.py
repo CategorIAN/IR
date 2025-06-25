@@ -241,7 +241,6 @@ class CompIntel_DB:
             return df
         return execute
 
-
     def saveRetention(self, base_year, end_year):
         years = list(range(base_year, end_year + 1))
         tables = [self.readSQL(year)(self.value_df(year, 'Retention Rate', year)) for year in years]
