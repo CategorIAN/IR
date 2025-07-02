@@ -2,7 +2,6 @@
 SELECT COHORTS.COHORT,
        GENDERS.GENDER,
        RACES.RACE,
-       SPORTS.SPORT,
        NON_COMPLETER,
        COMPLETER,
        TOTAL,
@@ -19,14 +18,8 @@ CROSS JOIN
             ('Black or African American'),
             ('Asian')) AS RACES(RACE)
 CROSS JOIN
-    (VALUES ('Basketball'),
-            ('Cross Country'),
-            ('Football'),
-            ('Golf'),
-            ('Soccer'),
-            ('Softball'),
-            ('Track and Field'),
-            ('Volleyball')) AS SPORTS(SPORT)
+    (VALUES ('Basketball')
+            ) AS SPORTS(SPORT)
 LEFT JOIN (
 --(Begin C2)------------------------------------------------------------------------------------------------------------
     SELECT COHORT,
@@ -129,4 +122,4 @@ AND GENDERS.GENDER = X.GENDER
 AND RACES.RACE = X.RACE
 AND SPORTS.SPORT = X.SPORT
 --(End C2)-------------------------------------------------------------------------------------------------------------
-ORDER BY SPORT, COHORT, GENDER, RACE
+ORDER BY COHORT, GENDER, RACE

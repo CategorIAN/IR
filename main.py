@@ -10,6 +10,7 @@ import os
 from Pell import Pell
 from Null_Analysis import Null_Analysis
 from ConsumerReports import ConsumerReports
+from IPEDS_DB import IPEDS_DB
 
 def df_query(df, cols  = None):
     cols = df.columns if cols is None else cols
@@ -22,9 +23,9 @@ def df_query(df, cols  = None):
     return query
 
 def f(i):
-    X = ConsumerReports("StudentAchievementMeasures")
+    X = IPEDS_DB("NWCCU")
     if i == 1:
-        X.x("Graduation Rate - 6 Years", 2023)
+        print(X.readSQL(2023)(X.value_df('Graduation Rate (4 Years)')))
 
 
 def g(i):
