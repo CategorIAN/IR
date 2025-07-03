@@ -26,6 +26,11 @@ def f(i):
     X = IPEDS_DB("NWCCU")
     if i == 1:
         print(X.readSQL(2023)(X.value_df('Graduation Rate (4 Years)')))
+    if i == 2:
+        X.save_df('Graduation Rate (4 Years)', 2015, 2023)
+        X.line_graph('Graduation Rate (4 Years) - 2015 to 2023.csv', percent=True)
+    if i == 3:
+        X.line_graph('Graduation Rate (4 Years) - 2015 to 2023.csv', percent=True)
 
 
 def g(i):
@@ -39,4 +44,4 @@ def g(i):
         print(X.nulls(46))
 
 if __name__ == '__main__':
-    f(1)
+    f(3)

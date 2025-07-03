@@ -101,7 +101,6 @@ class CompIntel_DB:
 
     #=================================================================================================================
 
-
     def x(self, name):
         years = list(range(2018, 2022 + 1))
         tables = [self.readSQL(year)(self.value_df(year, name)) for year in years]
@@ -109,7 +108,6 @@ class CompIntel_DB:
         print(df)
         df = df.map(lambda x: x if x == "None" else int(x))
         df.to_csv(os.path.join(self.analysis_path, f"{name}.csv"), index=True)
-
 
     def saveInstitutionSize(self, year):
         df = self.readSQL(year)(self.value_df(year, 'Undergraduate Size', year))
