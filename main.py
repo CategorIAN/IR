@@ -38,6 +38,12 @@ def f(i):
             X.save_df_chart(name, 2015, 2023)("line", True)
     if i  == 6:
         X.save_data(2015, 2023)
+    if i == 7:
+        X.gender_df(2023)
+        X.pie_charts('Gender Percentage - 2023.csv')
+    if i == 8:
+        X.race_df(2023)
+        X.pie_charts('Race Percentage - 2023.csv')
 
 
 def g(i):
