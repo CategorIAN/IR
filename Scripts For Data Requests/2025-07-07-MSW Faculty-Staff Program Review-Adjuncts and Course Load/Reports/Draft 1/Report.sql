@@ -1,23 +1,18 @@
---(Begin 3)------------------------------------------------------------------------------------------------------------
-SELECT ID,
-       LAST_NAME,
-       FIRST_NAME,
-       AVG(FACULTY_ENROLLMENT) AS AVG_FACULTY_ENROLLMENT
-FROM (
 --(Begin 2)------------------------------------------------------------------------------------------------------------
          SELECT TERM,
                 ID,
                 LAST_NAME,
                 FIRST_NAME,
-                SUM(ENROLLMENT) AS FACULTY_ENROLLMENT
+                SUM(CREDITS) AS ADJUNCT_CREDIT_LOAD
          FROM (
 --(Begin 1)------------------------------------------------------------------------------------------------------------
-                  SELECT DISTINCT TERMS.TERMS_ID                           AS TERM,
-                                  PERSTAT.PERSTAT_HRP_ID                   AS ID,
+                  SELECT DISTINCT TERMS.TERMS_ID         AS TERM,
+                                  TERM_START_DATE,
+                                  PERSTAT.PERSTAT_HRP_ID AS ID,
                                   PERSON.LAST_NAME,
                                   PERSON.FIRST_NAME,
                                   CS.COURSE_SECTIONS_ID,
-                                  CS.CS_COUNT_ACTIVE_STUDENTS AS ENROLLMENT
+                                  CS_BILLING_CREDITS     AS CREDITS
                   FROM TERMS
                            CROSS JOIN PERSTAT
                            JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
@@ -31,13 +26,10 @@ FROM (
                     AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
                     AND PERSTAT_START_DATE <= TERMS.TERM_END_DATE
                     AND (PERSTAT_END_DATE >= TERMS.TERM_START_DATE OR PERSTAT_END_DATE IS NULL)
-                    AND POSITION.POS_CLASS = 'FAC'
+                    AND POSITION.POS_RANK = 'A'
                     AND POSITION.POS_DEPT = 'SWK'
+                    AND CS_BILLING_CREDITS IS NOT NULL
 --(End 1)--------------------------------------------------------------------------------------------------------------
               ) AS X
-         GROUP BY TERM, ID, LAST_NAME, FIRST_NAME
+         GROUP BY TERM, ID, LAST_NAME, FIRST_NAME, TERM_START_DATE
 --(End 2)--------------------------------------------------------------------------------------------------------------
-     ) AS X
-GROUP BY ID, LAST_NAME, FIRST_NAME
---(End 3)--------------------------------------------------------------------------------------------------------------
-ORDER BY LAST_NAME, FIRST_NAME

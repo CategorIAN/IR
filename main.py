@@ -32,18 +32,20 @@ def f(i):
     if i == 3:
         X.line_graph('Graduation Rate (4 Years) - 2015 to 2023.csv', percent=True)
     if i == 4:
-        X.save_df_chart("Race Percentage: American Indian or Alaska Native", 2015, 2023)("line", True)
+        X.save_df_chart("Graduation Rate (4 Years)", 2015, 2023)("line", True)
     if i == 5:
         for name in X.metrics:
             X.save_df_chart(name, 2015, 2023)("line", True)
     if i  == 6:
-        X.save_data(2015, 2023)
+        X.save_data(2015, 2023, grouped = False, category = "Level")
     if i == 7:
-        X.gender_df(2023)
-        X.pie_charts('Gender Percentage - 2023.csv')
+        X.save_data(2015, 2023, ['Military Assistance Count'])
     if i == 8:
-        X.race_df(2023)
-        X.pie_charts('Race Percentage - 2023.csv')
+        X.bar_chart_grouped_stacked('Gender Percentage (Women) By Peer Grouping.csv')
+    if i == 9:
+        X.bar_chart_grouped_stacked('Race Percentage (White) By Peer Grouping.csv')
+    if i == 10:
+        X.save(2015, 2023)
 
 
 def g(i):
@@ -57,4 +59,4 @@ def g(i):
         print(X.nulls(46))
 
 if __name__ == '__main__':
-    f(6)
+    f(8)

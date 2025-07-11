@@ -32,6 +32,7 @@ FROM (
                     AND PERSTAT_START_DATE <= TERMS.TERM_END_DATE
                     AND (PERSTAT_END_DATE >= TERMS.TERM_START_DATE OR PERSTAT_END_DATE IS NULL)
                     AND POSITION.POS_CLASS = 'FAC'
+                  AND POSITION.POS_DEPT = 'SWK'
 --(End 1)--------------------------------------------------------------------------------------------------------------
               ) AS X
          GROUP BY TERM, ID, LAST_NAME, FIRST_NAME
