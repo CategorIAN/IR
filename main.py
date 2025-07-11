@@ -26,26 +26,18 @@ def f(i):
     X = IPEDS_DB("NWCCU")
     if i == 1:
         print(X.readSQL(2023)(X.value_df('Graduation Rate (4 Years)')))
-    if i == 2:
-        X.save_df('Graduation Rate (4 Years)', 2015, 2023)
-        X.line_graph('Graduation Rate (4 Years) - 2015 to 2023.csv', percent=True)
     if i == 3:
         X.line_graph('Graduation Rate (4 Years) - 2015 to 2023.csv', percent=True)
     if i == 4:
         X.save_df_chart("Graduation Rate (4 Years)", 2015, 2023)("line", True)
-    if i == 5:
-        for name in X.metrics:
-            X.save_df_chart(name, 2015, 2023)("line", True)
-    if i  == 6:
-        X.save_data(2015, 2023, grouped = False, category = "Level")
-    if i == 7:
-        X.save_data(2015, 2023, ['Military Assistance Count'])
-    if i == 8:
-        X.bar_chart_grouped_stacked('Gender Percentage (Women) By Peer Grouping.csv')
-    if i == 9:
-        X.bar_chart_grouped_stacked('Race Percentage (White) By Peer Grouping.csv')
     if i == 10:
         X.save(2015, 2023)
+    if i == 11:
+        X.bar_chart_grouped_stacked('Gender', 'Enrollment Percentage', complement = True)
+        X.bar_chart_grouped_stacked('Race (W-NW)', 'Enrollment Percentage', complement=True)
+        X.bar_chart_grouped_stacked('Level', 'Enrollment')
+    if i == 12:
+        X.save_dfs_gsb_charts_all(2015, 2023, make_df = False)
 
 
 def g(i):
@@ -59,4 +51,4 @@ def g(i):
         print(X.nulls(46))
 
 if __name__ == '__main__':
-    f(8)
+    f(12)

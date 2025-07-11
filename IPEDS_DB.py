@@ -23,6 +23,7 @@ class IPEDS_DB:
         self.gen_metrics = pd.read_csv(os.path.join(self.folder, "General Metrics.csv"))
         self.cat_metrics = pd.read_csv(os.path.join(self.folder, "Categorized Metrics.csv"))
         self.complements = pd.read_csv(os.path.join(self.folder, "Complements.csv"), index_col=0)
+        self.sch_abbrev = pd.read_csv(os.path.join(self.folder, "School_Abbreviations.csv"))
 
     def df_dict(self, my_df, default):
         return lambda i: tuple(my_df.loc[i, :]) if i in my_df.index else default
@@ -93,49 +94,13 @@ class IPEDS_DB:
             title = name + " By School"
             df = df.reset_index()
         df.to_csv(os.path.join(self.data_path, f"{title}.csv"), index=True)
-
-    def gender_df(self, year, save = True):
-        name = "Gender Percentage (Women)"
-        df = self.readSQL(year)(self.value_df(name))
-        df[name] = df[name].map(lambda x: x if x == "None" else int(x))
-        df = pd.merge(self.school_df, df, on="School")
-        df['Gender Percentage (Men)'] = 100 - df['Gender Percentage (Women)']
-        names = [
-            'Gender Percentage (Women)',
-            'Gender Percentage (Men)'
-        ]
-        df = (df.groupby(["Group", "Year"])[names]
-              .mean().map(lambda x: round(x, 2)).reset_index())
-        if save:
-            title = "Gender Percentage" + " - " + str(year)
-            df.to_csv(os.path.join(self.data_path, f"{title}.csv"), index=True)
-
-    def race_df(self, year, save = True):
-        names = [
-                "Race Percentage (American Indian or Alaska Native)",
-            "Race Percentage (Asian)",
-            "Race Percentage (Black or African American)",
-            "Race Percentage (Hispanic or Latino)",
-            "Race Percentage (Native Hawaiian or Other Pacific Islander)",
-            "Race Percentage (Race-ethnicity unknown)",
-            "Race Percentage (Two or More Races)",
-            "Race Percentage (US Nonresident)",
-            "Race Percentage (White)"
-                ]
-        tables = [self.readSQL(year)(self.value_df(name)) for name in names]
-        df = reduce(lambda df1, df2: pd.merge(df1, df2, on=['School', 'Year']), tables)
-        df = pd.merge(self.school_df, df, on="School")
-        df[names] = df[names].apply(pd.to_numeric, errors='coerce')
-        df = (df.groupby(["Group", "Year"])[names].mean().map(lambda x: round(x, 2)).reset_index())
-        if save:
-            title = "Race Percentage" + " - " + str(year)
-            df.to_csv(os.path.join(self.data_path, f"{title}.csv"), index=True)
     #=================================================================================================================
     def remove_boundaries(self):
         for boundary in ["top", "bottom", "left", "right"]:
             plt.gca().spines[boundary].set_visible(False)
 
-    def line_graph(self, file, percent = False, grouped = True, category = None):
+    def line_graph(self, name, percent = False, grouped = True, category = None):
+        file = f"{name} By {"Peer Grouping" if grouped else "School"}.csv"
         title = file.strip(".csv")
         df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", file]), index_col=0)
         name = file.partition(' By')[0]
@@ -156,64 +121,90 @@ class IPEDS_DB:
         plt.tight_layout()
         plt.tick_params(axis='both', labelsize=12)
         plt.grid(axis="y", linestyle="--")
-        by_path = ['By Group'] if grouped else ['By School']
+        by_path = ['By Peer Grouping'] if grouped else ['By School']
         category_path = [] if (category is None) else [category]
-        path = [self.chart_path] + by_path + category_path + [title + ".png"]
+        path = [self.chart_path, 'Line Charts'] + by_path + category_path + [title + ".png"]
         plt.savefig(os.path.join(*path), dpi=300)
         plt.show()
         plt.close()
 
-    def bar_chart_grouped_stacked(self, file, grouped = True):
-        file_title = file.strip(".csv")
-        type = file_title.partition("(")[2].partition(")")[0]
-        category = file_title.partition(" ")[0]
-        types = [type, self.complements.at[type, 'Complement']]
-        chart_title = f"{category} Percentage By {"Peer Grouping" if grouped else "School"}"
-        df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", file]), index_col=0)
-        name = file.partition(' By')[0]
-        columns = 'Group' if grouped else 'School'
-        df = df.pivot(index='Year', columns=columns, values=name)
-        df = df.reindex(columns=self.groups['Group']) if grouped else df
-        num_groups = len(df.index)
-        num_bars = len(df.columns)
+    def df_map(self, grouped, names):
+        def f(name):
+            file = f"{name} By {"Peer Grouping" if grouped else "School"}.csv"
+            df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", file]), index_col=0)
+            columns = 'Group' if grouped else 'School'
+            df = df.pivot(index='Year', columns=columns, values=name)
+            df = df.reindex(columns=self.groups['Group']) if grouped else df
+            return df
+        return {name: f(name) for name in names}
+
+    def format_num(self, x):
+        return x if pd.isna(x) else str(int(round(x, 0)))
+
+    def bar_chart_grouped_stacked(self, category, metric, grouped = True, complement = False):
+        title = f"{metric} By {"Peer Grouping" if grouped else "School"}"
+        file_title = f"{metric} By {category} By {"Peer Grouping" if grouped else "School"}"
+        cat_df = self.cat_metrics.loc[lambda df: (df['Category'] == category) & (df['Metric'] == metric)]
+        names, types = list(cat_df['Name']), list(cat_df['Type'])
+        df_map = self.df_map(grouped, names)
+        #-------------------------
+        base_df = df_map[names[0]]
+        num_groups = len(base_df.index)
+        num_bars = len(base_df.columns)
         bar_width = 0.8 / num_bars
         x_positions = np.arange(num_groups)
         fig, ax = plt.subplots(figsize=(16, 9))
         colors = [tuple([x / 255 for x in self.df_dict(self.stack_colors, None)(y)]) for y in [0, 1]]
         self.remove_boundaries()
-        for i in range(num_bars):
-            bar_positions = x_positions + i * bar_width
-            text_pos = 100
-            bottoms = np.array(num_groups * [0])
-            complements = [(100 - x) for x in df[df.columns[i]]]
-            ax.bar(bar_positions, complements, width=bar_width, color=colors[1], bottom=bottoms, edgecolor='white')
-            for j, b, v in zip(bar_positions, bottoms, complements):
-                ax.text(j, 100, str(int(round(v, 0))), ha='center', fontsize=10, color=colors[1])
-            bottoms = bottoms + complements
-            text_pos = text_pos + 2
-            for m in range(1):
-                ax.bar(x = bar_positions, height = df.loc[:, df.columns[i]], width=bar_width, color=colors[0], bottom=bottoms,
-                       label=df.columns[i], edgecolor='white')
-                for j, v in zip(bar_positions, df[df.columns[i]]):
-                    ax.text(j, text_pos, str(int(round(v, 0))), ha='center', fontsize=10, color=colors[0])
-
+        #--------------------------
+        bottoms = np.zeros((num_groups, num_bars))
+        sum_mat = reduce(lambda x, y: x + y, [df_map[name].to_numpy() for name in names])
+        delta = np.nanmax(sum_mat) / 50
+        text_pos = sum_mat
+        if complement:
+            df_mat = 100 * np.ones((num_groups, num_bars)) - sum_mat
+            text_pos = text_pos + df_mat
+            for i in range(num_bars):
+                bar_positions = x_positions + i * bar_width
+                ax.bar(x = bar_positions, height = df_mat[:, i], width=bar_width, color=colors[-1],
+                       bottom=bottoms[:, i], label=base_df.columns[i], edgecolor='white')
+                for j, x, v in zip(range(num_groups), bar_positions, df_mat[:, i]):
+                    ax.text(x, text_pos[j, i], self.format_num(v), ha='center', fontsize=7, color=colors[-1])
+            bottoms = bottoms + df_mat
+            text_pos = text_pos + delta
+        for n in range(len(names)):
+            df_mat = df_map[names[n]].to_numpy()
+            for i in range(num_bars):
+                bar_positions = x_positions + i * bar_width
+                ax.bar(x = bar_positions, height = df_mat[:, i], width=bar_width, color=colors[n],
+                       bottom=bottoms[:, i], label=base_df.columns[i], edgecolor='white')
+                for j, x, v in zip(range(num_groups), bar_positions, df_mat[:, i]):
+                    ax.text(x, text_pos[j, i], self.format_num(v), ha='center', fontsize=7, color=colors[n])
+            bottoms = bottoms + df_mat
+            text_pos = text_pos + delta
         label_positions = reduce(lambda x, y: x + y, [list(x_positions + i * bar_width) for i in range(num_bars)])
-        labels = reduce(lambda x, y: x + y, [num_groups * [self.groups.at[i, 'Abbreviation']] for i in range(num_bars)])
+        abbrev_df = self.groups if grouped else self.sch_abbrev
+        labels = reduce(lambda x, y: x + y, [num_groups * [abbrev_df.at[i, 'Abbreviation']] for i in range(num_bars)])
         ax.set_xticks(label_positions)
         ax.set_xticklabels(labels, rotation=40)
         ax2 = ax.twiny()
         ax2.set_xlim(ax.get_xlim())
         label_positions_2 = x_positions + (bar_width * (num_bars - 1) / 2)
-        labels_2 = df.index
+        labels_2 = base_df.index
         ax2.set_xticks(label_positions_2)
         ax2.set_xticklabels(labels_2)
         ax.yaxis.set_visible(False)
-        ax.set_title(chart_title, fontsize=20)
+        ax.set_title(title, fontsize=20)
         ax.grid(axis='y', linestyle='--', alpha=0.7)
-        legend_elements = [Patch(facecolor=colors[i], label=types[i]) for i in range(len(types))]
-        ax.legend(handles=legend_elements, title=category, loc='upper left', bbox_to_anchor=(-0.1, 1), borderaxespad=0.)
-        fig.savefig(os.path.join(self.chart_path, chart_title + ".png"))
-        fig.show()
+        leg_elems = [Patch(facecolor=colors[i], label=types[i]) for i in reversed(range(len(names)))]
+        if complement:
+            leg_elems += [Patch(facecolor=colors[-1], label = self.complements.at[category, 'Complement'])]
+        ax.legend(handles=leg_elems, title=category, loc='upper left', bbox_to_anchor=(-0.15, 1), borderaxespad=0.)
+        by_path = ['By Peer Grouping'] if grouped else ['By School']
+        path = [self.chart_path, 'Grouped, Stacked Bar Charts'] + by_path + [file_title + ".png"]
+        plt.savefig(os.path.join(*path), dpi=300)
+        plt.show()
+        plt.close()
 
     def pie_charts(self, file):
         title = file.strip(".csv")
@@ -239,28 +230,58 @@ class IPEDS_DB:
             plt.show()
             plt.close()
 
-    def chart(self, type):
-        def f(file, percent = False, grouped = True, category = None):
-            if type == "line":
-                self.line_graph(file, percent, grouped, category)
+    def df_line_graph(self, base_year, end_year = None):
+        def f(name, percent = True, grouped = True, category = None):
+            self.year_values_df(name, base_year, end_year = end_year, grouped = grouped)
+            title = name + " By Peer Grouping" if grouped else name + " By School"
+            file = f"{title}.csv"
+            self.line_graph(file, percent = percent, grouped = grouped, category = category)
         return f
 
-    def save_df_chart(self, name, base_year, end_year = None, percent = True, grouped = True, category = None):
-        self.year_values_df(name, base_year, end_year = end_year, grouped = grouped)
-        title = name + " By Peer Grouping" if grouped else name + " By School"
-        file = f"{title}.csv"
-        self.chart('line')(file, percent = percent, grouped = grouped, category = category)
-
-    def save_df_graph_pairs(self, base_year, end_year = None, grouped = True, category = None):
+    def save_dfs_line_charts(self, base_year, end_year = None, grouped = True, category = None, make_df = True):
         df = self.gen_metrics if category is None else self.cat_metrics.loc[lambda df: df['Category'] == category]
+        save_func = self.df_line_graph(base_year, end_year) if make_df else self.line_graph
         for name, percent in zip(df['Name'], df['Percent']):
-            self.save_df_chart(name, base_year, end_year, percent = percent, grouped = grouped, category = category)
+            save_func(name, percent = percent, grouped = grouped, category = category)
 
-    def save(self, base_year, end_year = None):
-        is_grouped = [False]
-        category = [None, 'Gender', 'Race', 'Level']
-        for g, c in product(is_grouped, category):
+    def save_dfs_line_charts_all(self, base_year, end_year = None):
+        is_grouped = [True, False]
+        categories = [None, 'Gender', 'Race', 'Level']
+        for g, c in product(is_grouped, categories):
             print("-------------------------------------")
             print(f"Grouped: {g}; Category: {c}")
-            self.save_df_graph_pairs(base_year, end_year, g, c)
+            self.save_dfs_line_charts(base_year, end_year, g, c)
+
+    def save_df_gsb_graph(self, base_year, end_year = None, make_df = True):
+        def f(category, metric, grouped = True, complement = False):
+            names = self.cat_metrics.loc[lambda df: (df['Category'] == category) & (df['Metric'] == metric)]['Name']
+            by_func = lambda name: f"{name} By {"Peer Grouping" if grouped else "School"}"
+            for name in names:
+                if make_df:
+                    self.year_values_df(name, base_year, end_year, grouped)
+                else:
+                    try:
+                        file = by_func(name) + ".csv"
+                        print(file)
+                        df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", file]), index_col=0)
+                    except FileNotFoundError:
+                        self.year_values_df(name, base_year, end_year, grouped)
+            self.bar_chart_grouped_stacked(category, metric, grouped, complement)
+        return f
+
+    def save_dfs_gsb_charts_all(self, base_year, end_year = None, make_df = True):
+        is_grouped = [True, False]
+        cat_met = [
+                    ('Gender', 'Enrollment Percentage', True),
+                    ('Race (W-NW)', 'Enrollment Percentage', True),
+                    ('Gender', 'Graduation Rate (6 Years)', False),
+                    ('Level', 'Enrollment', False),
+                    ('Gender', 'Graduation Rate', False)
+                ]
+        for (g, (cat, met, comp)) in product(is_grouped, cat_met):
+            self.save_df_gsb_graph(base_year, end_year, make_df)(cat, met, g, comp)
+
+
+
+
 
