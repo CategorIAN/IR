@@ -48,15 +48,16 @@ class IPEDS_DB:
         def execute(year, cursor):
             year_table = table.replace("yyyy", str(year)).replace("xxxx", str(year - 1)[2:] + str(year)[2:])
             stmt = f"""
-            SELECT [HD{year}.INSTNM] AS School,
+            SELECT [HD{year}].[INSTNM] AS School,
                     '{self.academic_year(start, year)}' AS Year,
                     [{year_table}].[{variable}] AS [{name}]
             FROM [HD{year}]
-            INNER JOIN [{year_table}] ON HD{year}.UNITID = {year_table}.UNITID
-            WHERE INSTNM IN ({",\n".join([f"'{school}'" for school in self.school_df['School']])})
+            LEFT OUTER JOIN [{year_table}] ON HD{year}.UNITID = {year_table}.UNITID
+            WHERE [HD{year}].[INSTNM] IN ({",\n".join([f"'{school}'" for school in self.school_df['School']])})
             """
             print(100 * "-" + "Executing" + 100 * "-" + "\n" + stmt + "\n" + 2 * 100 * "-")
             df = self.queried_df(cursor, stmt, index_col=True)
+            print(df)
             return df
         return execute
 
@@ -93,6 +94,7 @@ class IPEDS_DB:
         else:
             title = name + " By School"
             df = df.reset_index()
+        print(f"Saving {title}")
         df.to_csv(os.path.join(self.data_path, f"{title}.csv"), index=True)
     #=================================================================================================================
     def remove_boundaries(self):
@@ -112,7 +114,7 @@ class IPEDS_DB:
         plt.figure(figsize=(16, 9))
         if percent:
             df = df.map(lambda x: round(x / 100, 2))
-        df.plot(kind="line", color=colors, figsize=(16, 9))
+        df.plot(kind="line", color=colors, figsize=(16, 9), linewidth=3)
         self.remove_boundaries()
         if percent:
             plt.gca().yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
@@ -238,19 +240,29 @@ class IPEDS_DB:
             self.line_graph(file, percent = percent, grouped = grouped, category = category)
         return f
 
-    def save_dfs_line_charts(self, base_year, end_year = None, grouped = True, category = None, make_df = True):
-        df = self.gen_metrics if category is None else self.cat_metrics.loc[lambda df: df['Category'] == category]
+    def save_dfs_line_charts(self, base_year, end_year = None, grouped = True, category = None, metric = None, make_df = True):
+        if category is None:
+            df = self.gen_metrics
+        else:
+            df = self.cat_metrics.loc[lambda df: (df['Category'] == category) & (df['Metric'] == metric)]
         save_func = self.df_line_graph(base_year, end_year) if make_df else self.line_graph
         for name, percent in zip(df['Name'], df['Percent']):
             save_func(name, percent = percent, grouped = grouped, category = category)
 
-    def save_dfs_line_charts_all(self, base_year, end_year = None):
+    def save_dfs_line_charts_all(self, base_year, end_year = None, make_df = True):
         is_grouped = [True, False]
-        categories = [None, 'Gender', 'Race', 'Level']
-        for g, c in product(is_grouped, categories):
+        cat_met = [
+            (None, None),
+            ('Gender', 'Enrollment Percentage'),
+            ('Race', 'Enrollment Percentage'),
+            ('Level', 'Enrollment'),
+            ('Gender', 'Graduation Rate (6 Years)'),
+            ('Gender', 'Graduation Rate')
+        ]
+        for (g, (cat, met)) in product(is_grouped, cat_met):
             print("-------------------------------------")
-            print(f"Grouped: {g}; Category: {c}")
-            self.save_dfs_line_charts(base_year, end_year, g, c)
+            print(f"Grouped: {g}; Category: {cat}; Metric: {met}")
+            self.save_dfs_line_charts(base_year, end_year, g, cat, met, make_df)
 
     def save_df_gsb_graph(self, base_year, end_year = None, make_df = True):
         def f(category, metric, grouped = True, complement = False):
@@ -276,7 +288,7 @@ class IPEDS_DB:
                     ('Race (W-NW)', 'Enrollment Percentage', True),
                     ('Gender', 'Graduation Rate (6 Years)', False),
                     ('Level', 'Enrollment', False),
-                    ('Gender', 'Graduation Rate', False)
+                    ('Gender', 'Graduation Rate', False),
                 ]
         for (g, (cat, met, comp)) in product(is_grouped, cat_met):
             self.save_df_gsb_graph(base_year, end_year, make_df)(cat, met, g, comp)
