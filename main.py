@@ -34,6 +34,10 @@ def f(i):
         X.save_dfs_line_charts_all(2015, 2023, make_df = False)
     if i == 5:
         X.line_graph('Military Assistance Count', True, True, None)
+    if i == 6:
+        X.save_dfs_line_charts_all(2015, 2023, make_df = True)
+    if i == 7:
+        X.year_values_df('Graduation Rate (6 Years)', 2015, 2023)
 
 
 def g(i):
@@ -47,4 +51,4 @@ def g(i):
         print(X.nulls(46))
 
 if __name__ == '__main__':
-    f(5)
+    f(3)

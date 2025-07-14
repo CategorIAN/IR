@@ -1,27 +1,192 @@
-,School,Group,Year,Race Percentage (American Indian or Alaska Native),Race Percentage (Asian),Race Percentage (Asian or Native Hawaiian or Pacific Islander),Race Percentage (Black or African American),Race Percentage (Hispanic or Latino),Race Percentage (Native Hawaiian or Other Pacific Islander),Race Percentage (Race-ethnicity unknown),Race Percentage (Two or More Races),Race Percentage (US Nonresident),Race Percentage (White)
-0,Carroll College,Carroll College,23-24,0,1,1,1,7,0,9,6,0,76
-1,The University of Montana,Montana Schools,23-24,3,5,5,1,6,0,4,12,2,67
-2,Montana Technological University,Montana Schools,23-24,2,2,2,1,5,0,6,3,3,80
-3,University of Providence,Montana Schools,23-24,3,4,6,5,3,2,2,0,4,77
-4,Rocky Mountain College,Montana Schools,23-24,2,1,1,4,7,0,0,6,5,75
-5,Gonzaga University,Regional Schools,23-24,1,6,6,2,12,0,6,7,6,61
-6,Whitman College,Regional Schools,23-24,0,6,6,3,12,0,2,6,14,58
-7,Whitworth University,Regional Schools,23-24,0,4,6,2,12,2,1,9,5,65
-8,The College of Idaho,Regional Schools,23-24,1,2,3,2,17,1,4,5,13,55
-9,Walla Walla University,Regional Schools,23-24,0,5,6,3,23,1,1,9,8,50
-10,Loras College,National Schools,23-24,0,1,1,4,9,0,4,2,4,75
-11,St. Thomas Aquinas College,National Schools,23-24,0,5,5,13,14,0,3,2,4,59
-12,Thomas More University,National Schools,23-24,0,2,2,7,5,0,2,4,4,77
-13,Carroll College,Overall,23-24,0,1,1,1,7,0,9,6,0,76
-14,The University of Montana,Overall,23-24,3,5,5,1,6,0,4,12,2,67
-15,Montana Technological University,Overall,23-24,2,2,2,1,5,0,6,3,3,80
-16,University of Providence,Overall,23-24,3,4,6,5,3,2,2,0,4,77
-17,Rocky Mountain College,Overall,23-24,2,1,1,4,7,0,0,6,5,75
-18,Gonzaga University,Overall,23-24,1,6,6,2,12,0,6,7,6,61
-19,Whitman College,Overall,23-24,0,6,6,3,12,0,2,6,14,58
-20,Whitworth University,Overall,23-24,0,4,6,2,12,2,1,9,5,65
-21,The College of Idaho,Overall,23-24,1,2,3,2,17,1,4,5,13,55
-22,Walla Walla University,Overall,23-24,0,5,6,3,23,1,1,9,8,50
-23,Loras College,Overall,23-24,0,1,1,4,9,0,4,2,4,75
-24,St. Thomas Aquinas College,Overall,23-24,0,5,5,13,14,0,3,2,4,59
-25,Thomas More University,Overall,23-24,0,2,2,7,5,0,2,4,4,77
+,School,Group,Year,Graduation Rate (4 Years)
+0,Carroll College,Carroll College,2015,50
+1,Carroll College,Carroll College,2016,47
+2,Carroll College,Carroll College,2017,49
+3,Carroll College,Carroll College,2018,50
+4,Carroll College,Carroll College,2019,49
+5,Carroll College,Carroll College,2020,49
+6,Carroll College,Carroll College,2021,53
+7,Carroll College,Carroll College,2022,55
+8,Carroll College,Carroll College,2023,54
+9,The University of Montana,Montana Schools,2015,24
+10,The University of Montana,Montana Schools,2016,25
+11,The University of Montana,Montana Schools,2017,29
+12,The University of Montana,Montana Schools,2018,27
+13,The University of Montana,Montana Schools,2019,30
+14,The University of Montana,Montana Schools,2020,30
+15,The University of Montana,Montana Schools,2021,33
+16,The University of Montana,Montana Schools,2022,29
+17,The University of Montana,Montana Schools,2023,31
+18,Montana Technological University,Montana Schools,2017,18
+19,Montana Technological University,Montana Schools,2018,18
+20,Montana Technological University,Montana Schools,2019,24
+21,Montana Technological University,Montana Schools,2020,30
+22,Montana Technological University,Montana Schools,2021,36
+23,Montana Technological University,Montana Schools,2022,30
+24,Montana Technological University,Montana Schools,2023,36
+25,University of Providence,Montana Schools,2017,27
+26,University of Providence,Montana Schools,2018,28
+27,University of Providence,Montana Schools,2019,28
+28,University of Providence,Montana Schools,2020,28
+29,University of Providence,Montana Schools,2021,20
+30,University of Providence,Montana Schools,2022,31
+31,University of Providence,Montana Schools,2023,29
+32,Rocky Mountain College,Montana Schools,2015,30
+33,Rocky Mountain College,Montana Schools,2016,32
+34,Rocky Mountain College,Montana Schools,2017,40
+35,Rocky Mountain College,Montana Schools,2018,32
+36,Rocky Mountain College,Montana Schools,2019,31
+37,Rocky Mountain College,Montana Schools,2020,35
+38,Rocky Mountain College,Montana Schools,2021,41
+39,Rocky Mountain College,Montana Schools,2022,33
+40,Rocky Mountain College,Montana Schools,2023,32
+41,Gonzaga University,Regional Schools,2015,73
+42,Gonzaga University,Regional Schools,2016,1
+43,Gonzaga University,Regional Schools,2017,78
+44,Gonzaga University,Regional Schools,2018,73
+45,Gonzaga University,Regional Schools,2019,75
+46,Gonzaga University,Regional Schools,2020,77
+47,Gonzaga University,Regional Schools,2021,75
+48,Gonzaga University,Regional Schools,2022,80
+49,Gonzaga University,Regional Schools,2023,78
+50,Whitman College,Regional Schools,2015,79
+51,Whitman College,Regional Schools,2016,83
+52,Whitman College,Regional Schools,2017,79
+53,Whitman College,Regional Schools,2018,81
+54,Whitman College,Regional Schools,2019,80
+55,Whitman College,Regional Schools,2020,79
+56,Whitman College,Regional Schools,2021,78
+57,Whitman College,Regional Schools,2022,83
+58,Whitman College,Regional Schools,2023,68
+59,Whitworth University,Regional Schools,2015,64
+60,Whitworth University,Regional Schools,2016,63
+61,Whitworth University,Regional Schools,2017,65
+62,Whitworth University,Regional Schools,2018,68
+63,Whitworth University,Regional Schools,2019,63
+64,Whitworth University,Regional Schools,2020,66
+65,Whitworth University,Regional Schools,2021,64
+66,Whitworth University,Regional Schools,2022,66
+67,Whitworth University,Regional Schools,2023,60
+68,The College of Idaho,Regional Schools,2015,55
+69,The College of Idaho,Regional Schools,2016,46
+70,The College of Idaho,Regional Schools,2017,59
+71,The College of Idaho,Regional Schools,2018,58
+72,The College of Idaho,Regional Schools,2019,54
+73,The College of Idaho,Regional Schools,2020,59
+74,The College of Idaho,Regional Schools,2021,49
+75,The College of Idaho,Regional Schools,2022,52
+76,The College of Idaho,Regional Schools,2023,57
+77,Loras College,National Schools,2015,57
+78,Loras College,National Schools,2016,61
+79,Loras College,National Schools,2017,57
+80,Loras College,National Schools,2018,60
+81,Loras College,National Schools,2019,59
+82,Loras College,National Schools,2020,64
+83,Loras College,National Schools,2021,60
+84,Loras College,National Schools,2022,58
+85,Loras College,National Schools,2023,49
+86,St. Thomas Aquinas College,National Schools,2015,36
+87,St. Thomas Aquinas College,National Schools,2016,42
+88,St. Thomas Aquinas College,National Schools,2017,44
+89,St. Thomas Aquinas College,National Schools,2018,41
+90,St. Thomas Aquinas College,National Schools,2019,48
+91,St. Thomas Aquinas College,National Schools,2020,49
+92,St. Thomas Aquinas College,National Schools,2021,44
+93,St. Thomas Aquinas College,National Schools,2022,42
+94,St. Thomas Aquinas College,National Schools,2023,48
+95,Thomas More University,National Schools,2019,38
+96,Thomas More University,National Schools,2020,29
+97,Thomas More University,National Schools,2021,35
+98,Thomas More University,National Schools,2022,31
+99,Thomas More University,National Schools,2023,29
+100,The University of Montana,Overall,2015,24
+101,The University of Montana,Overall,2016,25
+102,The University of Montana,Overall,2017,29
+103,The University of Montana,Overall,2018,27
+104,The University of Montana,Overall,2019,30
+105,The University of Montana,Overall,2020,30
+106,The University of Montana,Overall,2021,33
+107,The University of Montana,Overall,2022,29
+108,The University of Montana,Overall,2023,31
+109,Montana Technological University,Overall,2017,18
+110,Montana Technological University,Overall,2018,18
+111,Montana Technological University,Overall,2019,24
+112,Montana Technological University,Overall,2020,30
+113,Montana Technological University,Overall,2021,36
+114,Montana Technological University,Overall,2022,30
+115,Montana Technological University,Overall,2023,36
+116,University of Providence,Overall,2017,27
+117,University of Providence,Overall,2018,28
+118,University of Providence,Overall,2019,28
+119,University of Providence,Overall,2020,28
+120,University of Providence,Overall,2021,20
+121,University of Providence,Overall,2022,31
+122,University of Providence,Overall,2023,29
+123,Rocky Mountain College,Overall,2015,30
+124,Rocky Mountain College,Overall,2016,32
+125,Rocky Mountain College,Overall,2017,40
+126,Rocky Mountain College,Overall,2018,32
+127,Rocky Mountain College,Overall,2019,31
+128,Rocky Mountain College,Overall,2020,35
+129,Rocky Mountain College,Overall,2021,41
+130,Rocky Mountain College,Overall,2022,33
+131,Rocky Mountain College,Overall,2023,32
+132,Gonzaga University,Overall,2015,73
+133,Gonzaga University,Overall,2016,1
+134,Gonzaga University,Overall,2017,78
+135,Gonzaga University,Overall,2018,73
+136,Gonzaga University,Overall,2019,75
+137,Gonzaga University,Overall,2020,77
+138,Gonzaga University,Overall,2021,75
+139,Gonzaga University,Overall,2022,80
+140,Gonzaga University,Overall,2023,78
+141,Whitman College,Overall,2015,79
+142,Whitman College,Overall,2016,83
+143,Whitman College,Overall,2017,79
+144,Whitman College,Overall,2018,81
+145,Whitman College,Overall,2019,80
+146,Whitman College,Overall,2020,79
+147,Whitman College,Overall,2021,78
+148,Whitman College,Overall,2022,83
+149,Whitman College,Overall,2023,68
+150,Whitworth University,Overall,2015,64
+151,Whitworth University,Overall,2016,63
+152,Whitworth University,Overall,2017,65
+153,Whitworth University,Overall,2018,68
+154,Whitworth University,Overall,2019,63
+155,Whitworth University,Overall,2020,66
+156,Whitworth University,Overall,2021,64
+157,Whitworth University,Overall,2022,66
+158,Whitworth University,Overall,2023,60
+159,The College of Idaho,Overall,2015,55
+160,The College of Idaho,Overall,2016,46
+161,The College of Idaho,Overall,2017,59
+162,The College of Idaho,Overall,2018,58
+163,The College of Idaho,Overall,2019,54
+164,The College of Idaho,Overall,2020,59
+165,The College of Idaho,Overall,2021,49
+166,The College of Idaho,Overall,2022,52
+167,The College of Idaho,Overall,2023,57
+168,Loras College,Overall,2015,57
+169,Loras College,Overall,2016,61
+170,Loras College,Overall,2017,57
+171,Loras College,Overall,2018,60
+172,Loras College,Overall,2019,59
+173,Loras College,Overall,2020,64
+174,Loras College,Overall,2021,60
+175,Loras College,Overall,2022,58
+176,Loras College,Overall,2023,49
+177,St. Thomas Aquinas College,Overall,2015,36
+178,St. Thomas Aquinas College,Overall,2016,42
+179,St. Thomas Aquinas College,Overall,2017,44
+180,St. Thomas Aquinas College,Overall,2018,41
+181,St. Thomas Aquinas College,Overall,2019,48
+182,St. Thomas Aquinas College,Overall,2020,49
+183,St. Thomas Aquinas College,Overall,2021,44
+184,St. Thomas Aquinas College,Overall,2022,42
+185,St. Thomas Aquinas College,Overall,2023,48
+186,Thomas More University,Overall,2019,38
+187,Thomas More University,Overall,2020,29
+188,Thomas More University,Overall,2021,35
+189,Thomas More University,Overall,2022,31
+190,Thomas More University,Overall,2023,29

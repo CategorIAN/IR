@@ -90,7 +90,7 @@ class IPEDS_DB:
         if grouped:
             df = pd.merge(self.school_df, df, on="School")
             df = df.groupby(["Group", "Year"])[name].mean().map(lambda x: round(x, 2)).reset_index()
-            title = name + " By Peer Grouping"
+            title = name + " Average By Peer Grouping"
         else:
             title = name + " By School"
             df = df.reset_index()
@@ -102,30 +102,30 @@ class IPEDS_DB:
             plt.gca().spines[boundary].set_visible(False)
 
     def line_graph(self, name, percent = False, grouped = True, category = None):
-        file = f"{name} By {"Peer Grouping" if grouped else "School"}.csv"
+        file = f"{name} {"Average By Peer Grouping" if grouped else "By School"}.csv"
         title = file.strip(".csv")
         df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", file]), index_col=0)
-        print(df)
-        name = file.partition(' By')[0]
+        name = file.partition(' Average' if grouped else ' By')[0]
         columns = 'Group' if grouped else 'School'
         df = df.pivot(index='Year', columns=columns, values=name)
         df = df.reindex(columns=self.groups['Group']) if grouped else df
-        print(df)
         color_df = self.group_colors if grouped else self.school_colors
-        colors = [tuple([x / 255 for x in self.df_dict(color_df, None)(group)]) for group in df.columns]
-        plt.figure(figsize=(16, 9))
+        color_dict = self.df_dict(color_df, None)
+        colors = [tuple([x / 255 for x in color_dict(group)]) for group in df.columns]
+        fig, ax = plt.subplots(figsize=(16, 9))
         if percent:
             df = df.map(lambda x: round(x / 100, 3))
-            print(df)
-        df.plot(kind="line", color=colors, figsize=(16, 9), linewidth=3)
+        df.plot(kind="line", color='black', figsize=(16,9), linewidth=4, ax=ax)
+        df.plot(kind="line", color=colors, figsize=(16, 9), linewidth=3, ax=ax)
         self.remove_boundaries()
         if percent:
             plt.gca().yaxis.set_major_formatter(PercentFormatter(xmax=1.0))
         plt.gca().set_title(title, fontsize=20)
-        plt.legend(loc="upper left", bbox_to_anchor=(-0.2, 1), borderaxespad=0.)
-        plt.tight_layout()
         plt.tick_params(axis='both', labelsize=12)
         plt.grid(axis="y", linestyle="--")
+        leg_elems = [Patch(facecolor=colors[i], label=df.columns[i]) for i in range(len(df.columns))]
+        ax.legend(handles=leg_elems, title=category, loc='upper left', bbox_to_anchor=(-0.3, 1), borderaxespad=0.)
+        plt.tight_layout()
         by_path = ['By Peer Grouping'] if grouped else ['By School']
         category_path = [] if (category is None) else [category]
         path = [self.chart_path, 'Line Charts'] + by_path + category_path + [title + ".png"]
@@ -135,7 +135,7 @@ class IPEDS_DB:
 
     def df_map(self, grouped, names):
         def f(name):
-            file = f"{name} By {"Peer Grouping" if grouped else "School"}.csv"
+            file = f"{name} {"Average By Peer Grouping" if grouped else "By School"}.csv"
             df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", file]), index_col=0)
             columns = 'Group' if grouped else 'School'
             df = df.pivot(index='Year', columns=columns, values=name)
@@ -147,8 +147,8 @@ class IPEDS_DB:
         return x if pd.isna(x) else str(int(round(x, 0)))
 
     def bar_chart_grouped_stacked(self, category, metric, grouped = True, complement = False):
-        title = f"{metric} By {"Peer Grouping" if grouped else "School"}"
-        file_title = f"{metric} By {category} By {"Peer Grouping" if grouped else "School"}"
+        title = f"{metric} By {"Average Peer Grouping" if grouped else "School"}"
+        file_title = f"{metric} By {category} {"Average By Peer Grouping" if grouped else "By School"}"
         cat_df = self.cat_metrics.loc[lambda df: (df['Category'] == category) & (df['Metric'] == metric)]
         names, types = list(cat_df['Name']), list(cat_df['Type'])
         df_map = self.df_map(grouped, names)
@@ -156,7 +156,8 @@ class IPEDS_DB:
         base_df = df_map[names[0]]
         num_groups = len(base_df.index)
         num_bars = len(base_df.columns)
-        bar_width = 0.8 / num_bars
+        bar_width = 0.45 / num_bars
+        space_bar = 0.9 / num_bars
         x_positions = np.arange(num_groups)
         fig, ax = plt.subplots(figsize=(16, 9))
         colors = [tuple([x / 255 for x in self.df_dict(self.stack_colors, None)(y)]) for y in [0, 1]]
@@ -164,40 +165,42 @@ class IPEDS_DB:
         #--------------------------
         bottoms = np.zeros((num_groups, num_bars))
         sum_mat = reduce(lambda x, y: x + y, [df_map[name].to_numpy() for name in names])
-        delta = np.nanmax(sum_mat) / 50
+        my_max = 100 if complement else np.nanmax(sum_mat)
+        delta = my_max / 50
         text_pos = sum_mat
+        ax.set_ylim(0, my_max + 4 * delta)
         if complement:
             df_mat = 100 * np.ones((num_groups, num_bars)) - sum_mat
             text_pos = text_pos + df_mat
             for i in range(num_bars):
-                bar_positions = x_positions + i * bar_width
+                bar_positions = x_positions + i * space_bar
                 ax.bar(x = bar_positions, height = df_mat[:, i], width=bar_width, color=colors[-1],
                        bottom=bottoms[:, i], label=base_df.columns[i], edgecolor='white')
                 for j, x, v in zip(range(num_groups), bar_positions, df_mat[:, i]):
-                    ax.text(x, text_pos[j, i], self.format_num(v), ha='center', fontsize=7, color=colors[-1])
+                    ax.text(x, text_pos[j, i] + 1 * delta * int(complement) * (i % 2), self.format_num(v), ha='center', fontsize=8, color=colors[-1])
             bottoms = bottoms + df_mat
-            text_pos = text_pos + delta
+            text_pos = text_pos + delta + int(complement) * delta
         for n in range(len(names)):
             df_mat = df_map[names[n]].to_numpy()
             for i in range(num_bars):
-                bar_positions = x_positions + i * bar_width
+                bar_positions = x_positions + i * space_bar
                 ax.bar(x = bar_positions, height = df_mat[:, i], width=bar_width, color=colors[n],
                        bottom=bottoms[:, i], label=base_df.columns[i], edgecolor='white')
                 for j, x, v in zip(range(num_groups), bar_positions, df_mat[:, i]):
-                    ax.text(x, text_pos[j, i], self.format_num(v), ha='center', fontsize=7, color=colors[n])
+                    ax.text(x, text_pos[j, i] + 1 * delta * int(complement) * (i % 2), self.format_num(v), ha='center', fontsize=8, color=colors[n])
             bottoms = bottoms + df_mat
-            text_pos = text_pos + delta
-        label_positions = reduce(lambda x, y: x + y, [list(x_positions + i * bar_width) for i in range(num_bars)])
+            text_pos = text_pos + delta + int(complement) * delta
+        label_positions = reduce(lambda x, y: x + y, [list(x_positions + i * space_bar) for i in range(num_bars)])
         abbrev_df = self.groups if grouped else self.sch_abbrev
         labels = reduce(lambda x, y: x + y, [num_groups * [abbrev_df.at[i, 'Abbreviation']] for i in range(num_bars)])
         ax.set_xticks(label_positions)
-        ax.set_xticklabels(labels, rotation=40)
+        ax.set_xticklabels(labels, rotation=90, fontsize=6)
         ax2 = ax.twiny()
         ax2.set_xlim(ax.get_xlim())
-        label_positions_2 = x_positions + (bar_width * (num_bars - 1) / 2)
+        label_positions_2 = x_positions + (space_bar * (num_bars - 1) / 2)
         labels_2 = base_df.index
         ax2.set_xticks(label_positions_2)
-        ax2.set_xticklabels(labels_2)
+        ax2.set_xticklabels(labels_2, fontsize=10)
         ax.yaxis.set_visible(False)
         ax.set_title(title, fontsize=20)
         ax.grid(axis='y', linestyle='--', alpha=0.7)
@@ -238,9 +241,9 @@ class IPEDS_DB:
     def df_line_graph(self, base_year, end_year = None):
         def f(name, percent = True, grouped = True, category = None):
             self.year_values_df(name, base_year, end_year = end_year, grouped = grouped)
-            title = name + " By Peer Grouping" if grouped else name + " By School"
+            title = name + " Average By Peer Grouping" if grouped else name + " By School"
             file = f"{title}.csv"
-            self.line_graph(file, percent = percent, grouped = grouped, category = category)
+            self.line_graph(name, percent = percent, grouped = grouped, category = category)
         return f
 
     def save_dfs_line_charts(self, base_year, end_year = None, grouped = True, category = None, metric = None, make_df = True):
@@ -253,7 +256,8 @@ class IPEDS_DB:
             save_func(name, percent = percent, grouped = grouped, category = category)
 
     def save_dfs_line_charts_all(self, base_year, end_year = None, make_df = True):
-        is_grouped = [True, False]
+        #is_grouped = [True, False]
+        is_grouped = [True]
         cat_met = [
             (None, None),
             ('Gender', 'Enrollment Percentage'),
@@ -270,7 +274,7 @@ class IPEDS_DB:
     def save_df_gsb_graph(self, base_year, end_year = None, make_df = True):
         def f(category, metric, grouped = True, complement = False):
             names = self.cat_metrics.loc[lambda df: (df['Category'] == category) & (df['Metric'] == metric)]['Name']
-            by_func = lambda name: f"{name} By {"Peer Grouping" if grouped else "School"}"
+            by_func = lambda name: f"{name} {"Average By Peer Grouping" if grouped else "By School"}"
             for name in names:
                 if make_df:
                     self.year_values_df(name, base_year, end_year, grouped)
@@ -285,7 +289,8 @@ class IPEDS_DB:
         return f
 
     def save_dfs_gsb_charts_all(self, base_year, end_year = None, make_df = True):
-        is_grouped = [True, False]
+        #is_grouped = [True, False]
+        is_grouped = [False]
         cat_met = [
                     ('Gender', 'Enrollment Percentage', True),
                     ('Race (W-NW)', 'Enrollment Percentage', True),
