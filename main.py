@@ -32,6 +32,8 @@ def f(i):
         X.save_dfs_gsb_charts_all(2015, 2023, make_df = False)
     if i == 4:
         X.save_dfs_line_charts_all(2015, 2023, make_df = False)
+    if i == 5:
+        X.line_graph('Military Assistance Count', True, True, None)
 
 
 def g(i):
@@ -45,4 +47,4 @@ def g(i):
         print(X.nulls(46))
 
 if __name__ == '__main__':
-    f(4)
+    f(5)

@@ -105,15 +105,18 @@ class IPEDS_DB:
         file = f"{name} By {"Peer Grouping" if grouped else "School"}.csv"
         title = file.strip(".csv")
         df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", file]), index_col=0)
+        print(df)
         name = file.partition(' By')[0]
         columns = 'Group' if grouped else 'School'
         df = df.pivot(index='Year', columns=columns, values=name)
         df = df.reindex(columns=self.groups['Group']) if grouped else df
+        print(df)
         color_df = self.group_colors if grouped else self.school_colors
         colors = [tuple([x / 255 for x in self.df_dict(color_df, None)(group)]) for group in df.columns]
         plt.figure(figsize=(16, 9))
         if percent:
-            df = df.map(lambda x: round(x / 100, 2))
+            df = df.map(lambda x: round(x / 100, 3))
+            print(df)
         df.plot(kind="line", color=colors, figsize=(16, 9), linewidth=3)
         self.remove_boundaries()
         if percent:
