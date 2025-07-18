@@ -27,9 +27,9 @@ def f(i):
     if i == 1:
         X.save_dfs_gsb_charts_all(2015, 2023, make_df = False)
     if i == 2:
-        X.save_dfs_line_charts_all(2015, 2023, make_df = True)
+        X.save_dfs_line_charts_all(2015, 2023, make_df = False)
     if i == 3:
-        X.year_values_df('Graduation Rate (6 Years)', 2015, 2023)
+        X.save_dfs_line_charts_all(2015, 2023, make_df = True)
 
 
 def g(i):
