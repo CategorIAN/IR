@@ -24,12 +24,12 @@ def df_query(df, cols  = None):
 
 def f(i):
     X = IPEDS_DB("NWCCU")
-    if i == 1:
-        X.save_dfs_gsb_charts_all(2015, 2023, make_df = False)
-    if i == 2:
-        X.save_dfs_line_charts_all(2015, 2023, make_df = False)
-    if i == 3:
-        X.save_dfs_line_charts_all(2015, 2023, make_df = True)
+    if i == 4:
+        X.adjusted_chart(12)
+    if i == 5:
+        X.save_dfs_line_charts_all(2015, 2023, make_df=True)
+    if i == 6:
+        X.year_values_df('Race Percentage (American Indian or Alaska Native)', 2015, 2023, True)
 
 def g(i):
     X = DV("NWCCU_Carroll")

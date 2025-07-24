@@ -89,7 +89,8 @@ FROM (
                                                                       'Women''s Volleyball',
                                                                       'Women''s Volleyball - JV'
                                     )
-                                  AND STA_STUDENT = COHORT.ID)
+                                  AND STA_STUDENT = COHORT.ID
+                                AND STA_OTHER_COHORT_START_DATES <= TERMS.TERM_END_DATE)
                   AND PERSON.GENDER = 'F'
 --(End 1)---------------------------------------------------------------------------------------------------------------
               ) AS X

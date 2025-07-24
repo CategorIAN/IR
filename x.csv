@@ -1,113 +1,101 @@
-,Group,Year,Value,Gender
-0,Carroll College,2017,0.58,"Name_x
-Graduation Rate (6 Years, Pell, Men)    Men
-Graduation Rate (6 Years, Pell, Men)    Men
-Name: Type, dtype: object"
-1,Carroll College,2018,0.53,"Name_x
-Graduation Rate (6 Years, Pell, Men)    Men
-Graduation Rate (6 Years, Pell, Men)    Men
-Name: Type, dtype: object"
-2,Carroll College,2019,0.64,"Name_x
-Graduation Rate (6 Years, Pell, Men)    Men
-Graduation Rate (6 Years, Pell, Men)    Men
-Name: Type, dtype: object"
-3,Carroll College,2020,0.51,"Name_x
-Graduation Rate (6 Years, Pell, Men)    Men
-Graduation Rate (6 Years, Pell, Men)    Men
-Name: Type, dtype: object"
-4,Carroll College,2021,0.54,"Name_x
-Graduation Rate (6 Years, Pell, Men)    Men
-Graduation Rate (6 Years, Pell, Men)    Men
-Name: Type, dtype: object"
-5,Carroll College,2022,0.68,"Name_x
-Graduation Rate (6 Years, Pell, Men)    Men
-Graduation Rate (6 Years, Pell, Men)    Men
-Name: Type, dtype: object"
-6,Carroll College,2023,0.84,"Name_x
-Graduation Rate (6 Years, Pell, Men)    Men
-Graduation Rate (6 Years, Pell, Men)    Men
-Name: Type, dtype: object"
-0,Carroll College,2017,0.58,"Name_x
-Graduation Rate (6 Years, Pell, Men)    Men
-Graduation Rate (6 Years, Pell, Men)    Men
-Name: Type, dtype: object"
-1,Carroll College,2018,0.53,"Name_x
-Graduation Rate (6 Years, Pell, Men)    Men
-Graduation Rate (6 Years, Pell, Men)    Men
-Name: Type, dtype: object"
-2,Carroll College,2019,0.64,"Name_x
-Graduation Rate (6 Years, Pell, Men)    Men
-Graduation Rate (6 Years, Pell, Men)    Men
-Name: Type, dtype: object"
-3,Carroll College,2020,0.51,"Name_x
-Graduation Rate (6 Years, Pell, Men)    Men
-Graduation Rate (6 Years, Pell, Men)    Men
-Name: Type, dtype: object"
-4,Carroll College,2021,0.54,"Name_x
-Graduation Rate (6 Years, Pell, Men)    Men
-Graduation Rate (6 Years, Pell, Men)    Men
-Name: Type, dtype: object"
-5,Carroll College,2022,0.68,"Name_x
-Graduation Rate (6 Years, Pell, Men)    Men
-Graduation Rate (6 Years, Pell, Men)    Men
-Name: Type, dtype: object"
-6,Carroll College,2023,0.84,"Name_x
-Graduation Rate (6 Years, Pell, Men)    Men
-Graduation Rate (6 Years, Pell, Men)    Men
-Name: Type, dtype: object"
-0,Carroll College,2017,0.67,"Name_x
-Graduation Rate (6 Years, Pell, Women)    Women
-Graduation Rate (6 Years, Pell, Women)    Women
-Name: Type, dtype: object"
-1,Carroll College,2018,0.51,"Name_x
-Graduation Rate (6 Years, Pell, Women)    Women
-Graduation Rate (6 Years, Pell, Women)    Women
-Name: Type, dtype: object"
-2,Carroll College,2019,0.68,"Name_x
-Graduation Rate (6 Years, Pell, Women)    Women
-Graduation Rate (6 Years, Pell, Women)    Women
-Name: Type, dtype: object"
-3,Carroll College,2020,0.72,"Name_x
-Graduation Rate (6 Years, Pell, Women)    Women
-Graduation Rate (6 Years, Pell, Women)    Women
-Name: Type, dtype: object"
-4,Carroll College,2021,0.57,"Name_x
-Graduation Rate (6 Years, Pell, Women)    Women
-Graduation Rate (6 Years, Pell, Women)    Women
-Name: Type, dtype: object"
-5,Carroll College,2022,0.61,"Name_x
-Graduation Rate (6 Years, Pell, Women)    Women
-Graduation Rate (6 Years, Pell, Women)    Women
-Name: Type, dtype: object"
-6,Carroll College,2023,0.65,"Name_x
-Graduation Rate (6 Years, Pell, Women)    Women
-Graduation Rate (6 Years, Pell, Women)    Women
-Name: Type, dtype: object"
-0,Carroll College,2017,0.67,"Name_x
-Graduation Rate (6 Years, Pell, Women)    Women
-Graduation Rate (6 Years, Pell, Women)    Women
-Name: Type, dtype: object"
-1,Carroll College,2018,0.51,"Name_x
-Graduation Rate (6 Years, Pell, Women)    Women
-Graduation Rate (6 Years, Pell, Women)    Women
-Name: Type, dtype: object"
-2,Carroll College,2019,0.68,"Name_x
-Graduation Rate (6 Years, Pell, Women)    Women
-Graduation Rate (6 Years, Pell, Women)    Women
-Name: Type, dtype: object"
-3,Carroll College,2020,0.72,"Name_x
-Graduation Rate (6 Years, Pell, Women)    Women
-Graduation Rate (6 Years, Pell, Women)    Women
-Name: Type, dtype: object"
-4,Carroll College,2021,0.57,"Name_x
-Graduation Rate (6 Years, Pell, Women)    Women
-Graduation Rate (6 Years, Pell, Women)    Women
-Name: Type, dtype: object"
-5,Carroll College,2022,0.61,"Name_x
-Graduation Rate (6 Years, Pell, Women)    Women
-Graduation Rate (6 Years, Pell, Women)    Women
-Name: Type, dtype: object"
-6,Carroll College,2023,0.65,"Name_x
-Graduation Rate (6 Years, Pell, Women)    Women
-Graduation Rate (6 Years, Pell, Women)    Women
-Name: Type, dtype: object"
+School,Year,Race Percentage (American Indian or Alaska Native)
+The College of Idaho,AY 2015-16,1
+Loras College,AY 2015-16,
+Carroll College,AY 2015-16,1
+The University of Montana,AY 2015-16,3
+Rocky Mountain College,AY 2015-16,1
+St. Thomas Aquinas College,AY 2015-16,
+Gonzaga University,AY 2015-16,1
+Whitman College,AY 2015-16,
+Whitworth University,AY 2015-16,1
+The College of Idaho,AY 2016-17,1
+Loras College,AY 2016-17,
+Carroll College,AY 2016-17,1
+The University of Montana,AY 2016-17,3
+Rocky Mountain College,AY 2016-17,2
+St. Thomas Aquinas College,AY 2016-17,
+Gonzaga University,AY 2016-17,1
+Whitman College,AY 2016-17,
+Whitworth University,AY 2016-17,1
+The College of Idaho,AY 2017-18,1
+Loras College,AY 2017-18,
+Carroll College,AY 2017-18,1
+University of Providence,AY 2017-18,1
+Montana Technological University,AY 2017-18,2
+The University of Montana,AY 2017-18,3
+Rocky Mountain College,AY 2017-18,2
+St. Thomas Aquinas College,AY 2017-18,
+Gonzaga University,AY 2017-18,1
+Whitman College,AY 2017-18,1
+Whitworth University,AY 2017-18,1
+The College of Idaho,AY 2018-19,
+Loras College,AY 2018-19,
+Carroll College,AY 2018-19,
+University of Providence,AY 2018-19,1
+Montana Technological University,AY 2018-19,2
+The University of Montana,AY 2018-19,3
+Rocky Mountain College,AY 2018-19,2
+St. Thomas Aquinas College,AY 2018-19,
+Gonzaga University,AY 2018-19,1
+Whitman College,AY 2018-19,1
+Whitworth University,AY 2018-19,1
+The College of Idaho,AY 2019-20,1
+Loras College,AY 2019-20,
+Thomas More University,AY 2019-20,
+Carroll College,AY 2019-20,
+University of Providence,AY 2019-20,2
+Montana Technological University,AY 2019-20,2
+The University of Montana,AY 2019-20,3
+Rocky Mountain College,AY 2019-20,3
+St. Thomas Aquinas College,AY 2019-20,
+Gonzaga University,AY 2019-20,1
+Whitman College,AY 2019-20,
+Whitworth University,AY 2019-20,1
+The College of Idaho,AY 2020-21,1
+Loras College,AY 2020-21,
+Thomas More University,AY 2020-21,
+Carroll College,AY 2020-21,
+University of Providence,AY 2020-21,2
+Montana Technological University,AY 2020-21,2
+The University of Montana,AY 2020-21,4
+Rocky Mountain College,AY 2020-21,3
+St. Thomas Aquinas College,AY 2020-21,
+Gonzaga University,AY 2020-21,1
+Whitman College,AY 2020-21,
+Whitworth University,AY 2020-21,1
+The College of Idaho,AY 2021-22,1
+Loras College,AY 2021-22,
+Thomas More University,AY 2021-22,
+Carroll College,AY 2021-22,1
+University of Providence,AY 2021-22,3
+Montana Technological University,AY 2021-22,3
+The University of Montana,AY 2021-22,4
+Rocky Mountain College,AY 2021-22,2
+St. Thomas Aquinas College,AY 2021-22,
+Gonzaga University,AY 2021-22,1
+Whitman College,AY 2021-22,
+Whitworth University,AY 2021-22,1
+The College of Idaho,AY 2022-23,1
+Loras College,AY 2022-23,
+Thomas More University,AY 2022-23,
+Carroll College,AY 2022-23,
+University of Providence,AY 2022-23,3
+Montana Technological University,AY 2022-23,2
+The University of Montana,AY 2022-23,4
+Rocky Mountain College,AY 2022-23,3
+St. Thomas Aquinas College,AY 2022-23,
+Whitworth University,AY 2022-23,
+Gonzaga University,AY 2022-23,1
+Whitman College,AY 2022-23,
+The College of Idaho,AY 2023-24,1
+Loras College,AY 2023-24,
+Thomas More University,AY 2023-24,
+Carroll College,AY 2023-24,
+University of Providence,AY 2023-24,3
+Montana Technological University,AY 2023-24,2
+The University of Montana,AY 2023-24,3
+Rocky Mountain College,AY 2023-24,2
+St. Thomas Aquinas College,AY 2023-24,
+Gonzaga University,AY 2023-24,1
+Whitman College,AY 2023-24,
+Whitworth University,AY 2023-24,

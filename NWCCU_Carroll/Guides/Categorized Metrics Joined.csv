@@ -1,19 +1,19 @@
 ﻿Name,Categorized Metric,Type
-"Retention Rate (Athlete, Men)",Retention Rate (Athlete) By Gender,Men
-"Retention Rate (Athlete, Women)",Retention Rate (Athlete) By Gender,Women
 "Graduation Rate (4 Years, Athlete, Men)","Graduation Rate (4 Years, Athlete) By Gender",Men
 "Graduation Rate (4 Years, Athlete, Women)","Graduation Rate (4 Years, Athlete) By Gender",Women
-"Graduation Rate (6 Years, Athlete, Men)","Graduation Rate (6 Years, Athlete) By Gender",Men
-"Graduation Rate (6 Years, Athlete, Women)","Graduation Rate (6 Years, Athlete) By Gender",Women
-"Retention Rate (Pell, Men)",Retention Rate (Pell) By Gender,Men
-"Retention Rate (Pell, Women)",Retention Rate (Pell) By Gender,Women
-"Graduation Rate (4 Years, Pell, Men)","Graduation Rate (4 Years, Pell) By Gender",Men
-"Graduation Rate (4 Years, Pell, Women)","Graduation Rate (4 Years, Pell) By Gender",Women
-"Graduation Rate (6 Years, Pell, Men)","Graduation Rate (6 Years, Pell) By Gender",Men
-"Graduation Rate (6 Years, Pell, Women)","Graduation Rate (6 Years, Pell) By Gender",Women
-"Retention Rate (GI Benefits, Men)",Retention Rate (GI Benefits) By Gender,Men
-"Retention Rate (GI Benefits, Women)",Retention Rate (GI Benefits) By Gender,Women
 "Graduation Rate (4 Years, GI Benefits, Men)","Graduation Rate (4 Years, GI Benefits) By Gender",Men
 "Graduation Rate (4 Years, GI Benefits, Women)","Graduation Rate (4 Years, GI Benefits) By Gender",Women
+"Graduation Rate (4 Years, Pell, Men)","Graduation Rate (4 Years, Pell) By Gender",Men
+"Graduation Rate (4 Years, Pell, Women)","Graduation Rate (4 Years, Pell) By Gender",Women
+"Graduation Rate (6 Years, Athlete, Men)","Graduation Rate (6 Years, Athlete) By Gender",Men
+"Graduation Rate (6 Years, Athlete, Women)","Graduation Rate (6 Years, Athlete) By Gender",Women
 "Graduation Rate (6 Years, GI Benefits, Men)","Graduation Rate (6 Years, GI Benefits) By Gender",Men
 "Graduation Rate (6 Years, GI Benefits, Women)","Graduation Rate (6 Years, GI Benefits) By Gender",Women
+"Graduation Rate (6 Years, Pell, Men)","Graduation Rate (6 Years, Pell) By Gender",Men
+"Graduation Rate (6 Years, Pell, Women)","Graduation Rate (6 Years, Pell) By Gender",Women
+"Retention Rate (Athlete, Men)",Retention Rate (Athlete) By Gender,Men
+"Retention Rate (Athlete, Women)",Retention Rate (Athlete) By Gender,Women
+"Retention Rate (GI Benefits, Men)",Retention Rate (GI Benefits) By Gender,Men
+"Retention Rate (GI Benefits, Women)",Retention Rate (GI Benefits) By Gender,Women
+"Retention Rate (Pell, Men)",Retention Rate (Pell) By Gender,Men
+"Retention Rate (Pell, Women)",Retention Rate (Pell) By Gender,Women

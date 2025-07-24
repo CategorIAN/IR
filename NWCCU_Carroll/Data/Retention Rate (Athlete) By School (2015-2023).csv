@@ -1,10 +1,10 @@
-,School,Year,Retention Rate (Athlete)
-0,Carroll College,2015,79
-1,Carroll College,2016,81
-2,Carroll College,2017,72
-3,Carroll College,2018,82
-4,Carroll College,2019,81
-5,Carroll College,2020,84
-6,Carroll College,2021,81
-7,Carroll College,2022,80
-8,Carroll College,2023,84
+#,School,Year,Retention Rate (Athlete)
+1,Carroll College,2015,79
+2,Carroll College,2016,80
+3,Carroll College,2017,70
+4,Carroll College,2018,82
+5,Carroll College,2019,81
+6,Carroll College,2020,82
+7,Carroll College,2021,79
+8,Carroll College,2022,80
+9,Carroll College,2023,84
