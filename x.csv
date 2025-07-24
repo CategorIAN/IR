@@ -1,91 +1,113 @@
 ,Group,Year,Value,Gender
-0,Carroll College,AY 2015-16,58.0,Women
-1,Carroll College,AY 2016-17,59.0,Women
-2,Carroll College,AY 2017-18,60.0,Women
-3,Carroll College,AY 2018-19,58.0,Women
-4,Carroll College,AY 2019-20,62.0,Women
-5,Carroll College,AY 2020-21,61.0,Women
-6,Carroll College,AY 2021-22,61.0,Women
-7,Carroll College,AY 2022-23,61.0,Women
-8,Carroll College,AY 2023-24,58.0,Women
-9,Montana Schools,AY 2015-16,51.5,Women
-10,Montana Schools,AY 2016-17,53.5,Women
-11,Montana Schools,AY 2017-18,52.5,Women
-12,Montana Schools,AY 2018-19,52.75,Women
-13,Montana Schools,AY 2019-20,53.75,Women
-14,Montana Schools,AY 2020-21,54.75,Women
-15,Montana Schools,AY 2021-22,55.25,Women
-16,Montana Schools,AY 2022-23,55.25,Women
-17,Montana Schools,AY 2023-24,54.0,Women
-18,National Schools,AY 2015-16,52.5,Women
-19,National Schools,AY 2016-17,52.5,Women
-20,National Schools,AY 2017-18,51.5,Women
-21,National Schools,AY 2018-19,49.5,Women
-22,National Schools,AY 2019-20,49.67,Women
-23,National Schools,AY 2020-21,50.33,Women
-24,National Schools,AY 2021-22,49.67,Women
-25,National Schools,AY 2022-23,49.33,Women
-26,National Schools,AY 2023-24,48.33,Women
-27,Overall,AY 2015-16,54.5,Women
-28,Overall,AY 2016-17,54.5,Women
-29,Overall,AY 2017-18,53.7,Women
-30,Overall,AY 2018-19,53.8,Women
-31,Overall,AY 2019-20,53.45,Women
-32,Overall,AY 2020-21,54.36,Women
-33,Overall,AY 2021-22,54.09,Women
-34,Overall,AY 2022-23,53.82,Women
-35,Overall,AY 2023-24,53.09,Women
-36,Regional Schools,AY 2015-16,57.0,Women
-37,Regional Schools,AY 2016-17,56.0,Women
-38,Regional Schools,AY 2017-18,56.0,Women
-39,Regional Schools,AY 2018-19,57.0,Women
-40,Regional Schools,AY 2019-20,56.0,Women
-41,Regional Schools,AY 2020-21,57.0,Women
-42,Regional Schools,AY 2021-22,56.25,Women
-43,Regional Schools,AY 2022-23,55.75,Women
-44,Regional Schools,AY 2023-24,55.75,Women
-0,Carroll College,AY 2015-16,42.0,Men
-1,Montana Schools,AY 2015-16,48.5,Men
-2,National Schools,AY 2015-16,47.5,Men
-3,Overall,AY 2015-16,45.5,Men
-4,Regional Schools,AY 2015-16,43.0,Men
-5,Carroll College,AY 2016-17,41.0,Men
-6,Montana Schools,AY 2016-17,46.5,Men
-7,National Schools,AY 2016-17,47.5,Men
-8,Overall,AY 2016-17,45.5,Men
-9,Regional Schools,AY 2016-17,44.0,Men
-10,Carroll College,AY 2017-18,40.0,Men
-11,Montana Schools,AY 2017-18,47.5,Men
-12,National Schools,AY 2017-18,48.5,Men
-13,Overall,AY 2017-18,46.3,Men
-14,Regional Schools,AY 2017-18,44.0,Men
-15,Carroll College,AY 2018-19,42.0,Men
-16,Montana Schools,AY 2018-19,47.25,Men
-17,National Schools,AY 2018-19,50.5,Men
-18,Overall,AY 2018-19,46.2,Men
-19,Regional Schools,AY 2018-19,43.0,Men
-20,Carroll College,AY 2019-20,38.0,Men
-21,Montana Schools,AY 2019-20,46.25,Men
-22,National Schools,AY 2019-20,50.33,Men
-23,Overall,AY 2019-20,46.55,Men
-24,Regional Schools,AY 2019-20,44.0,Men
-25,Carroll College,AY 2020-21,39.0,Men
-26,Montana Schools,AY 2020-21,45.25,Men
-27,National Schools,AY 2020-21,49.67,Men
-28,Overall,AY 2020-21,45.64,Men
-29,Regional Schools,AY 2020-21,43.0,Men
-30,Carroll College,AY 2021-22,39.0,Men
-31,Montana Schools,AY 2021-22,44.75,Men
-32,National Schools,AY 2021-22,50.33,Men
-33,Overall,AY 2021-22,45.91,Men
-34,Regional Schools,AY 2021-22,43.75,Men
-35,Carroll College,AY 2022-23,39.0,Men
-36,Montana Schools,AY 2022-23,44.75,Men
-37,National Schools,AY 2022-23,50.67,Men
-38,Overall,AY 2022-23,46.18,Men
-39,Regional Schools,AY 2022-23,44.25,Men
-40,Carroll College,AY 2023-24,42.0,Men
-41,Montana Schools,AY 2023-24,46.0,Men
-42,National Schools,AY 2023-24,51.67,Men
-43,Overall,AY 2023-24,46.91,Men
-44,Regional Schools,AY 2023-24,44.25,Men
+0,Carroll College,2017,0.58,"Name_x
+Graduation Rate (6 Years, Pell, Men)    Men
+Graduation Rate (6 Years, Pell, Men)    Men
+Name: Type, dtype: object"
+1,Carroll College,2018,0.53,"Name_x
+Graduation Rate (6 Years, Pell, Men)    Men
+Graduation Rate (6 Years, Pell, Men)    Men
+Name: Type, dtype: object"
+2,Carroll College,2019,0.64,"Name_x
+Graduation Rate (6 Years, Pell, Men)    Men
+Graduation Rate (6 Years, Pell, Men)    Men
+Name: Type, dtype: object"
+3,Carroll College,2020,0.51,"Name_x
+Graduation Rate (6 Years, Pell, Men)    Men
+Graduation Rate (6 Years, Pell, Men)    Men
+Name: Type, dtype: object"
+4,Carroll College,2021,0.54,"Name_x
+Graduation Rate (6 Years, Pell, Men)    Men
+Graduation Rate (6 Years, Pell, Men)    Men
+Name: Type, dtype: object"
+5,Carroll College,2022,0.68,"Name_x
+Graduation Rate (6 Years, Pell, Men)    Men
+Graduation Rate (6 Years, Pell, Men)    Men
+Name: Type, dtype: object"
+6,Carroll College,2023,0.84,"Name_x
+Graduation Rate (6 Years, Pell, Men)    Men
+Graduation Rate (6 Years, Pell, Men)    Men
+Name: Type, dtype: object"
+0,Carroll College,2017,0.58,"Name_x
+Graduation Rate (6 Years, Pell, Men)    Men
+Graduation Rate (6 Years, Pell, Men)    Men
+Name: Type, dtype: object"
+1,Carroll College,2018,0.53,"Name_x
+Graduation Rate (6 Years, Pell, Men)    Men
+Graduation Rate (6 Years, Pell, Men)    Men
+Name: Type, dtype: object"
+2,Carroll College,2019,0.64,"Name_x
+Graduation Rate (6 Years, Pell, Men)    Men
+Graduation Rate (6 Years, Pell, Men)    Men
+Name: Type, dtype: object"
+3,Carroll College,2020,0.51,"Name_x
+Graduation Rate (6 Years, Pell, Men)    Men
+Graduation Rate (6 Years, Pell, Men)    Men
+Name: Type, dtype: object"
+4,Carroll College,2021,0.54,"Name_x
+Graduation Rate (6 Years, Pell, Men)    Men
+Graduation Rate (6 Years, Pell, Men)    Men
+Name: Type, dtype: object"
+5,Carroll College,2022,0.68,"Name_x
+Graduation Rate (6 Years, Pell, Men)    Men
+Graduation Rate (6 Years, Pell, Men)    Men
+Name: Type, dtype: object"
+6,Carroll College,2023,0.84,"Name_x
+Graduation Rate (6 Years, Pell, Men)    Men
+Graduation Rate (6 Years, Pell, Men)    Men
+Name: Type, dtype: object"
+0,Carroll College,2017,0.67,"Name_x
+Graduation Rate (6 Years, Pell, Women)    Women
+Graduation Rate (6 Years, Pell, Women)    Women
+Name: Type, dtype: object"
+1,Carroll College,2018,0.51,"Name_x
+Graduation Rate (6 Years, Pell, Women)    Women
+Graduation Rate (6 Years, Pell, Women)    Women
+Name: Type, dtype: object"
+2,Carroll College,2019,0.68,"Name_x
+Graduation Rate (6 Years, Pell, Women)    Women
+Graduation Rate (6 Years, Pell, Women)    Women
+Name: Type, dtype: object"
+3,Carroll College,2020,0.72,"Name_x
+Graduation Rate (6 Years, Pell, Women)    Women
+Graduation Rate (6 Years, Pell, Women)    Women
+Name: Type, dtype: object"
+4,Carroll College,2021,0.57,"Name_x
+Graduation Rate (6 Years, Pell, Women)    Women
+Graduation Rate (6 Years, Pell, Women)    Women
+Name: Type, dtype: object"
+5,Carroll College,2022,0.61,"Name_x
+Graduation Rate (6 Years, Pell, Women)    Women
+Graduation Rate (6 Years, Pell, Women)    Women
+Name: Type, dtype: object"
+6,Carroll College,2023,0.65,"Name_x
+Graduation Rate (6 Years, Pell, Women)    Women
+Graduation Rate (6 Years, Pell, Women)    Women
+Name: Type, dtype: object"
+0,Carroll College,2017,0.67,"Name_x
+Graduation Rate (6 Years, Pell, Women)    Women
+Graduation Rate (6 Years, Pell, Women)    Women
+Name: Type, dtype: object"
+1,Carroll College,2018,0.51,"Name_x
+Graduation Rate (6 Years, Pell, Women)    Women
+Graduation Rate (6 Years, Pell, Women)    Women
+Name: Type, dtype: object"
+2,Carroll College,2019,0.68,"Name_x
+Graduation Rate (6 Years, Pell, Women)    Women
+Graduation Rate (6 Years, Pell, Women)    Women
+Name: Type, dtype: object"
+3,Carroll College,2020,0.72,"Name_x
+Graduation Rate (6 Years, Pell, Women)    Women
+Graduation Rate (6 Years, Pell, Women)    Women
+Name: Type, dtype: object"
+4,Carroll College,2021,0.57,"Name_x
+Graduation Rate (6 Years, Pell, Women)    Women
+Graduation Rate (6 Years, Pell, Women)    Women
+Name: Type, dtype: object"
+5,Carroll College,2022,0.61,"Name_x
+Graduation Rate (6 Years, Pell, Women)    Women
+Graduation Rate (6 Years, Pell, Women)    Women
+Name: Type, dtype: object"
+6,Carroll College,2023,0.65,"Name_x
+Graduation Rate (6 Years, Pell, Women)    Women
+Graduation Rate (6 Years, Pell, Women)    Women
+Name: Type, dtype: object"

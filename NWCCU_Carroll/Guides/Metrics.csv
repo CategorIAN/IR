@@ -1,0 +1,21 @@
+﻿Name,Percent
+Disabilities,TRUE
+Enrollment,FALSE
+Enrollment Percentage,TRUE
+GI Benefits Count,FALSE
+Graduation Rate,TRUE
+Graduation Rate (4 Years),TRUE
+"Graduation Rate (4 Years, Athlete)",TRUE
+"Graduation Rate (4 Years, GI Benefits)",TRUE
+"Graduation Rate (4 Years, Pell)",TRUE
+Graduation Rate (6 Years),TRUE
+"Graduation Rate (6 Years, Athlete)",TRUE
+"Graduation Rate (6 Years, GI Benefits)",TRUE
+"Graduation Rate (6 Years, Pell)",TRUE
+Graduation Rate (8 Years),TRUE
+Military Assistance Count,FALSE
+Pell Percentage,TRUE
+Retention Rate,TRUE
+Retention Rate (Athlete),TRUE
+Retention Rate (GI Benefits),TRUE
+Retention Rate (Pell),TRUE

@@ -31,16 +31,14 @@ def f(i):
     if i == 3:
         X.save_dfs_line_charts_all(2015, 2023, make_df = True)
 
-
 def g(i):
-    X = Null_Analysis()
+    X = DV("NWCCU_Carroll")
     if i == 1:
-        print(X.snapshotSQL('SELECT * FROM PERSON'))
+        X.line_graph('Graduation Rate (6 Years, GI Benefits)', 2015, 2023, False)
     if i == 2:
-        X = Null_Analysis()
-        print(X.irSQL('SELECT * FROM REQUEST'))
+        X.bar_chart_grouped_stacked('Retention Rate (Athlete) By Gender', 2015, 2023, False)
     if i == 3:
-        print(X.nulls(46))
+        X.save_dfs_gsb_charts_all(2015, 2023, make_df = False)
 
 if __name__ == '__main__':
-    f(1)
+    g(3)

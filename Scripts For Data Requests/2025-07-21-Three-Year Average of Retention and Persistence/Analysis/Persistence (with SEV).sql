@@ -37,7 +37,6 @@ FROM (
                                     JOIN TERMS ON SEV.ENROLL_TERM = TERMS_ID
                            WHERE ENROLL_CURRENT_STATUS IN ('New', 'Add')
                              AND COALESCE(ENROLL_SCS_PASS_AUDIT, '') != 'A'
-                             AND ENROLL_TERM IN ('2022FA', '2023FA', '2024FA')
 --(End 1)-------------------------------------------------------------------------------------------------------
                        ) AS X
 --(End 2)-------------------------------------------------------------------------------------------------------

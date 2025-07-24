@@ -1,0 +1,46 @@
+﻿Name,Table,Variable,Start
+Board Charges,Icyyyy,BOARDAMT,This Fall
+FTE Enrollment,DRVEF12yyyy,FTE12MN,Last Fall
+FTE Undergraduates,EFIAyyyy,FTEUG,Last Fall
+FTFTUG Count,DRVEFyyyy,EFUG1SFT,This Fall
+FTUG Count,DRVEFyyyy,EFUG1ST,This Fall
+Graduation Rate (4 Years),GR200_zz,BAGR100,
+Graduation Rate (6 Years),GR200_zz,BAGR150,
+Graduation Rate (8 Years),GR200_zz,BAGR200,
+Incoming Freshman Size,DRVEFyyyy,EFUG1ST,
+Incoming Transfer Size,DRVEFyyyy,EFUGTRN,
+Net Price,SFAxxxx_P2,NPGRN2,
+Pell Percentage,SFAxxxx_P1,UPGRNTP,Last Fall
+Percentage of Pell,SFAxxxx_P1,PGRNT_P,Last Fall
+Percentage of White,DRVEFyyyy,PctEnrWh,
+Race Percentage (American Indian or Alaska Native),DRVEFyyyy,PctEnrAN,This Fall
+Race Percentage (Asian),DRVEFyyyy,PCTENRAS,This Fall
+Race Percentage (Black or African American),DRVEFyyyy,PctEnrBK,This Fall
+Race Percentage (Hispanic or Latino),DRVEFyyyy,PctEnrHS,This Fall
+Race Percentage (Native Hawaiian or Other Pacific Islander),DRVEFyyyy,PCTENRNH,This Fall
+Race Percentage (Race-ethnicity unknown),DRVEFyyyy,PctEnrUn,This Fall
+Race Percentage (Two or More Races),DRVEFyyyy,PCTENR2M,This Fall
+Race Percentage (US Nonresident),DRVEFyyyy,PctEnrNr,This Fall
+Race Percentage (White),DRVEFyyyy,PctEnrWh,This Fall
+Required Fees (In-State),ICyyyy_AY,FEE2,This Fall
+Retention Rate,EFyyyyD,RET_PCF,
+Room Charges,ICyyyy,ROOMAMT,This Fall
+Total Price (In-State),DRVICyyyy,CINSON,
+Total Price (Out-of-State),DRVICyyyy,COTSON,
+Tuition (In-State),ICyyyy_AY,TUITION2,This Fall
+Tuition (Out-Of-State),ICyyyy_AY,TUITION3,This Fall
+Undergraduate Size,DRVEFyyyy,EFUG,
+Gender Percentage (Women),DRVEFyyyy,PCTENRW,This Fall
+Disabilities,Icyyyy,DISAB,This Fall
+Military Assistance Count,SFAVxxxx,DOD_N,Last Fall
+GI Benefits Count,SFAVxxxx,PO9_N,Last Fall
+Undergraduate Enrollment,DRVEFyyyy,EFUG,This Fall
+Graduate Enrollment,DRVEFyyyy,EFGRAD,This Fall
+"Graduation Rate (6 Years, Men)",DRVGRyyyy,GBA6RTM,
+"Graduation Rate (6 Years, Women)",DRVGRyyyy,GBA6RTW,
+Graduation Rate (Men),DRVGRyyyy,GRRTM,
+Graduation Rate (Women),DRVGRyyyy,GRRTW,
+Enrollment (Men),ADMyyyy,ENRLM,
+Enrollment (Women),ADMyyyy,ENRLW,
+Enrollment (Gender Unknown),ADMyyyy,ENRLUN,
+"Graduation Rate (6 Years, Pell)",DRVGRyyyy,PGBA6RT,

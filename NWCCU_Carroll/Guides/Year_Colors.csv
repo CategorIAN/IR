@@ -1,0 +1,28 @@
+﻿Year,Color,Red,Blue,Green,Description
+0,0,220,20,60,Crimson Red
+0,1,211,211,211,Light Gray
+0,2,147,112,219,Medium Purple
+1,0,123,104,238,Medium Slate Blue
+1,1,147,112,219,Medium Purple
+1,2,72,209,204,Medium Turquoise
+2,0,50,205,50,Lime Green
+2,1,123,104,238,Medium Slate Blue
+2,2,255,127,80,Coral
+3,0,178,34,34,Firebrick
+3,1,30,144,255,Dodger Blue
+3,2,152,251,152,Pale Green
+4,0,64,224,208,Turqouise
+4,1,72,209,204,Medium Turquoise
+4,2,32,178,170,Light Sea Green
+5,0,65,105,225,Royal Blue
+5,1,50,205,50,Lime Green
+5,2,176,196,222,Light Steel Blue
+6,0,75,0,130,Indigo (Web)
+6,1,240,230,140,Khaki
+6,2,138,43,226,Blue Violet
+7,0,153,50,204,Dark Orchid
+7,1,255,127,80,Coral
+7,2,216,191,216,Thistle
+8,0,192,192,192,Silver (Standard)
+8,1,178,34,34,Firebrick
+8,2,220,220,220,Gainsboro
