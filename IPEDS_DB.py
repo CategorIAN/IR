@@ -132,7 +132,6 @@ class IPEDS_DB:
             percent = self.metrics.loc[lambda df: df['Name'] == name]['Percent'].iloc[0]
         else:
             cat_name = self.cat_metric_names.loc[lambda df: df['Name'] == name]['Categorized Metric'].iloc[0]
-            print(cat_name)
             category = self.cat_metrics.loc[lambda df: df['Name'] == cat_name]['Category'].iloc[0]
             percent = self.cat_metrics.loc[lambda df: df['Name'] == cat_name]['Percent'].iloc[0]
         title = self.title_with_grouping(grouped)(f"{name} ({base_year}-{end_year})")
@@ -158,8 +157,12 @@ class IPEDS_DB:
         plt.suptitle(title, fontsize=20)
         plt.tick_params(axis='both', labelsize=12)
         plt.grid(axis="y", linestyle="--")
-        leg_elems = [Patch(facecolor=colors[i], label=df.columns[i]) for i in range(len(df.columns))]
-        ax.legend(handles=leg_elems, title=category, loc='upper left', bbox_to_anchor=(-0.3, 1), borderaxespad=0.)
+        if len(df.columns) > 1:
+            leg_elems = [Patch(facecolor=colors[i], label=df.columns[i]) for i in range(len(df.columns))]
+            ax.legend(handles=leg_elems, title=category, loc='upper left', bbox_to_anchor=(-0.3, 1), borderaxespad=0.)
+        else:
+            title = f"{df.columns[0]} {title}"
+            plt.legend().remove()
         plt.tight_layout()
         by_path = ['By Peer Grouping'] if grouped else ['By School']
         category_path = [] if (category is None) else [category]
@@ -313,10 +316,15 @@ class IPEDS_DB:
                         ax.bar(**args)
                         bottom = df_part.at[k, 'Value']
         #---------------------------------------------------------------------------------------------------------------
-        label_positions = np.arange(0, num_groups, 1) + group_width / 2
-        labels = groups
-        ax.set_xticks(label_positions)
-        ax.set_xticklabels(labels, rotation=20, fontsize=8)
+        if len(groups) > 1:
+            label_positions = np.arange(0, num_groups, 1) + group_width / 2
+            labels = groups
+            ax.set_xticks(label_positions)
+            ax.set_xticklabels(labels, rotation=20, fontsize=8)
+        else:
+            title = f"{groups[0]} {title}"
+            ax.set_xticks(x_positions)
+            ax.set_xticklabels(years)
         plt.suptitle(title, fontsize=20)
         ax.grid(axis='y', linestyle='--', alpha=0.7)
         leg_labels = [f"{group} - {type}" for (group, type) in product(groups, types)]
@@ -448,20 +456,19 @@ class IPEDS_DB:
                 self.line_graph(name, base_year, end_year, grouped=grouped, lines = lines)
 
     def save_dfs_line_charts_all(self, base_year, end_year = None, make_df = True):
-        is_grouped = [True, False]
+        is_grouped = [False]
         names = list(self.line_chart_df.index)
         for (grouped, name) in product(is_grouped, names):
             self.save_df_line_graph(name, base_year, end_year, grouped, make_df=make_df)
 
     def save_df_gsb_graph(self, name, base_year, end_year = None, grouped = True, make_df = True):
         names = self.cat_metric_names.loc[lambda df: df['Categorized Metric'] == name]['Name']
-        by_func = lambda n: f"{n} {"Average By Peer Grouping" if grouped else "By School"} ({base_year}-{end_year})"
         for n in names:
             if make_df:
                 self.year_values_df(n, base_year, end_year, grouped)
             else:
                 try:
-                    file = by_func(n) + ".csv"
+                    file = self.title_with_grouping(grouped)(f"{n} ({base_year}-{end_year})") + ".csv"
                     df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", file]), index_col=0)
                 except FileNotFoundError:
                     print("Creating Data")
@@ -469,7 +476,7 @@ class IPEDS_DB:
         self.bar_chart_grouped_stacked(name, base_year, end_year, grouped)
 
     def save_dfs_gsb_charts_all(self, base_year, end_year = None, make_df = True):
-        is_grouped = [True, False]
+        is_grouped = [False]
         cat_mets = self.cat_metrics.loc[lambda df: df['Bar'] == True]
         for (grouped, name) in product(is_grouped, cat_mets['Name']):
             self.save_df_gsb_graph(name, base_year, end_year, grouped, make_df)

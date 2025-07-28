@@ -1,34 +1,28 @@
 ﻿Name,Type
-Graduation Rate (4 Years),Simple
-Graduation Rate (6 Years),Simple
-Graduation Rate (8 Years),Simple
-Retention Rate,Simple
-Disabilities,Simple
-Pell Percentage,Simple
-Military Assistance Count,Simple
-GI Benefits Count,Simple
-"Graduation Rate (6 Years, Pell)",Simple
-Gender Percentage (Women),Disaggregated
-Race Percentage (American Indian or Alaska Native),Disaggregated
-Race Percentage (Asian),Disaggregated
-Race Percentage (Black or African American),Disaggregated
-Race Percentage (Hispanic or Latino),Disaggregated
-Race Percentage (Native Hawaiian or Other Pacific Islander),Disaggregated
-Race Percentage (Race-ethnicity unknown),Disaggregated
-Race Percentage (Two or More Races),Disaggregated
-Race Percentage (US Nonresident),Disaggregated
-Race Percentage (White),Disaggregated
-Undergraduate Enrollment,Disaggregated
-Graduate Enrollment,Disaggregated
-Graduation Rate (Men),Disaggregated
-Graduation Rate (Women),Disaggregated
-"Graduation Rate (6 Years, Men)",Disaggregated
-"Graduation Rate (6 Years, Women)",Disaggregated
 "Graduation Rate (4 Years, Athlete)",Simple
-"Graduation Rate (6 Years, Athlete)",Simple
-Retention Rate (Athlete),Simple
-Retention Rate (Pell),Simple
-"Graduation Rate (4 Years, Pell)",Simple
-Retention Rate (GI Benefits),Simple
 "Graduation Rate (4 Years, GI Benefits)",Simple
+"Graduation Rate (4 Years, Pell)",Simple
+"Graduation Rate (6 Years, Athlete)",Simple
 "Graduation Rate (6 Years, GI Benefits)",Simple
+"Graduation Rate (6 Years, Pell)",Simple
+Retention Rate (Athlete),Simple
+Retention Rate (GI Benefits),Simple
+Retention Rate (Pell),Simple
+"Graduation Rate (4 Years, Athlete, Men)",Disaggregated
+"Graduation Rate (4 Years, Athlete, Women)",Disaggregated
+"Graduation Rate (4 Years, GI Benefits, Men)",Disaggregated
+"Graduation Rate (4 Years, GI Benefits, Women)",Disaggregated
+"Graduation Rate (4 Years, Pell, Men)",Disaggregated
+"Graduation Rate (4 Years, Pell, Women)",Disaggregated
+"Graduation Rate (6 Years, Athlete, Men)",Disaggregated
+"Graduation Rate (6 Years, Athlete, Women)",Disaggregated
+"Graduation Rate (6 Years, GI Benefits, Men)",Disaggregated
+"Graduation Rate (6 Years, GI Benefits, Women)",Disaggregated
+"Graduation Rate (6 Years, Pell, Men)",Disaggregated
+"Graduation Rate (6 Years, Pell, Women)",Disaggregated
+"Retention Rate (Athlete, Men)",Disaggregated
+"Retention Rate (Athlete, Women)",Disaggregated
+"Retention Rate (GI Benefits, Men)",Disaggregated
+"Retention Rate (GI Benefits, Women)",Disaggregated
+"Retention Rate (Pell, Men)",Disaggregated
+"Retention Rate (Pell, Women)",Disaggregated

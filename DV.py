@@ -214,7 +214,6 @@ class DV:
         print(f"Saving {title}")
         df.to_csv(os.path.join(self.data_path, f"{title}.csv"), index=True)
     #=================================================================================================================
-
     def line_graph(self, name, base_year, end_year, grouped = True):
         type = self.line_chart_df.at[name, 'Type']
         if type == "Simple":
@@ -224,7 +223,7 @@ class DV:
             cat_name = self.cat_metric_names.loc[lambda df: df['Name'] == name]['Categorized Metric'].iloc[0]
             category = self.cat_metrics.loc[lambda df: df['Name'] == cat_name]['Category'].iloc[0]
             percent = self.cat_metrics.loc[lambda df: df['Name'] == cat_name]['Percent'].iloc[0]
-        file = f"{name} {"Average By Peer Grouping" if grouped else "By School"} ({base_year}-{end_year}).csv"
+        file = f"{name} {"Average By Peer Grouping" if grouped else "By School"} ({base_year}-{end_year}).csv"  #Wrong
         df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", file]), index_col=0)
         columns = 'Group' if grouped else 'School'
         df = df.pivot(index='Year', columns=columns, values=name)
@@ -293,10 +292,7 @@ class DV:
         df['Value'] = df['Value'].map(lambda x: round(x / 100, 3)) if percent else df['Value']
         groups = list(self.groups.index) if grouped else sorted(list(df['Group'].unique()))
         years = sorted(list(df['Year'].unique()))
-        try:
-            types = sorted(list(df[category].unique()))
-        except Exception:
-            df.to_csv("x.csv")
+        types = sorted(list(df[category].unique()))
         type_dict = {type: i for i, type in enumerate(types)}
         #-------------------------
         num_groups, num_bars = len(groups), len(years)
@@ -378,7 +374,7 @@ class DV:
         return f
 
     def save_dfs_line_charts_all(self, base_year, end_year = None, make_df = True):
-        is_grouped = [True, False]
+        is_grouped = [False]
         names = list(self.line_chart_df.index)
         for (grouped, name) in product(is_grouped, names):
             self.save_df_line_graph(base_year, end_year, make_df)(name, grouped)

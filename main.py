@@ -44,5 +44,12 @@ def g(i):
     if i == 4:
         X.save_dfs_gsb_charts_all(2015, 2023, make_df=False)
 
+def h(i):
+    X = IPEDS_DB("NWCCU_Carroll")
+    if i == 1:
+        X.save_dfs_line_charts_all(2015, 2023, make_df=False)
+    if i == 2:
+        X.save_dfs_gsb_charts_all(2015, 2023, make_df=False)
+
 if __name__ == '__main__':
-    f(4)
+    h(2)
