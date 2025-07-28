@@ -1,68 +1,24 @@
 SELECT *
-FROM MAJORS
+FROM AWARDS
+WHERE AW_DESCRIPTION IN (
+                            'VA Allowances (Books, Supplies, Housing)',
+                            'VA Ben/Stipend',
+                            'VA Ben/Tuition',
+                            'VA Yellow Ribbon Carroll Match',
+                            'VA Yellow Ribbon Fees',
+                            'VA Yellow Ribbon Match'
+    )
 
 SELECT *
-FROM STUDENT_ACAD_PROGRAMS_VIEW
-WHERE STP_PROGRAM_TITLE LIKE '%Nursing%'
-
-SELECT *
-FROM STUDENTS_LS
-
-SELECT *
-FROM STUDENT_CUM_GPA_VIEW
-
-SELECT *
-FROM STA_OTHER_COHORTS_VIEW
-
-SELECT *
-FROM STUDENT_ACAD_PROGRAMS_VIEW
-WHERE STP_START_DATE IS NULL
-
-SELECT *
-FROM STUDENT_PROGRAMS
-
-SELECT *
-FROM STC_STATUSES
-
-SELECT *
-FROM STUDENT_ACAD_CRED_LS
-
-SELECT *
-FROM TRANSCRIPT_GROUPINGS
-
-SELECT *
-FROM STC_BY_GROUPING_VIEW
-
-SELECT *
-FROM STUDENT_ACAD_CRED
-
-SELECT *
-FROM STUDENT_ACAD_PROGRAMS_VIEW
-WHERE STP_START_DATE IS NULL
-
-SELECT *
-FROM STA_OTHER_COHORTS_VIEW
-
-SELECT *
-FROM VALS
-WHERE VALS.VALCODE_ID LIKE '%COHORT%'
-
-SELECT *
-FROM STUDENT_ADVISEMENT
-JOIN PERSON ON ID = STAD_FACULTY
-WHERE STAD_STUDENT = '6187660'
-
-SELECT *
-FROM VALS
-WHERE VALCODE_ID LIKE '%COHORT%'
-
-SELECT *
-FROM STUDENT_ENROLLMENT_VIEW AS SEV
-JOIN TERMS ON SEV.ENROLL_TERM = TERMS_ID
-WHERE STUDENT_LOAD IS NULL
-ORDER BY TERMS.TERM_START_DATE DESC
-
-SELECT *
-FROM Z01_ISIR_FAFSA
+FROM F22_AWARD_LIST
+JOIN AWARDS ON SA_AWARD = AW_ID
+WHERE AW_DESCRIPTION IN (
+                            'VA Allowances (Books, Supplies, Housing)',
+                            'VA Ben/Stipend',
+                            'VA Ben/Tuition',
+                            'VA Yellow Ribbon Carroll Match',
+                            'VA Yellow Ribbon Fees',
+                            'VA Yellow Ribbon Match'
+    )
 
 

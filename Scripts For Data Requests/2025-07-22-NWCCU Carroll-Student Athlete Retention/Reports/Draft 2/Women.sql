@@ -1,7 +1,7 @@
 --(Begin 3)------------------------------------------------------------------------------------------------------------
 SELECT School,
        Year,
-       CAST(AVG(1.0 * STAYED) * 100 AS INT) AS [Retention Rate (GI Benefits)]
+       CAST(AVG(1.0 * STAYED) * 100 AS INT) AS [Retention Rate (Athlete, Women)]
 FROM (
 --(Begin 2)------------------------------------------------------------------------------------------------------------
          SELECT School,
@@ -28,7 +28,7 @@ FROM (
                   SELECT School,
                          Year,
                          COHORT.ID                                                        AS STUDENT_ID,
-                         CAST(CAST(LEFT(TERMS.TERMS_ID, 4) AS INT) + 1 AS VARCHAR) + 'FA' AS NEXT_TERM
+                         CAST(CAST(LEFT(START_TERM.TERMS_ID, 4) AS INT) + 1 AS VARCHAR) + 'FA' AS NEXT_TERM
                   FROM (VALUES ('Carroll College')) AS SCHOOLS(School)
                            CROSS JOIN (VALUES (2015),
                                               (2016),
@@ -39,8 +39,8 @@ FROM (
                                               (2021),
                                               (2022),
                                               (2023)) AS YEARS(Year)
-                           JOIN TERMS
-                                ON CAST(YEARS.Year AS INT) - 1 = TERMS.TERM_REPORTING_YEAR
+                           JOIN TERMS AS START_TERM
+                                ON CAST(YEARS.Year AS INT) - 1 = START_TERM.TERM_REPORTING_YEAR
                                     AND SUBSTRING(TERMS_ID, 5, 6) = 'FA'
                            JOIN (SELECT X.ID, X.TERM
                                  FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
@@ -60,18 +60,44 @@ FROM (
                                          AND APPL_STUDENT_TYPE = 'UG'
                                          AND APPL_STUDENT_LOAD_INTENT = 'F'
                                          AND APPL_ADMIT_STATUS = 'FY') AS X
-                                 WHERE TERM_ORDER = 1) AS COHORT ON TERMS.TERMS_ID = COHORT.TERM
+                                 WHERE TERM_ORDER = 1) AS COHORT ON START_TERM.TERMS_ID = COHORT.TERM
+                  JOIN PERSON ON COHORT.ID = PERSON.ID
                   WHERE EXISTS (SELECT 1
                                 FROM STA_OTHER_COHORTS_VIEW
                                          JOIN VALS ON VALCODE_ID = 'INSTITUTION.COHORTS'
                                     AND STA_OTHER_COHORT_GROUPS = VALS.VAL_INTERNAL_CODE
                                 WHERE VAL_EXTERNAL_REPRESENTATION IN (
-                                                                      'Military Veterans'
+                                                                      'Cheerleading',
+                                                                      'Dance',
+                                                                      'Football',
+                                                                      'Indoor Men''s Track',
+                                                                      'Indoor Women''s Track',
+                                                                      'Men''s Basketball',
+                                                                      'Men''s Basketball - JV',
+                                                                      'Men''s Cross Country',
+                                                                      'Men''s Golf',
+                                                                      'Men''s Soccer',
+                                                                      'Men''s Soccer - JV',
+                                                                      'Outdoor Men''s Track',
+                                                                      'Outdoor Women''s Track',
+                                                                      'Women''s Basketball',
+                                                                      'Women''s Basketball - JV',
+                                                                      'Women''s Cross Country',
+                                                                      'Women''s Golf',
+                                                                      'Women''s Soccer',
+                                                                      'Women''s  Softball',
+                                                                      'Women''s Volleyball',
+                                                                      'Women''s Volleyball - JV'
                                     )
-                                  AND STA_STUDENT = COHORT.ID)
+                                  AND STA_STUDENT = COHORT.ID
+                                AND STA_OTHER_COHORT_START_DATES < DATEADD(YEAR, 1, START_TERM.TERM_START_DATE)
+                                )
+                  AND PERSON.GENDER = 'F'
 --(End 1)---------------------------------------------------------------------------------------------------------------
               ) AS X
 --(End 2)---------------------------------------------------------------------------------------------------------------
      ) AS X
 GROUP BY School, Year
 --(End 3)---------------------------------------------------------------------------------------------------------------
+
+

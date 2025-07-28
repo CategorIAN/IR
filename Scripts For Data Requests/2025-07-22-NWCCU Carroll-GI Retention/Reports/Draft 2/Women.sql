@@ -1,7 +1,7 @@
 --(Begin 3)------------------------------------------------------------------------------------------------------------
 SELECT School,
        Year,
-       CAST(AVG(1.0 * STAYED) * 100 AS INT) AS [Retention Rate (GI Benefits)]
+       CAST(AVG(1.0 * STAYED) * 100 AS INT) AS [Retention Rate (GI Benefits, Women)]
 FROM (
 --(Begin 2)------------------------------------------------------------------------------------------------------------
          SELECT School,
@@ -28,7 +28,7 @@ FROM (
                   SELECT School,
                          Year,
                          COHORT.ID                                                        AS STUDENT_ID,
-                         CAST(CAST(LEFT(TERMS.TERMS_ID, 4) AS INT) + 1 AS VARCHAR) + 'FA' AS NEXT_TERM
+                         CAST(CAST(LEFT(START_TERM.TERMS_ID, 4) AS INT) + 1 AS VARCHAR) + 'FA' AS NEXT_TERM
                   FROM (VALUES ('Carroll College')) AS SCHOOLS(School)
                            CROSS JOIN (VALUES (2015),
                                               (2016),
@@ -39,8 +39,8 @@ FROM (
                                               (2021),
                                               (2022),
                                               (2023)) AS YEARS(Year)
-                           JOIN TERMS
-                                ON CAST(YEARS.Year AS INT) - 1 = TERMS.TERM_REPORTING_YEAR
+                           JOIN TERMS AS START_TERM
+                                ON CAST(YEARS.Year AS INT) - 1 = START_TERM.TERM_REPORTING_YEAR
                                     AND SUBSTRING(TERMS_ID, 5, 6) = 'FA'
                            JOIN (SELECT X.ID, X.TERM
                                  FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
@@ -60,15 +60,74 @@ FROM (
                                          AND APPL_STUDENT_TYPE = 'UG'
                                          AND APPL_STUDENT_LOAD_INTENT = 'F'
                                          AND APPL_ADMIT_STATUS = 'FY') AS X
-                                 WHERE TERM_ORDER = 1) AS COHORT ON TERMS.TERMS_ID = COHORT.TERM
-                  WHERE EXISTS (SELECT 1
-                                FROM STA_OTHER_COHORTS_VIEW
-                                         JOIN VALS ON VALCODE_ID = 'INSTITUTION.COHORTS'
-                                    AND STA_OTHER_COHORT_GROUPS = VALS.VAL_INTERNAL_CODE
-                                WHERE VAL_EXTERNAL_REPRESENTATION IN (
-                                                                      'Military Veterans'
-                                    )
-                                  AND STA_STUDENT = COHORT.ID)
+                                 WHERE TERM_ORDER = 1) AS COHORT ON START_TERM.TERMS_ID = COHORT.TERM
+                  JOIN PERSON ON COHORT.ID = PERSON.ID
+                  WHERE EXISTS (
+             SELECT 1
+             FROM (
+                                 SELECT '2007FA' AS AW_TERM, *
+                                 FROM F07_AWARD_LIST
+                                 UNION
+                                 SELECT '2008FA' AS AW_TERM, *
+                                 FROM F08_AWARD_LIST
+                                 UNION
+                                 SELECT '2009FA' AS AW_TERM, *
+                                 FROM F09_AWARD_LIST
+                                 UNION
+                                 SELECT '2010FA' AS AW_TERM, *
+                                 FROM F10_AWARD_LIST
+                                 UNION
+                                 SELECT '2011FA' AS AW_TERM, *
+                                 FROM F11_AWARD_LIST
+                                 UNION
+                                 SELECT '2012FA' AS AW_TERM, *
+                                 FROM F12_AWARD_LIST
+                                 UNION
+                                 SELECT '2013FA' AS AW_TERM, *
+                                 FROM F13_AWARD_LIST
+                                 UNION
+                                 SELECT '2014FA' AS AW_TERM, *
+                                 FROM F14_AWARD_LIST
+                                 UNION
+                                 SELECT '2015FA' AS AW_TERM, *
+                                 FROM F15_AWARD_LIST
+                                 UNION
+                                 SELECT '2016FA' AS AW_TERM, *
+                                 FROM F16_AWARD_LIST
+                                 UNION
+                                 SELECT '2017FA' AS AW_TERM, *
+                                 FROM F17_AWARD_LIST
+                                 UNION
+                                 SELECT '2018FA', *
+                                 FROM F18_AWARD_LIST
+                                 UNION
+                                 SELECT '2019FA', *
+                                 FROM F19_AWARD_LIST
+                                 UNION
+                                 SELECT '2020FA', *
+                                 FROM F20_AWARD_LIST
+                                 UNION
+                                 SELECT '2021FA', *
+                                 FROM F21_AWARD_LIST
+                                 UNION
+                                 SELECT '2022FA', *
+                                 FROM F22_AWARD_LIST
+                  ) AS ST_AWARDS
+             JOIN TERMS AS AWARD_TERMS ON ST_AWARDS.AW_TERM = AWARD_TERMS.TERMS_ID
+             JOIN AWARDS ON ST_AWARDS.SA_AWARD = AWARDS.AW_ID
+             WHERE SA_STUDENT_ID = COHORT.ID
+             AND AWARD_TERMS.TERM_START_DATE < DATEADD(YEAR, 1, START_TERM.TERM_START_DATE)
+             AND SA_ACTION = 'A'
+              AND AW_DESCRIPTION IN (
+                    'VA Allowances (Books, Supplies, Housing)',
+                    'VA Ben/Stipend',
+                    'VA Ben/Tuition',
+                    'VA Yellow Ribbon Carroll Match',
+                    'VA Yellow Ribbon Fees',
+                    'VA Yellow Ribbon Match'
+              )
+         )
+                  AND PERSON.GENDER = 'F'
 --(End 1)---------------------------------------------------------------------------------------------------------------
               ) AS X
 --(End 2)---------------------------------------------------------------------------------------------------------------

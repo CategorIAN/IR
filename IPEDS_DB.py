@@ -101,7 +101,6 @@ class IPEDS_DB:
                 print("Error:", e)
         return execute
 
-    #=================================================================================================================
     def title_with_grouping(self, grouped):
         def f(title):
             return title + " - Peer Grouping Average" if grouped else title
@@ -118,7 +117,7 @@ class IPEDS_DB:
         title = self.title_with_grouping(grouped)(f"{name} ({base_year}-{end_year})")
         print(f"Saving {title}")
         df.to_csv(os.path.join(self.data_path, f"{title}.csv"), index=True)
-    #=================================================================================================================
+
     def remove_boundaries(self, *axes):
         if len(axes) == 0:
             axes = [plt.gca()]
