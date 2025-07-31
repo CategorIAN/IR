@@ -16,7 +16,8 @@ class IPEDS_DB:
         self.varmap = pd.read_csv(os.path.join(self.guides, "varmap.csv"), index_col=0)
         self.data_path = "\\".join([os.getcwd(), self.folder, "Data"])
         self.chart_path = "\\".join([os.getcwd(), self.folder, "Charts"])
-        self.school_df = pd.read_csv(os.path.join(self.guides, "Schools.csv"))
+        self.schools = pd.read_csv(os.path.join(self.guides, "Schools.csv"), index_col=0)
+        self.school_groups = pd.read_csv(os.path.join(self.guides, "School_Groups.csv"))
         self.groups = pd.read_csv(os.path.join(self.guides, "Groups.csv"), index_col=0)
         self.group_colors = pd.read_csv(os.path.join(self.guides, "Group_Colors.csv"), index_col=0)
         self.school_colors = pd.read_csv(os.path.join(self.guides, "School_Colors.csv"), index_col=0)
@@ -25,7 +26,7 @@ class IPEDS_DB:
         self.cat_metrics = cat_metrics.merge(self.metrics, left_on = "Metric", right_on = "Name", suffixes = ('', '_'))
         self.cat_metric_names = pd.read_csv(os.path.join(self.guides, "Categorized Metrics Joined.csv"))
         self.complements = pd.read_csv(os.path.join(self.guides, "Complements.csv"), index_col=0)
-        self.sch_abbrev = pd.read_csv(os.path.join(self.guides, "School_Abbreviations.csv"), index_col=0)
+        self.sch_abbrev_df = pd.read_csv(os.path.join(self.guides, "School_Abbreviations.csv"), index_col=0)
         self.school_colors_multi = pd.read_csv(os.path.join(self.guides, "School_Colors_Multi.csv"), index_col=[0, 1])
         self.group_colors_multi = pd.read_csv(os.path.join(self.guides, "Group_Colors_Multi.csv"), index_col=[0, 1])
         self.line_chart_df = pd.read_csv(os.path.join(self.guides, "Line Charts.csv"), index_col=0)
@@ -56,29 +57,25 @@ class IPEDS_DB:
                           .replace("xxxx", str(year - 1)[2:] + str(year)[2:])
                           .replace("zz", str(year)[2:]))
             stmt = f"""
-            SELECT [HD{year}].[INSTNM] AS School,
-                    '{self.academic_year(start, year)}' AS Year,
+            SELECT [{year_table}].UNITID AS School_ID,
+                    '{year}' AS Year,
                     [{year_table}].[{variable}] AS [{name}]
-            FROM [HD{year}]
-            LEFT OUTER JOIN [{year_table}] ON HD{year}.UNITID = {year_table}.UNITID
-            WHERE [HD{year}].[INSTNM] IN ({",\n".join([f"'{school}'" for school in self.school_df['School']])})
+            FROM [{year_table}]
+            WHERE [{year_table}].UNITID IN ({",\n".join([f"{sch_id}" for sch_id in self.schools.index])})
             """
             print(100 * "-" + "Executing" + 100 * "-" + "\n" + stmt + "\n" + 2 * 100 * "-")
             try:
                 df = self.queried_df(cursor, stmt, index_col=True)
-                print(df)
                 return df
             except Exception as e:
-                print(e)
                 stmt = f"""
-                 SELECT [HD{year}].[INSTNM] AS School,
-                    '{self.academic_year(start, year)}' AS Year,
-                    NULL AS [{name}]
-                    FROM [HD{year}]
-                    WHERE [HD{year}].[INSTNM] IN ({",\n".join([f"'{school}'" for school in self.school_df['School']])})
+                SELECT [{year_table}].UNITID AS School_ID,
+                        '{year}' AS Year,
+                        [{year_table}].[{variable}] AS [{name}]
+                FROM [{year_table}]
+                WHERE [{year_table}].UNITID IN ({",\n".join([f"{sch_id}" for sch_id in self.schools.index])})
                 """
                 df = self.queried_df(cursor, stmt, index_col=True)
-                print(df)
                 return df
         return execute
 
@@ -111,8 +108,10 @@ class IPEDS_DB:
         tables = [self.readSQL(year)(self.value_df(name)) for year in years]
         df = pd.concat(tables)
         df[name] = df[name].map(lambda x: None if pd.isna(x) or x in [None, "None", "", "0", 0] else int(x))
+        df.index, self.schools.index  = df.index.astype(str), self.schools.index.astype(str)
+        df = pd.merge(df, self.schools, left_on = "School_ID", right_on = "IPEDS_ID").loc[:, ["School", "Year", name]]
         if grouped:
-            df = pd.merge(self.school_df, df, on="School").groupby(["Group", "Year"])[name].mean().map(lambda x: round(x, 2))
+            df = pd.merge(self.school_groups, df, on="School").groupby(["Group", "Year"])[name].mean().map(lambda x: round(x, 2))
         df = df.reset_index()
         title = self.title_with_grouping(grouped)(f"{name} ({base_year}-{end_year})")
         print(f"Saving {title}")
@@ -125,7 +124,7 @@ class IPEDS_DB:
             for boundary in ["top", "bottom", "left", "right"]:
                 ax.spines[boundary].set_visible(False)
 
-    def line_graph(self, name, base_year, end_year, grouped = True, lines = None):
+    def line_graph(self, name, base_year, end_year, grouped, make_df, lines = None):
         type = self.line_chart_df.at[name, 'Type']
         if type == "Simple":
             category = None
@@ -135,6 +134,7 @@ class IPEDS_DB:
             category = self.cat_metrics.loc[lambda df: df['Name'] == cat_name]['Category'].iloc[0]
             percent = self.cat_metrics.loc[lambda df: df['Name'] == cat_name]['Percent'].iloc[0]
         title = self.title_with_grouping(grouped)(f"{name} ({base_year}-{end_year})")
+        self.check_dfs([name], base_year, end_year, grouped, make_df)
         df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", title + ".csv"]), index_col=0)
         col_name = 'Group' if grouped else 'School'
         df = df.pivot(index='Year', columns=col_name, values=name)
@@ -146,6 +146,7 @@ class IPEDS_DB:
         color_df = self.group_colors if grouped else self.school_colors
         color_dict = self.color_dict(color_df)
         fig, ax = plt.subplots(figsize=(16, 9))
+        fig.subplots_adjust(left=0.3, hspace=0.1)
         ax.set_ylim(0 - 0.001, my_max)
         colors = [color_dict[group] for group in df.columns]
         for col in df.columns:
@@ -154,16 +155,17 @@ class IPEDS_DB:
             df[col].plot(kind="line", color=color_dict[col], figsize=(16, 9), linewidth=3, ax=ax, zorder=z)
         self.remove_boundaries()
         plt.gca().yaxis.set_major_formatter(PercentFormatter(xmax=1.0)) if percent else None
+        ax.set_xlabel("Year", fontsize=14, labelpad=10)
+        plt.ylabel("Student Count", rotation=90, fontsize=14) if not percent else None
         plt.suptitle(title, fontsize=20)
         plt.tick_params(axis='both', labelsize=12)
         plt.grid(axis="y", linestyle="--")
         if len(df.columns) > 1:
             leg_elems = [Patch(facecolor=colors[i], label=df.columns[i]) for i in range(len(df.columns))]
-            ax.legend(handles=leg_elems, title=category, loc='upper left', bbox_to_anchor=(-0.3, 1), borderaxespad=0.)
+            fig.legend(handles=leg_elems, title=category, loc='upper left', bbox_to_anchor=(0, 1), borderaxespad=0.)
         else:
             title = f"{df.columns[0]} {title}"
             plt.legend().remove()
-        plt.tight_layout()
         by_path = ['By Peer Grouping'] if grouped else ['By School']
         category_path = [] if (category is None) else [category]
         path = [self.chart_path, 'Line Charts'] + by_path + category_path + [title + ".png"]
@@ -190,7 +192,7 @@ class IPEDS_DB:
         rec = Rectangle((x0, y0), x1 - x0, height, transform=fig.transFigure,color='lightgray',alpha=0.5,zorder=0)
         fig.patches.append(rec)
 
-    def line_graph_2(self, name, base_year, end_year, begin_break, end_break, grouped = True):
+    def line_graph_2(self, name, base_year, end_year, begin_break, end_break, grouped, make_df):
         type = self.line_chart_df.at[name, 'Type']
         if type == "Simple":
             category = None
@@ -200,6 +202,7 @@ class IPEDS_DB:
             category = self.cat_metrics.loc[lambda df: df['Name'] == cat_name]['Category'].iloc[0]
             percent = self.cat_metrics.loc[lambda df: df['Name'] == cat_name]['Percent'].iloc[0]
         title = self.title_with_grouping(grouped)(f"{name} ({base_year}-{end_year})")
+        self.check_dfs([name], base_year, end_year, grouped, make_df)
         df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", title + ".csv"]), index_col=0)
         columns = 'Group' if grouped else 'School'
         df = df.pivot(index='Year', columns=columns, values=name)
@@ -212,7 +215,7 @@ class IPEDS_DB:
         kwargs_1 = {'nrows': 2, 'ncols': 1, 'sharex':True, 'figsize': (16, 9)}
         kwargs_2 = {'gridspec_kw': {'height_ratios': [lims_2[1] - lims_2[0], lims_1[1] - lims_1[0]]}}
         fig, (ax2, ax1) = plt.subplots(**kwargs_1, **kwargs_2)
-        fig.subplots_adjust(left=0.15, hspace=0.1)
+        fig.subplots_adjust(left=0.3, hspace=0.1)
         ax1.set_ylim(*lims_1)
         ax2.set_ylim(*lims_2)
         plt.suptitle(title, fontsize=20)
@@ -224,6 +227,10 @@ class IPEDS_DB:
             ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0)) if percent else None
             ax.grid(axis="y", linestyle="--")
         plt.tick_params(axis='both', labelsize=12)
+        ax1.set_xlabel("")
+        ax2.set_xlabel("")
+        fig.text(0.6, 0.04, "Year", ha='center', fontsize=14)
+        fig.text(0.25, 0.5, "Student Count", va="center", rotation="vertical", fontsize=14) if not percent else None
         leg_elems = [Patch(facecolor=colors[i], label=df.columns[i]) for i in range(len(df.columns))]
         args_1 = {"handles": leg_elems, "title": category, "loc": "upper left"}
         args_2 = {"bbox_to_anchor": (0, 1), "borderaxespad": 0}
@@ -239,20 +246,23 @@ class IPEDS_DB:
         plt.show()
         plt.close()
 
-    def df_agg(self, name, base_year, end_year, grouped):
+    def get_metrics(self, cat_metric):
         guide = self.cat_metric_names.merge(self.cat_metrics, left_on='Categorized Metric', right_on='Name')
-        guide = guide.loc[lambda df: df['Categorized Metric'] == name].set_index('Name_x')
+        guide = guide.loc[lambda df: df['Categorized Metric'] == cat_metric].set_index('Name_x')
         category = list(guide['Category'])[0]
         complement = list(guide['Complement'])[0]
         names = guide.index
-        def f(n):
+        types = [guide.at[n, 'Type'] for n in names]
+        return names, types, category, complement
+
+    def df_agg(self, names, types, category, complement, base_year, end_year, grouped):
+        def f(n, t):
             file = self.title_with_grouping(grouped)(f"{n} ({base_year}-{end_year})") + ".csv"
             df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", file]), index_col=0)
             df = df.rename(columns={n: 'Value', 'School': 'Group'})
-            type = guide.at[n, 'Type']
-            df[category] = len(df.index) * [type]
+            df[category] = len(df.index) * [t]
             return df
-        df = pd.concat([f(n) for n in names])
+        df = pd.concat([f(n, t) for n, t in zip(names, types)])
         if complement:
             comp_df = df.groupby(by=['Year', 'Group'])['Value'].agg(lambda x: 100 - x.sum()).reset_index()
             comp_df[category] = len(comp_df.index) * [self.complements.at[category, 'Complement']]
@@ -264,12 +274,13 @@ class IPEDS_DB:
             return df.loc[(df['Group'] == groups[i]) & (df['Year'] == years[j])].sort_values(by='Value').reset_index()
         return f
 
-    def bar_chart_grouped_stacked(self, name, base_year, end_year, grouped = True):
+    def bar_chart_grouped_stacked(self, name, base_year, end_year, grouped = True, make_df = True):
         title = self.title_with_grouping(grouped)(f"{name} ({base_year}-{end_year})")
-        print(name)
         cat_metric = self.cat_metrics.loc[lambda df: df['Name'] == name].iloc[0]
         category, percent, pie = cat_metric[['Category', 'Percent', 'Pie']]
-        df = self.df_agg(name, base_year, end_year, grouped)
+        names, types, category, complement = self.get_metrics(name)
+        self.check_dfs(names, base_year, end_year, grouped, make_df)
+        df = self.df_agg(names, types, category, complement, base_year, end_year, grouped)
         df['Value'] = df['Value'].map(lambda x: round(x / 100, 3)) if percent else df['Value']
         groups = list(self.groups.index) if grouped else sorted(list(df['Group'].unique()))
         years = sorted(list(df['Year'].unique()))
@@ -281,6 +292,7 @@ class IPEDS_DB:
         bar_width = group_width / num_bars
         x_positions = np.linspace(0, group_width, num_bars)
         fig, ax = plt.subplots(figsize=(16, 9))
+        fig.subplots_adjust(left=0.4, hspace=0.05)
         color_dict = self.color_dict(self.group_colors_multi if grouped else self.school_colors_multi)
         self.remove_boundaries()
         #--------------------------
@@ -316,34 +328,38 @@ class IPEDS_DB:
                         ax.bar(**args)
                         bottom = df_part.at[k, 'Value']
         #---------------------------------------------------------------------------------------------------------------
+        labels = groups if grouped else [self.sch_abbrev_df.at[school, 'Abbreviation'] for school in groups]
         if len(groups) > 1:
             label_positions = np.arange(0, num_groups, 1) + group_width / 2
-            labels = groups
             ax.set_xticks(label_positions)
-            ax.set_xticklabels(labels, rotation=20, fontsize=8)
+            ax.set_xticklabels(labels, rotation=0, fontsize=12)
+            plt.xlabel(f"Schools Chronologically ({base_year}-{end_year})") if not grouped else None
         else:
             title = f"{groups[0]} {title}"
             ax.set_xticks(x_positions)
             ax.set_xticklabels(years)
+        plt.ylabel("Student Count", rotation=90) if not percent else None
         plt.suptitle(title, fontsize=20)
         ax.grid(axis='y', linestyle='--', alpha=0.7)
-        leg_labels = [f"{group} - {type}" for (group, type) in product(groups, types)]
+        str_func = lambda x, t: f"{x} - {t}" if grouped else f"{x} ({self.sch_abbrev_df.at[x, "Abbreviation"]}) - {t}"
+        leg_labels = [str_func(x, type) for (x, type) in product(groups, types)]
         leg_colors = reduce(lambda x, y: x + y, [[color_dict[(j, i)] for i in range(len(types))] for j in groups])
-        leg_elems = [Patch(facecolor=color, label=label) for color, label in zip(leg_colors, leg_labels)]
-        ax.legend(handles=leg_elems, title=category, loc='upper left', bbox_to_anchor=(-0.5, 1), borderaxespad=0.)
+        leg_elems = [Patch(facecolor=color, label=leg_label) for color, leg_label in zip(leg_colors, leg_labels)]
+        fig.legend(handles=leg_elems, title=category, loc='upper left', bbox_to_anchor=(0, 1), borderaxespad=0.)
         by_path = ['By Peer Grouping'] if grouped else ['By School']
         path = [self.chart_path, 'Grouped, Stacked Bar Charts'] + by_path + [title + ".png"]
         plt.gca().yaxis.set_major_formatter(PercentFormatter(xmax=1.0)) if percent else None
-        plt.tight_layout(pad=2.0)
         plt.savefig(os.path.join(*path), dpi=300)
         plt.show()
         plt.close()
 
-    def bar_chart_grouped_stacked_2(self, name, base_year, end_year, begin_break, end_break, grouped = True):
+    def bar_chart_grouped_stacked_2(self, name, base_year, end_year, begin_break, end_break, grouped, make_df):
         title = self.title_with_grouping(grouped)(f"{name} ({base_year}-{end_year})")
         cat_metric = self.cat_metrics.loc[lambda df: df['Name'] == name].iloc[0]
         category, percent, pie = cat_metric[['Category', 'Percent', 'Pie']]
-        df = self.df_agg(name, base_year, end_year, grouped)
+        names, types, category, complement = self.get_metrics(name)
+        self.check_dfs(names, base_year, end_year, grouped, make_df)
+        df = self.df_agg(names, types, category, complement, base_year, end_year, grouped)
         df['Value'] = df['Value'].map(lambda x: round(x / 100, 3)) if percent else df['Value']
         groups = list(self.groups.index) if grouped else sorted(list(df['Group'].unique()))
         years = sorted(list(df['Year'].unique()))
@@ -357,7 +373,7 @@ class IPEDS_DB:
         kwargs_1 = {'nrows': 2, 'ncols': 1, 'sharex':True, 'figsize': (16, 9)}
         kwargs_2 = {'gridspec_kw': {'height_ratios': [1, 3]}}
         fig, (ax2, ax1) = plt.subplots(**(kwargs_1 | kwargs_2))
-        fig.subplots_adjust(left= 0.3, hspace=0.05)
+        fig.subplots_adjust(left= 0.4, hspace=0.05)
         color_dict = self.color_dict(self.group_colors_multi if grouped else self.school_colors_multi)
         self.remove_boundaries(ax1, ax2)
         #--------------------------
@@ -397,18 +413,23 @@ class IPEDS_DB:
                         bottom = df_part.at[k, 'Value']
         #---------------------------------------------------------------------------------------------------------------
         label_positions = np.arange(0, num_groups, 1) + group_width / 2
-        labels = groups
+        labels = groups if grouped else [self.sch_abbrev_df.at[school, 'Abbreviation'] for school in groups]
+        fig.text(0.35, 0.5, "Student Count", va="center", rotation="vertical", fontsize=14) if not percent else None
         plt.suptitle(title, fontsize=20, y=0.95)
-        leg_labels = [f"{group} - {type}" for (group, type) in product(groups, types)]
+        str_func = lambda x, t: f"{x} - {t}" if grouped else f"{x} ({self.sch_abbrev_df.at[x, "Abbreviation"]}) - {t}"
+        leg_labels = [str_func(x, type) for (x, type) in product(groups, types)]
         leg_colors = reduce(lambda x, y: x + y, [[color_dict[(j, i)] for i in range(len(types))] for j in groups])
         leg_elems = [Patch(facecolor=color, label=label) for color, label in zip(leg_colors, leg_labels)]
         by_path = ['By Peer Grouping'] if grouped else ['By School']
         path = [self.chart_path, 'Grouped, Stacked Bar Charts'] + by_path + [title + " (With Break).png"]
         for ax in [ax1, ax2]:
             ax.set_xticks(label_positions)
-            ax.set_xticklabels(labels, rotation=20, fontsize=8)
+            ax.set_xticklabels(labels, rotation=0, fontsize=12)
             ax.grid(axis='y', linestyle='--', alpha=0.7)
             ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0)) if percent else None
+        ax1.set_xlabel("")
+        ax2.set_xlabel("")
+        fig.text(0.6, 0.04, f"Schools Chronologically ({base_year}-{end_year})", ha='center', fontsize=14) if not grouped else None
         args_1 = {"handles": leg_elems, "title": category, "loc": "upper left"}
         args_2 = {"bbox_to_anchor": (0, 1), "borderaxespad": 0}
         args = args_1 | args_2
@@ -444,65 +465,53 @@ class IPEDS_DB:
             plt.show()
             plt.close()
 
-    def save_df_line_graph(self, name, base_year, end_year = None, grouped = True, lines = None, make_df = True):
-        if make_df:
-            self.year_values_df(name, base_year, end_year = end_year, grouped = grouped)
-            self.line_graph(name, base_year, end_year, grouped = grouped, lines = lines)
-        else:
-            try:
-                self.line_graph(name, base_year, end_year, grouped=grouped, lines = lines)
-            except FileNotFoundError:
+    def check_dfs(self, names, base_year, end_year, grouped, make):
+        if make:
+            for name in names:
                 self.year_values_df(name, base_year, end_year=end_year, grouped=grouped)
-                self.line_graph(name, base_year, end_year, grouped=grouped, lines = lines)
-
-    def save_dfs_line_charts_all(self, base_year, end_year = None, make_df = True):
-        is_grouped = [False]
-        names = list(self.line_chart_df.index)
-        for (grouped, name) in product(is_grouped, names):
-            self.save_df_line_graph(name, base_year, end_year, grouped, make_df=make_df)
-
-    def save_df_gsb_graph(self, name, base_year, end_year = None, grouped = True, make_df = True):
-        names = self.cat_metric_names.loc[lambda df: df['Categorized Metric'] == name]['Name']
-        for n in names:
-            if make_df:
-                self.year_values_df(n, base_year, end_year, grouped)
-            else:
+        else:
+            for name in names:
                 try:
-                    file = self.title_with_grouping(grouped)(f"{n} ({base_year}-{end_year})") + ".csv"
+                    file = self.title_with_grouping(grouped)(f"{name} ({base_year}-{end_year})") + ".csv"
                     df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", file]), index_col=0)
                 except FileNotFoundError:
-                    print("Creating Data")
-                    self.year_values_df(n, base_year, end_year, grouped)
-        self.bar_chart_grouped_stacked(name, base_year, end_year, grouped)
+                    print(f"Creating {name}")
+                    self.year_values_df(name, base_year, end_year, grouped)
+
+    def save_dfs_line_charts_all(self, base_year, end_year = None, make_df = True):
+        is_grouped = [False, True]
+        names = list(self.line_chart_df.index)
+        for (grouped, name) in product(is_grouped, names):
+            self.line_graph(name, base_year, end_year, grouped, make_df=make_df)
 
     def save_dfs_gsb_charts_all(self, base_year, end_year = None, make_df = True):
-        is_grouped = [False]
+        is_grouped = [False, True]
         cat_mets = self.cat_metrics.loc[lambda df: df['Bar'] == True]
         for (grouped, name) in product(is_grouped, cat_mets['Name']):
-            self.save_df_gsb_graph(name, base_year, end_year, grouped, make_df)
+            self.bar_chart_grouped_stacked(name, base_year, end_year, grouped, make_df)
 
     def make_all_dfs_charts(self, base_year, end_year, make_df):
-        self.save_dfs_line_charts_all(base_year, end_year, make_df)
+        #self.save_dfs_line_charts_all(base_year, end_year, make_df)
         self.save_dfs_gsb_charts_all(base_year, end_year, make_df)
-        self.adjusted_charts_all()
+        self.adjusted_charts_all(make_df)
 
-    def adjusted_chart(self, i):
+    def adjusted_chart(self, i, make_df):
         if i == 0:
             self.bar_chart_grouped_stacked_2("Academic Level Enrollments",
-                                             2015, 2023, 3000, 5000, True)
+                                             2015, 2023, 3000, 5000, True, make_df)
         if i == 1:
             self.bar_chart_grouped_stacked_2("Academic Level Enrollments",
-                                             2015, 2023, 4000, 7000, False)
+                                             2015, 2023, 4000, 7000, False, make_df)
         if i == 2:
-            self.save_df_line_graph('Graduate Enrollment', 2018, 2023, True)
-            self.line_graph_2('Graduate Enrollment', 2018, 2023, 200, 550, True)
+            self.line_graph('Graduate Enrollment', 2018, 2023, True, make_df)
+            self.line_graph_2('Graduate Enrollment', 2018, 2023, 200, 550, True, make_df)
         if i == 3:
-            self.save_df_line_graph('Undergraduate Enrollment', 2018, 2023, True)
+            self.line_graph('Undergraduate Enrollment', 2018, 2023, True, make_df)
 
 
-    def adjusted_charts_all(self):
+    def adjusted_charts_all(self, make_df):
         for i in range(4):
-            self.adjusted_chart(i)
+            self.adjusted_chart(i, make_df)
 
 
 
