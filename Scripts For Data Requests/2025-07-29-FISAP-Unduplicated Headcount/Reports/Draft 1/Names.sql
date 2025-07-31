@@ -1,0 +1,14 @@
+--(Begin 1)-------------------------------------------------------------------------------------------------------------
+         SELECT DISTINCT LEFT(STC_STUDENT_ACAD_LEVELS_ID, 7) AS STUDENT_ID,
+                         ODS_PERSON.FIRST_NAME,
+                         ODS_PERSON.LAST_NAME
+         FROM SPT_STUDENT_ACAD_CRED
+         JOIN ODS_PERSON ON LEFT(STC_STUDENT_ACAD_LEVELS_ID, 7) = ODS_PERSON.ID
+         WHERE STC_START_DATE >= '2024-07-01'
+           AND STC_END_DATE < '2025-07-01'
+           AND STC_CRED_TYPE = 'INST'
+           AND CURRENT_STATUS_DESC IN ('New', 'Add')
+           AND STC_GRADE != 'Audit'
+           AND STC_CRED > 0
+--(End 1)---------------------------------------------------------------------------------------------------------------
+ORDER BY LAST_NAME, FIRST_NAME
