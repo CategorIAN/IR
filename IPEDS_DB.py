@@ -122,36 +122,65 @@ class IPEDS_DB:
             for boundary in ["top", "bottom", "left", "right"]:
                 ax.spines[boundary].set_visible(False)
 
+    def get_metrics(self, cat_metric):
+        guide = self.cat_metric_names.merge(self.cat_metrics, left_on='Categorized Metric', right_on='Name')
+        guide = guide.loc[lambda df: df['Categorized Metric'] == cat_metric].set_index('Name_x')
+        category = list(guide['Category'])[0]
+        complement = list(guide['Complement'])[0]
+        names = guide.index
+        types = [guide.at[n, 'Type'] for n in names]
+        return names, types, category, complement
+
+    def df_agg(self, names, types, category, complement, base_year, end_year, grouped):
+        def f(n, t):
+            file = self.title_with_grouping(grouped)(f"{n} ({base_year}-{end_year})") + ".csv"
+            df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", file]), index_col=0)
+            df = df.rename(columns={n: 'Value', 'School': 'Group'})
+            df[category] = len(df.index) * [t]
+            return df
+        df = pd.concat([f(n, t) for n, t in zip(names, types)])
+        if complement:
+            comp_df = df.groupby(by=['Year', 'Group'])['Value'].agg(lambda x: 100 - x.sum()).reset_index()
+            comp_df[category] = len(comp_df.index) * [self.complements.at[category, 'Complement']]
+            df = pd.concat([df, comp_df])
+        return df
+
     def line_graph(self, name, base_year, end_year, grouped, make_df, lines = None, cat_metric = False):
-        #type = self.line_chart_df.at[name, 'Type']
+        title = self.title_with_grouping(grouped)(f"{name} ({base_year}-{end_year})")
+        color_dict = self.color_dict(self.group_colors_multi if grouped else self.school_colors_multi)
         if not cat_metric:
             percent = self.metrics.loc[lambda df: df['Name'] == name]['Percent'].iloc[0]
-        '''
+            self.check_dfs([name], base_year, end_year, grouped, make_df)
+            df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", title + ".csv"]), index_col=0)
+            pivot_by = 'Group' if grouped else 'School'
+            values_col = name
+            first_group = df[pivot_by].iloc[0]
+            color_func = lambda group: color_dict[(group, 0)]
         else:
-            cat_name = self.cat_metric_names.loc[lambda df: df['Name'] == name]['Categorized Metric'].iloc[0]
-            category = self.cat_metrics.loc[lambda df: df['Name'] == cat_name]['Category'].iloc[0]
-            percent = self.cat_metrics.loc[lambda df: df['Name'] == cat_name]['Percent'].iloc[0]
-        '''
-        title = self.title_with_grouping(grouped)(f"{name} ({base_year}-{end_year})")
-        self.check_dfs([name], base_year, end_year, grouped, make_df)
-        df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", title + ".csv"]), index_col=0)
-        col_name = 'Group' if grouped else 'School'
-        df = df.pivot(index='Year', columns=col_name, values=name)
+            percent = self.cat_metrics.loc[lambda df: df['Name'] == name]['Percent'].iloc[0]
+            names, types, category, complement = self.get_metrics(name)
+            self.check_dfs(names, base_year, end_year, grouped, make_df)
+            df = self.df_agg(names, types, category, complement, base_year, end_year, grouped)
+            pivot_by = category
+            values_col = 'Value'
+            type_dict = {type: i for i, type in enumerate(types)}
+            first_group = df['Group'].iloc[0]
+            color_func = lambda type: color_dict[(first_group, type_dict[type])]
+        df = df.pivot(index='Year', columns=pivot_by, values=values_col)
         df = df.reindex(columns=self.groups.index) if grouped else df
+        df = df.map(lambda x: round(x / 100, 4)) if percent else df
+        #---
         lines = list(range(len(df.columns))) if lines is None else lines
         df = df.iloc[:, lines]
-        df = df.map(lambda x: round(x / 100, 4)) if percent else df
+        #---
         my_max = 1.1 * np.nanmax(df)
-        color_df = self.group_colors if grouped else self.school_colors
-        color_dict = self.color_dict(color_df)
         fig, ax = plt.subplots(figsize=(16, 9))
         fig.subplots_adjust(left=0.3, hspace=0.1)
         ax.set_ylim(0 - 0.001, my_max)
-        colors = [color_dict[group] for group in df.columns]
         for col in df.columns:
             z = int(col == "Carroll College")
             df[col].plot(kind="line", color='black', figsize=(16, 9), linewidth=4, ax=ax, zorder=z)
-            df[col].plot(kind="line", color=color_dict[col], figsize=(16, 9), linewidth=3, ax=ax, zorder=z)
+            df[col].plot(kind="line", color=color_func(col), figsize=(16, 9), linewidth=3, ax=ax, zorder=z)
         self.remove_boundaries()
         plt.gca().yaxis.set_major_formatter(PercentFormatter(xmax=1.0)) if percent else None
         ax.set_xlabel("Year", fontsize=14, labelpad=10)
@@ -159,12 +188,13 @@ class IPEDS_DB:
         plt.suptitle(title, fontsize=20)
         plt.tick_params(axis='both', labelsize=12)
         plt.grid(axis="y", linestyle="--")
+        colors = [color_func(col) for col in df.columns]
         if len(df.columns) > 1:
             leg_elems = [Patch(facecolor=colors[i], label=df.columns[i]) for i in range(len(df.columns))]
-            fig.legend(handles=leg_elems, title=col_name, loc='upper left', bbox_to_anchor=(0, 1), borderaxespad=0.)
+            fig.legend(handles=leg_elems, title=pivot_by, loc='upper left', bbox_to_anchor=(0, 1), borderaxespad=0.)
         else:
-            title = f"{df.columns[0]} {title}"
             plt.legend().remove()
+        title = f"{first_group} {title}" if (len(df.columns) == 1 or cat_metric) else title
         plt.suptitle(title, fontsize=20)
         by_path = ['By Peer Grouping'] if grouped else ['By School']
         path = [self.chart_path, 'Line Charts'] + by_path + [title + ".png"]
@@ -245,28 +275,7 @@ class IPEDS_DB:
         plt.show()
         plt.close()
 
-    def get_metrics(self, cat_metric):
-        guide = self.cat_metric_names.merge(self.cat_metrics, left_on='Categorized Metric', right_on='Name')
-        guide = guide.loc[lambda df: df['Categorized Metric'] == cat_metric].set_index('Name_x')
-        category = list(guide['Category'])[0]
-        complement = list(guide['Complement'])[0]
-        names = guide.index
-        types = [guide.at[n, 'Type'] for n in names]
-        return names, types, category, complement
 
-    def df_agg(self, names, types, category, complement, base_year, end_year, grouped):
-        def f(n, t):
-            file = self.title_with_grouping(grouped)(f"{n} ({base_year}-{end_year})") + ".csv"
-            df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", file]), index_col=0)
-            df = df.rename(columns={n: 'Value', 'School': 'Group'})
-            df[category] = len(df.index) * [t]
-            return df
-        df = pd.concat([f(n, t) for n, t in zip(names, types)])
-        if complement:
-            comp_df = df.groupby(by=['Year', 'Group'])['Value'].agg(lambda x: 100 - x.sum()).reset_index()
-            comp_df[category] = len(comp_df.index) * [self.complements.at[category, 'Complement']]
-            df = pd.concat([df, comp_df])
-        return df
 
     def filter_and_sort(self, df, groups, years):
         def f(i, j):
@@ -479,9 +488,11 @@ class IPEDS_DB:
 
     def save_dfs_line_charts_all(self, base_year, end_year = None, make_df = True, is_grouped = (False, True)):
         names = self.metrics.loc[lambda df: df['Line'] == True]['Name']
-        print(names)
         for (grouped, name) in product(is_grouped, names):
             self.line_graph(name, base_year, end_year, grouped, make_df=make_df, cat_metric=False)
+        names = self.cat_metrics.loc[lambda df: df['Line'] == True]['Name']
+        for (grouped, name) in product(is_grouped, names):
+            self.line_graph(name, base_year, end_year, grouped, make_df=make_df, cat_metric=True)
 
     def save_dfs_gsb_charts_all(self, base_year, end_year = None, make_df = True, is_grouped = (False, True)):
         cat_mets = self.cat_metrics.loc[lambda df: df['Bar'] == True]

@@ -1,16 +1,16 @@
-﻿Name,Percent,Category,Pie,Bar,Complement,Line
-Retention Rate (Athlete) By Gender,TRUE,Gender,FALSE,TRUE,FALSE,
-"Graduation Rate (4 Years, Athlete) By Gender",TRUE,Gender,FALSE,TRUE,FALSE,
-"Graduation Rate (6 Years, Athlete) By Gender",TRUE,Gender,FALSE,TRUE,FALSE,
-Retention Rate (Pell) By Gender,TRUE,Gender,FALSE,TRUE,FALSE,
-"Graduation Rate (4 Years, Pell) By Gender",TRUE,Gender,FALSE,TRUE,FALSE,
-"Graduation Rate (6 Years, Pell) By Gender",TRUE,Gender,FALSE,TRUE,FALSE,
-Retention Rate (GI Benefits) By Gender,TRUE,Gender,FALSE,TRUE,FALSE,
-"Graduation Rate (4 Years, GI Benefits) By Gender",TRUE,Gender,FALSE,TRUE,FALSE,
-"Graduation Rate (6 Years, GI Benefits) By Gender",TRUE,Gender,FALSE,TRUE,FALSE,
-Retention Rate (Transfers) By Gender,TRUE,Gender,FALSE,TRUE,FALSE,
-"Graduation Rate (4 Years, Transfers) By Gender",TRUE,Gender,FALSE,TRUE,FALSE,
-"Graduation Rate (6 Years, Transfers) By Gender",TRUE,Gender,FALSE,TRUE,FALSE,
-Retention Rate By Athlete Status,TRUE,Athlete Status,FALSE,TRUE,FALSE,
-Graduation Rate (4 Years) By Athlete Status,TRUE,Athlete Status,FALSE,TRUE,FALSE,
-Graduation Rate (6 Years) By Athlete Status,TRUE,Athlete Status,FALSE,TRUE,FALSE,
+﻿Name,Category,Percent,Pie,Bar,Complement,Line
+Retention Rate (Athlete) By Gender,Gender,TRUE,FALSE,TRUE,FALSE,FALSE
+"Graduation Rate (4 Years, Athlete) By Gender",Gender,TRUE,FALSE,TRUE,FALSE,FALSE
+"Graduation Rate (6 Years, Athlete) By Gender",Gender,TRUE,FALSE,TRUE,FALSE,FALSE
+Retention Rate (Pell) By Gender,Gender,TRUE,FALSE,TRUE,FALSE,FALSE
+"Graduation Rate (4 Years, Pell) By Gender",Gender,TRUE,FALSE,TRUE,FALSE,FALSE
+"Graduation Rate (6 Years, Pell) By Gender",Gender,TRUE,FALSE,TRUE,FALSE,FALSE
+Retention Rate (GI Benefits) By Gender,Gender,TRUE,FALSE,TRUE,FALSE,FALSE
+"Graduation Rate (4 Years, GI Benefits) By Gender",Gender,TRUE,FALSE,TRUE,FALSE,FALSE
+"Graduation Rate (6 Years, GI Benefits) By Gender",Gender,TRUE,FALSE,TRUE,FALSE,FALSE
+Retention Rate (Transfers) By Gender,Gender,TRUE,FALSE,TRUE,FALSE,FALSE
+"Graduation Rate (4 Years, Transfers) By Gender",Gender,TRUE,FALSE,TRUE,FALSE,FALSE
+"Graduation Rate (6 Years, Transfers) By Gender",Gender,TRUE,FALSE,TRUE,FALSE,FALSE
+Retention Rate By Athlete Status,Athlete Status,TRUE,FALSE,TRUE,FALSE,TRUE
+Graduation Rate (4 Years) By Athlete Status,Athlete Status,TRUE,FALSE,TRUE,FALSE,TRUE
+Graduation Rate (6 Years) By Athlete Status,Athlete Status,TRUE,FALSE,TRUE,FALSE,TRUE
