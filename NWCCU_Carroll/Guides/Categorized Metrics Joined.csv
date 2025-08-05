@@ -17,3 +17,15 @@
 "Retention Rate (GI Benefits, Women)",Retention Rate (GI Benefits) By Gender,Women
 "Retention Rate (Pell, Men)",Retention Rate (Pell) By Gender,Men
 "Retention Rate (Pell, Women)",Retention Rate (Pell) By Gender,Women
+"Retention Rate (Transfers, Men)",Retention Rate (Transfers) By Gender,Men
+"Retention Rate (Transfers, Women)",Retention Rate (Transfers) By Gender,Women
+"Graduation Rate (4 Years, Transfers, Men)","Graduation Rate (4 Years, Transfers) By Gender",Men
+"Graduation Rate (4 Years, Transfers, Women)","Graduation Rate (4 Years, Transfers) By Gender",Women
+"Graduation Rate (6 Years, Transfers, Men)","Graduation Rate (6 Years, Transfers) By Gender",Men
+"Graduation Rate (6 Years, Transfers, Women)","Graduation Rate (6 Years, Transfers) By Gender",Women
+Retention Rate (Non-Athlete),Retention Rate By Athlete Status,Non-Athlete
+Retention Rate (Athlete),Retention Rate By Athlete Status,Athlete
+"Graduation Rate (4 Years, Non-Athlete)",Graduation Rate (4 Years) By Athlete Status,Non-Athlete
+"Graduation Rate (4 Years, Athlete)",Graduation Rate (4 Years) By Athlete Status,Athlete
+"Graduation Rate (6 Years, Non-Athlete)",Graduation Rate (6 Years) By Athlete Status,Non-Athlete
+"Graduation Rate (6 Years, Athlete)",Graduation Rate (6 Years) By Athlete Status,Athlete

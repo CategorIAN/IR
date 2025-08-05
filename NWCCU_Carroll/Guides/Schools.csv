@@ -1,24 +1,13 @@
-﻿School,Group
-Carroll College,Carroll College
-The University of Montana,Montana Schools
-Montana Technological University,Montana Schools
-University of Providence,Montana Schools
-Rocky Mountain College,Montana Schools
-Gonzaga University,Regional Schools
-Whitman College,Regional Schools
-Whitworth University,Regional Schools
-The College of Idaho,Regional Schools
-Loras College,National Schools
-St. Thomas Aquinas College,National Schools
-Thomas More University,National Schools
-The University of Montana,Overall
-Montana Technological University,Overall
-University of Providence,Overall
-Rocky Mountain College,Overall
-Gonzaga University,Overall
-Whitman College,Overall
-Whitworth University,Overall
-The College of Idaho,Overall
-Loras College,Overall
-St. Thomas Aquinas College,Overall
-Thomas More University,Overall
+﻿IPEDS_ID,School
+180106,Carroll College
+180461,Montana State University
+180416,Montana Technological University
+180258,University of Providence
+180595,Rocky Mountain College
+235316,Gonzaga University
+237057,Whitman College
+237066,Whitworth University
+142294,The College of Idaho
+153825,Loras College
+195243,St. Thomas Aquinas College
+157809,Thomas More University

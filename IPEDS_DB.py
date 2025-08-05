@@ -22,14 +22,12 @@ class IPEDS_DB:
         self.group_colors = pd.read_csv(os.path.join(self.guides, "Group_Colors.csv"), index_col=0)
         self.school_colors = pd.read_csv(os.path.join(self.guides, "School_Colors.csv"), index_col=0)
         self.metrics = pd.read_csv(os.path.join(self.guides, "Metrics.csv"))
-        cat_metrics = pd.read_csv(os.path.join(self.guides, "Categorized Metrics.csv"))
-        self.cat_metrics = cat_metrics.merge(self.metrics, left_on = "Metric", right_on = "Name", suffixes = ('', '_'))
+        self.cat_metrics = pd.read_csv(os.path.join(self.guides, "Categorized Metrics.csv"))
         self.cat_metric_names = pd.read_csv(os.path.join(self.guides, "Categorized Metrics Joined.csv"))
         self.complements = pd.read_csv(os.path.join(self.guides, "Complements.csv"), index_col=0)
         self.sch_abbrev_df = pd.read_csv(os.path.join(self.guides, "School_Abbreviations.csv"), index_col=0)
         self.school_colors_multi = pd.read_csv(os.path.join(self.guides, "School_Colors_Multi.csv"), index_col=[0, 1])
         self.group_colors_multi = pd.read_csv(os.path.join(self.guides, "Group_Colors_Multi.csv"), index_col=[0, 1])
-        self.line_chart_df = pd.read_csv(os.path.join(self.guides, "Line Charts.csv"), index_col=0)
 
     def color_dict(self, my_df):
         return {i: tuple([x / 255 for x in my_df.loc[i, ['Red', 'Blue', 'Green']]]) for i in my_df.index}
@@ -124,15 +122,16 @@ class IPEDS_DB:
             for boundary in ["top", "bottom", "left", "right"]:
                 ax.spines[boundary].set_visible(False)
 
-    def line_graph(self, name, base_year, end_year, grouped, make_df, lines = None):
-        type = self.line_chart_df.at[name, 'Type']
-        if type == "Simple":
-            category = None
+    def line_graph(self, name, base_year, end_year, grouped, make_df, lines = None, cat_metric = False):
+        #type = self.line_chart_df.at[name, 'Type']
+        if not cat_metric:
             percent = self.metrics.loc[lambda df: df['Name'] == name]['Percent'].iloc[0]
+        '''
         else:
             cat_name = self.cat_metric_names.loc[lambda df: df['Name'] == name]['Categorized Metric'].iloc[0]
             category = self.cat_metrics.loc[lambda df: df['Name'] == cat_name]['Category'].iloc[0]
             percent = self.cat_metrics.loc[lambda df: df['Name'] == cat_name]['Percent'].iloc[0]
+        '''
         title = self.title_with_grouping(grouped)(f"{name} ({base_year}-{end_year})")
         self.check_dfs([name], base_year, end_year, grouped, make_df)
         df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", title + ".csv"]), index_col=0)
@@ -162,13 +161,13 @@ class IPEDS_DB:
         plt.grid(axis="y", linestyle="--")
         if len(df.columns) > 1:
             leg_elems = [Patch(facecolor=colors[i], label=df.columns[i]) for i in range(len(df.columns))]
-            fig.legend(handles=leg_elems, title=category, loc='upper left', bbox_to_anchor=(0, 1), borderaxespad=0.)
+            fig.legend(handles=leg_elems, title=col_name, loc='upper left', bbox_to_anchor=(0, 1), borderaxespad=0.)
         else:
             title = f"{df.columns[0]} {title}"
             plt.legend().remove()
+        plt.suptitle(title, fontsize=20)
         by_path = ['By Peer Grouping'] if grouped else ['By School']
-        category_path = [] if (category is None) else [category]
-        path = [self.chart_path, 'Line Charts'] + by_path + category_path + [title + ".png"]
+        path = [self.chart_path, 'Line Charts'] + by_path + [title + ".png"]
         plt.savefig(os.path.join(*path), dpi=300)
         plt.show()
         plt.close()
@@ -478,14 +477,13 @@ class IPEDS_DB:
                     print(f"Creating {name}")
                     self.year_values_df(name, base_year, end_year, grouped)
 
-    def save_dfs_line_charts_all(self, base_year, end_year = None, make_df = True):
-        is_grouped = [False, True]
-        names = list(self.line_chart_df.index)
+    def save_dfs_line_charts_all(self, base_year, end_year = None, make_df = True, is_grouped = (False, True)):
+        names = self.metrics.loc[lambda df: df['Line'] == True]['Name']
+        print(names)
         for (grouped, name) in product(is_grouped, names):
-            self.line_graph(name, base_year, end_year, grouped, make_df=make_df)
+            self.line_graph(name, base_year, end_year, grouped, make_df=make_df, cat_metric=False)
 
-    def save_dfs_gsb_charts_all(self, base_year, end_year = None, make_df = True):
-        is_grouped = [False, True]
+    def save_dfs_gsb_charts_all(self, base_year, end_year = None, make_df = True, is_grouped = (False, True)):
         cat_mets = self.cat_metrics.loc[lambda df: df['Bar'] == True]
         for (grouped, name) in product(is_grouped, cat_mets['Name']):
             self.bar_chart_grouped_stacked(name, base_year, end_year, grouped, make_df)

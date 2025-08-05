@@ -1,10 +1,35 @@
-﻿Name,Percent
-"Graduation Rate (4 Years, Athlete)",TRUE
-"Graduation Rate (4 Years, GI Benefits)",TRUE
-"Graduation Rate (4 Years, Pell)",TRUE
-"Graduation Rate (6 Years, Athlete)",TRUE
-"Graduation Rate (6 Years, GI Benefits)",TRUE
-"Graduation Rate (6 Years, Pell)",TRUE
-Retention Rate (Athlete),TRUE
-Retention Rate (GI Benefits),TRUE
-Retention Rate (Pell),TRUE
+﻿Name,Percent,Line
+"Graduation Rate (4 Years, Athlete)",TRUE,TRUE
+"Graduation Rate (4 Years, Athlete, Men)",TRUE,TRUE
+"Graduation Rate (4 Years, Athlete, Women)",TRUE,TRUE
+"Graduation Rate (4 Years, GI Benefits)",TRUE,TRUE
+"Graduation Rate (4 Years, Non-Athlete)",TRUE,TRUE
+"Graduation Rate (4 Years, Pell)",TRUE,TRUE
+"Graduation Rate (4 Years, Transfers)",TRUE,TRUE
+"Graduation Rate (6 Years, Athlete)",TRUE,TRUE
+"Graduation Rate (6 Years, GI Benefits)",TRUE,TRUE
+"Graduation Rate (6 Years, Non-Athlete)",TRUE,TRUE
+"Graduation Rate (6 Years, Pell)",TRUE,TRUE
+"Graduation Rate (6 Years, Transfers)",TRUE,TRUE
+Retention Rate (Athlete),TRUE,TRUE
+Retention Rate (GI Benefits),TRUE,TRUE
+Retention Rate (Non-Athlete),TRUE,TRUE
+Retention Rate (Pell),TRUE,TRUE
+Retention Rate (Transfers),TRUE,TRUE
+"Graduation Rate (4 Years, GI Benefits, Men)",TRUE,TRUE
+"Graduation Rate (4 Years, GI Benefits, Women)",TRUE,TRUE
+"Graduation Rate (4 Years, Pell, Men)",TRUE,TRUE
+"Graduation Rate (4 Years, Pell, Men)",TRUE,TRUE
+"Graduation Rate (4 Years, Pell, Women)",TRUE,TRUE
+"Graduation Rate (6 Years, Athlete, Men)",TRUE,TRUE
+"Graduation Rate (6 Years, Athlete, Women)",TRUE,TRUE
+"Graduation Rate (6 Years, GI Benefits, Men)",TRUE,TRUE
+"Graduation Rate (6 Years, GI Benefits, Women)",TRUE,TRUE
+"Graduation Rate (6 Years, Pell, Men)",TRUE,TRUE
+"Graduation Rate (6 Years, Pell, Women)",TRUE,TRUE
+"Retention Rate (Athlete, Men)",TRUE,TRUE
+"Retention Rate (Athlete, Women)",TRUE,TRUE
+"Retention Rate (GI Benefits, Men)",TRUE,TRUE
+"Retention Rate (GI Benefits, Women)",TRUE,TRUE
+"Retention Rate (Pell, Men)",TRUE,TRUE
+"Retention Rate (Pell, Women)",TRUE,TRUE

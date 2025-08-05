@@ -38,8 +38,3 @@ GROUP BY LOAD, GRADUATED_IN_2024FA
 --(End 3)--------------------------------------------------------------------------------------------
 
 
-SELECT *
-FROM TERMS
-WHERE TERMS.TERM_START_DATE < '2025-07-01'
-                    AND TERMS.TERM_END_DATE >= '2024-07-01'
-

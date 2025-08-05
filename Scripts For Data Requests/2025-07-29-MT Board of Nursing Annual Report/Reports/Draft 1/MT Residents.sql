@@ -19,11 +19,3 @@ FROM (
      ) AS X
 WHERE ADDRESS_RANK = 1
 --(End 2)--------------------------------------------------------------------------------------------
-
-
-
-
-SELECT ID,
-       COUNT(*)
-FROM (SELECT *
-      FROM PERSON_ADDRESSES_VIEW) AS X GROUP BY ID
