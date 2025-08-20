@@ -1,0 +1,36 @@
+--(Begin 2)-------------------------------------------------------------------------------------------------------------
+SELECT LOAD,
+       STUDENT_TYPE,
+       ACADEMIC_LEVEL,
+       TERM_STATUS,
+       COUNT(*) AS STUDENT_COUNT
+FROM (
+--(Begin 1)-------------------------------------------------------------------------------------------------------------
+         SELECT DISTINCT STC_PERSON_ID                 AS ID,
+                         FIRST_NAME,
+                         LAST_NAME,
+                         COALESCE(ST.STTR_STUDENT_LOAD, 'N/A')          AS LOAD,
+                         COALESCE(STT_DESC, 'Unknown') AS STUDENT_TYPE,
+                         ACADEMIC_LEVEL_DESC           AS ACADEMIC_LEVEL,
+                         STATUS_DESC                   AS TERM_STATUS
+         FROM SPT_STUDENT_ACAD_CRED AS STC
+                  JOIN ODS_PERSON ON STC.STC_PERSON_ID = ODS_PERSON.ID
+                  JOIN ODS_STUDENT_TERMS AS ST
+                       ON STC.STC_PERSON_ID + '*' + STC.STC_TERM + '*' + STC.STC_ACAD_LEVEL = STUDENT_TERMS_ID
+                  LEFT JOIN (SELECT STUDENTS_ID,
+                                    STU_TYPES,
+                                    ROW_NUMBER() OVER (PARTITION BY STUDENTS_ID ORDER BY STU_TYPE_DATES DESC) AS RANK
+                             FROM Z01_STU_TYPE_INFO
+                                      JOIN ODS_TERMS ON TERMS_ID = '2024FA'
+                             WHERE STU_TYPE_DATES <= TERM_END_DATE) AS Z01_STU_TYPE_INFO
+                            ON STC_PERSON_ID = STUDENTS_ID AND RANK = 1
+                  LEFT JOIN Z01_STUDENT_TYPES ON Z01_STU_TYPE_INFO.STU_TYPES = Z01_STUDENT_TYPES.STUDENT_TYPES_ID
+         WHERE STC_TERM = '2024FA'
+           AND STC_CRED_TYPE = 'INST'
+--(End 1)---------------------------------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY LOAD,
+       STUDENT_TYPE,
+       ACADEMIC_LEVEL,
+       TERM_STATUS
+--(End 2)---------------------------------------------------------------------------------------------------------------

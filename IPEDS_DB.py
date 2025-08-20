@@ -3,7 +3,7 @@ import os
 import pandas as pd
 from functools import reduce
 import matplotlib.pyplot as plt
-from matplotlib.ticker import PercentFormatter, FuncFormatter
+from matplotlib.ticker import PercentFormatter
 from matplotlib import cm
 import numpy as np
 from matplotlib.patches import Patch, Rectangle
@@ -19,8 +19,6 @@ class IPEDS_DB:
         self.schools = pd.read_csv(os.path.join(self.guides, "Schools.csv"), index_col=0)
         self.school_groups = pd.read_csv(os.path.join(self.guides, "School_Groups.csv"))
         self.groups = pd.read_csv(os.path.join(self.guides, "Groups.csv"), index_col=0)
-        self.group_colors = pd.read_csv(os.path.join(self.guides, "Group_Colors.csv"), index_col=0)
-        self.school_colors = pd.read_csv(os.path.join(self.guides, "School_Colors.csv"), index_col=0)
         self.metrics = pd.read_csv(os.path.join(self.guides, "Metrics.csv"))
         self.cat_metrics = pd.read_csv(os.path.join(self.guides, "Categorized Metrics.csv"))
         self.cat_metric_names = pd.read_csv(os.path.join(self.guides, "Categorized Metrics Joined.csv"))
@@ -38,14 +36,6 @@ class IPEDS_DB:
         data = [[str(x) for x in tuple(y)] for y in cursor.fetchall()]
         df = pd.DataFrame(data=data, columns=columns)
         return df.set_index(columns[0]) if index_col else df
-
-    def academic_year(self, start, year):
-        if start == "This Fall":
-            return f"AY {str(year)}-{str(year + 1)[2:]}"
-        if start == "Next Fall":
-            return f"AY {str(year - 1)}-{str(year)[2:]}"
-        else:
-            return year
 
     def value_df(self, name):
         table, variable, start = self.varmap.loc[name, :]
@@ -145,63 +135,6 @@ class IPEDS_DB:
             df = pd.concat([df, comp_df])
         return df
 
-    def line_graph(self, name, base_year, end_year, grouped, make_df, lines = None, cat_metric = False):
-        title = self.title_with_grouping(grouped)(f"{name} ({base_year}-{end_year})")
-        color_dict = self.color_dict(self.group_colors_multi if grouped else self.school_colors_multi)
-        if not cat_metric:
-            percent = self.metrics.loc[lambda df: df['Name'] == name]['Percent'].iloc[0]
-            self.check_dfs([name], base_year, end_year, grouped, make_df)
-            df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", title + ".csv"]), index_col=0)
-            pivot_by = 'Group' if grouped else 'School'
-            values_col = name
-            first_group = df[pivot_by].iloc[0]
-            color_func = lambda group: color_dict[(group, 0)]
-        else:
-            percent = self.cat_metrics.loc[lambda df: df['Name'] == name]['Percent'].iloc[0]
-            names, types, category, complement = self.get_metrics(name)
-            self.check_dfs(names, base_year, end_year, grouped, make_df)
-            df = self.df_agg(names, types, category, complement, base_year, end_year, grouped)
-            pivot_by = category
-            values_col = 'Value'
-            type_dict = {type: i for i, type in enumerate(types)}
-            first_group = df['Group'].iloc[0]
-            color_func = lambda type: color_dict[(first_group, type_dict[type])]
-        df = df.pivot(index='Year', columns=pivot_by, values=values_col)
-        df = df.reindex(columns=self.groups.index) if grouped else df
-        df = df.map(lambda x: round(x / 100, 4)) if percent else df
-        #---
-        lines = list(range(len(df.columns))) if lines is None else lines
-        df = df.iloc[:, lines]
-        #---
-        my_max = 1.1 * np.nanmax(df)
-        fig, ax = plt.subplots(figsize=(16, 9))
-        fig.subplots_adjust(left=0.3, hspace=0.1)
-        ax.set_ylim(0 - 0.001, my_max)
-        for col in df.columns:
-            z = int(col == "Carroll College")
-            df[col].plot(kind="line", color='black', figsize=(16, 9), linewidth=4, ax=ax, zorder=z)
-            df[col].plot(kind="line", color=color_func(col), figsize=(16, 9), linewidth=3, ax=ax, zorder=z)
-        self.remove_boundaries()
-        plt.gca().yaxis.set_major_formatter(PercentFormatter(xmax=1.0)) if percent else None
-        ax.set_xlabel("Year", fontsize=14, labelpad=10)
-        plt.ylabel("Student Count", rotation=90, fontsize=14) if not percent else None
-        plt.suptitle(title, fontsize=20)
-        plt.tick_params(axis='both', labelsize=12)
-        plt.grid(axis="y", linestyle="--")
-        colors = [color_func(col) for col in df.columns]
-        if len(df.columns) > 1:
-            leg_elems = [Patch(facecolor=colors[i], label=df.columns[i]) for i in range(len(df.columns))]
-            fig.legend(handles=leg_elems, title=pivot_by, loc='upper left', bbox_to_anchor=(0, 1), borderaxespad=0.)
-        else:
-            plt.legend().remove()
-        title = f"{first_group} {title}" if (len(df.columns) == 1 or cat_metric) else title
-        plt.suptitle(title, fontsize=20)
-        by_path = ['By Peer Grouping'] if grouped else ['By School']
-        path = [self.chart_path, 'Line Charts'] + by_path + [title + ".png"]
-        plt.savefig(os.path.join(*path), dpi=300)
-        plt.show()
-        plt.close()
-
     def make_diag_marks(self, ax1, ax2):
         kwargs_1 = {'marker': [(-1, -1), (1, 1)], 'markersize': 10, 'linestyle':'none', 'color':'k'}
         kwargs_2 = {'mec':'k', 'mew':1, 'clip_on':False}
@@ -221,71 +154,99 @@ class IPEDS_DB:
         rec = Rectangle((x0, y0), x1 - x0, height, transform=fig.transFigure,color='lightgray',alpha=0.5,zorder=0)
         fig.patches.append(rec)
 
-    def line_graph_2(self, name, base_year, end_year, begin_break, end_break, grouped, make_df):
-        type = self.line_chart_df.at[name, 'Type']
-        if type == "Simple":
-            category = None
-            percent = self.metrics.loc[lambda df: df['Name'] == name]['Percent'].iloc[0]
+    def line_graph(self, name, grouped, make_df, lines = None, cat_metric = False):
+        color_dict = self.color_dict(self.group_colors_multi if grouped else self.school_colors_multi)
+        if not cat_metric:
+            meta_data = self.metrics.loc[lambda df: df['Name'] == name].iloc[0, :]
+            base_year, end_year = meta_data['Base Year'], meta_data['End Year']
+            title = self.title_with_grouping(grouped)(f"{name} ({base_year}-{end_year})")
+            percent = meta_data['Percent']
+            self.check_dfs([name], base_year, end_year, grouped, make_df)
+            df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", title + ".csv"]), index_col=0)
+            pivot_by = 'Group' if grouped else 'School'
+            values_col = name
+            first_group = df[pivot_by].iloc[0]
+            color_func = lambda group: color_dict[(group, 0)]
         else:
-            cat_name = self.cat_metric_names.loc[lambda df: df['Name'] == name]['Categorized Metric'].iloc[0]
-            category = self.cat_metrics.loc[lambda df: df['Name'] == cat_name]['Category'].iloc[0]
-            percent = self.cat_metrics.loc[lambda df: df['Name'] == cat_name]['Percent'].iloc[0]
-        title = self.title_with_grouping(grouped)(f"{name} ({base_year}-{end_year})")
-        self.check_dfs([name], base_year, end_year, grouped, make_df)
-        df = pd.read_csv("\\".join([os.getcwd(), self.folder, "Data", title + ".csv"]), index_col=0)
-        columns = 'Group' if grouped else 'School'
-        df = df.pivot(index='Year', columns=columns, values=name)
+            meta_data = self.cat_metrics.loc[lambda df: df['Name'] == name].iloc[0, :]
+            base_year, end_year = meta_data['Base Year'], meta_data['End Year']
+            title = self.title_with_grouping(grouped)(f"{name} ({base_year}-{end_year})")
+            percent = meta_data['Percent']
+            names, types, category, complement = self.get_metrics(name)
+            self.check_dfs(names, base_year, end_year, grouped, make_df)
+            df = self.df_agg(names, types, category, complement, base_year, end_year, grouped)
+            pivot_by = category
+            values_col = 'Value'
+            type_dict = {type: i for i, type in enumerate(types)}
+            first_group = df['Group'].iloc[0]
+            color_func = lambda type: color_dict[(first_group, type_dict[type])]
+        df = df.pivot(index='Year', columns=pivot_by, values=values_col)
         df = df.reindex(columns=self.groups.index) if grouped else df
-        df = df.map(lambda x: round(x / 100, 3)) if percent else df
-        color_df = self.group_colors if grouped else self.school_colors
-        color_dict = self.color_dict(color_df)
-        my_max = np.nanmax(df) + 10
-        lims_1, lims_2 = ((0, begin_break), (end_break, my_max))
-        kwargs_1 = {'nrows': 2, 'ncols': 1, 'sharex':True, 'figsize': (16, 9)}
-        kwargs_2 = {'gridspec_kw': {'height_ratios': [lims_2[1] - lims_2[0], lims_1[1] - lims_1[0]]}}
-        fig, (ax2, ax1) = plt.subplots(**kwargs_1, **kwargs_2)
-        fig.subplots_adjust(left=0.3, hspace=0.1)
-        ax1.set_ylim(*lims_1)
-        ax2.set_ylim(*lims_2)
-        plt.suptitle(title, fontsize=20)
-        colors = [color_dict[group] for group in df.columns]
-        self.remove_boundaries(ax1, ax2)
-        for ax in [ax1, ax2]:
-            df.plot(kind="line", color='black', figsize=(16,9), linewidth=4, ax=ax, legend=False)
-            df.plot(kind="line", color=colors, figsize=(16, 9), linewidth=3, ax=ax, legend=False)
+        df = df.map(lambda x: round(x / 100, 4)) if percent else df
+        #---
+        lines = list(range(len(df.columns))) if lines is None else lines
+        df = df.iloc[:, lines]
+        #---
+        my_max = 1.1 * np.nanmax(df)
+        if grouped:
+            begin_break, end_break = meta_data['Begin Break (for groups)'], meta_data['End Break (for groups)']
+        else:
+            begin_break, end_break = meta_data['Begin Break (for schools)'], meta_data['End Break (for schools)']
+        if pd.isna(begin_break):
+            lims = [(0- 0.001, my_max)]
+            extra_args = {}
+        else:
+            lims = [(end_break, my_max), (0 - 0.001, begin_break)]
+            extra_args = {'gridspec_kw': {'height_ratios': [lim[1] - lim[0] for lim in lims]}}
+        args = {'nrows': len(lims), 'ncols': 1, 'sharex': True, 'figsize': (16, 9), 'squeeze': False}
+        fig, axes = plt.subplots(**args, **extra_args)
+        axes = axes.ravel()
+        fig.subplots_adjust(left=0.3, hspace=0.1, top=0.85)
+        for ax, lim in zip(axes, lims):
+            ax.set_ylim(*lim)
+        for ax in axes:
+            for col in df.columns:
+                z = int(col == "Carroll College")
+                df[col].plot(kind="line", color='black', figsize=(16, 9), linewidth=4, ax=ax, zorder=z)
+                df[col].plot(kind="line", color=color_func(col), figsize=(16, 9), linewidth=3, ax=ax, zorder=z)
             ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0)) if percent else None
             ax.grid(axis="y", linestyle="--")
+            ax.set_xlabel("")
+        self.remove_boundaries(*axes)
         plt.tick_params(axis='both', labelsize=12)
-        ax1.set_xlabel("")
-        ax2.set_xlabel("")
         fig.text(0.6, 0.04, "Year", ha='center', fontsize=14)
         fig.text(0.25, 0.5, "Student Count", va="center", rotation="vertical", fontsize=14) if not percent else None
-        leg_elems = [Patch(facecolor=colors[i], label=df.columns[i]) for i in range(len(df.columns))]
-        args_1 = {"handles": leg_elems, "title": category, "loc": "upper left"}
-        args_2 = {"bbox_to_anchor": (0, 1), "borderaxespad": 0}
-        args = args_1 | args_2
-        fig.legend(**args)
-        self.make_diag_marks(ax1, ax2)
-        self.make_dashed_lines(ax1, ax2)
-        self.make_gray_rectangle(fig, ax1, ax2)
+        plt.tick_params(axis='both', labelsize=12)
+        colors = [color_func(col) for col in df.columns]
+        if len(df.columns) > 1:
+            leg_elems = [Patch(facecolor=colors[i], label=df.columns[i]) for i in range(len(df.columns))]
+            fig.legend(handles=leg_elems, title=pivot_by, loc='upper left', bbox_to_anchor=(0, 1), borderaxespad=0.)
+        else:
+            plt.legend().remove()
+        title = f"{first_group} {title}" if (len(df.columns) == 1 or cat_metric) else title
+        wrapped_title = "\n".join(title.split(" - "))
+        plt.suptitle(wrapped_title, fontsize=20)
+        if not pd.isna(begin_break):
+            (ax2, ax1) = axes
+            self.make_diag_marks(ax1, ax2)
+            self.make_dashed_lines(ax1, ax2)
+            self.make_gray_rectangle(fig, ax1, ax2)
         by_path = ['By Peer Grouping'] if grouped else ['By School']
-        category_path = [] if (category is None) else [category]
-        path = [self.chart_path, 'Line Charts'] + by_path + category_path + [title + " (With Break).png"]
+        path = [self.chart_path, 'Line Charts'] + by_path + [title + ".png"]
         plt.savefig(os.path.join(*path), dpi=300)
         plt.show()
         plt.close()
-
-
 
     def filter_and_sort(self, df, groups, years):
         def f(i, j):
             return df.loc[(df['Group'] == groups[i]) & (df['Year'] == years[j])].sort_values(by='Value').reset_index()
         return f
 
-    def bar_chart_grouped_stacked(self, name, base_year, end_year, grouped = True, make_df = True):
+    def bar_chart_grouped_stacked(self, name, grouped = True, make_df = True):
+        color_dict = self.color_dict(self.group_colors_multi if grouped else self.school_colors_multi)
+        meta_data = self.cat_metrics.loc[lambda df: df['Name'] == name].iloc[0]
+        category, percent, pie, base_year, end_year = meta_data[['Category', 'Percent', 'Pie', 'Base Year', 'End Year']]
         title = self.title_with_grouping(grouped)(f"{name} ({base_year}-{end_year})")
-        cat_metric = self.cat_metrics.loc[lambda df: df['Name'] == name].iloc[0]
-        category, percent, pie = cat_metric[['Category', 'Percent', 'Pie']]
         names, types, category, complement = self.get_metrics(name)
         self.check_dfs(names, base_year, end_year, grouped, make_df)
         df = self.df_agg(names, types, category, complement, base_year, end_year, grouped)
@@ -299,13 +260,25 @@ class IPEDS_DB:
         group_width = 0.7
         bar_width = group_width / num_bars
         x_positions = np.linspace(0, group_width, num_bars)
-        fig, ax = plt.subplots(figsize=(16, 9))
-        fig.subplots_adjust(left=0.4, hspace=0.05)
-        color_dict = self.color_dict(self.group_colors_multi if grouped else self.school_colors_multi)
-        self.remove_boundaries()
-        #--------------------------
         my_max = 1 if pie else np.nanmax(df['Value'])
-        ax.set_ylim(0, my_max)
+        if grouped:
+            begin_break, end_break = meta_data['Begin Break (for groups)'], meta_data['End Break (for groups)']
+        else:
+            begin_break, end_break = meta_data['Begin Break (for schools)'], meta_data['End Break (for schools)']
+        if pd.isna(begin_break):
+            lims = [(0- 0.001, my_max)]
+            extra_args = {}
+        else:
+            lims = [(end_break, my_max), (0 - 0.001, begin_break)]
+            extra_args = {'gridspec_kw': {'height_ratios': [lim[1] - lim[0] for lim in lims]}}
+        args = {'nrows': len(lims), 'ncols': 1, 'sharex': True, 'figsize': (16, 9), 'squeeze': False}
+        fig, axes = plt.subplots(**args, **extra_args)
+        axes = axes.ravel()
+        fig.subplots_adjust(left=0.4, hspace=0.05, top=0.85)
+        self.remove_boundaries(*axes)
+        #--------------------------
+        for ax, lim in zip(axes, lims):
+            ax.set_ylim(*lim)
         filter_sort_func = self.filter_and_sort(df, groups, years)
         if pie:
             for i in range(num_groups):
@@ -321,89 +294,7 @@ class IPEDS_DB:
                             print(df_part)
                         args = {"x": bar_positions[j], "height": value, "width": bar_width,
                                 "color": color_dict[(groups[i], k)], "bottom": bottom, "edgecolor": 'black'}
-                        ax.bar(**args)
-                        bottom = bottom + value
-        else:
-            for i in range(num_groups):
-                bar_positions = x_positions + i
-                for j in range(len(years)):
-                    df_part = filter_sort_func(i, j)
-                    bottom = 0
-                    for k in df_part.index:
-                        type_index = type_dict[df_part.at[k, category]]
-                        args = {"x": bar_positions[j], "height": df_part.at[k, 'Value'] - bottom, "width": bar_width,
-                                "color":color_dict[(groups[i], type_index)] , "bottom": bottom, "edgecolor": 'black'}
-                        ax.bar(**args)
-                        bottom = df_part.at[k, 'Value']
-        #---------------------------------------------------------------------------------------------------------------
-        labels = groups if grouped else [self.sch_abbrev_df.at[school, 'Abbreviation'] for school in groups]
-        if len(groups) > 1:
-            label_positions = np.arange(0, num_groups, 1) + group_width / 2
-            ax.set_xticks(label_positions)
-            ax.set_xticklabels(labels, rotation=0, fontsize=12)
-            plt.xlabel(f"Schools Chronologically ({base_year}-{end_year})") if not grouped else None
-        else:
-            title = f"{groups[0]} {title}"
-            ax.set_xticks(x_positions)
-            ax.set_xticklabels(years)
-        plt.ylabel("Student Count", rotation=90) if not percent else None
-        plt.suptitle(title, fontsize=20)
-        ax.grid(axis='y', linestyle='--', alpha=0.7)
-        str_func = lambda x, t: f"{x} - {t}" if grouped else f"{x} ({self.sch_abbrev_df.at[x, "Abbreviation"]}) - {t}"
-        leg_labels = [str_func(x, type) for (x, type) in product(groups, types)]
-        leg_colors = reduce(lambda x, y: x + y, [[color_dict[(j, i)] for i in range(len(types))] for j in groups])
-        leg_elems = [Patch(facecolor=color, label=leg_label) for color, leg_label in zip(leg_colors, leg_labels)]
-        fig.legend(handles=leg_elems, title=category, loc='upper left', bbox_to_anchor=(0, 1), borderaxespad=0.)
-        by_path = ['By Peer Grouping'] if grouped else ['By School']
-        path = [self.chart_path, 'Grouped, Stacked Bar Charts'] + by_path + [title + ".png"]
-        plt.gca().yaxis.set_major_formatter(PercentFormatter(xmax=1.0)) if percent else None
-        plt.savefig(os.path.join(*path), dpi=300)
-        plt.show()
-        plt.close()
-
-    def bar_chart_grouped_stacked_2(self, name, base_year, end_year, begin_break, end_break, grouped, make_df):
-        title = self.title_with_grouping(grouped)(f"{name} ({base_year}-{end_year})")
-        cat_metric = self.cat_metrics.loc[lambda df: df['Name'] == name].iloc[0]
-        category, percent, pie = cat_metric[['Category', 'Percent', 'Pie']]
-        names, types, category, complement = self.get_metrics(name)
-        self.check_dfs(names, base_year, end_year, grouped, make_df)
-        df = self.df_agg(names, types, category, complement, base_year, end_year, grouped)
-        df['Value'] = df['Value'].map(lambda x: round(x / 100, 3)) if percent else df['Value']
-        groups = list(self.groups.index) if grouped else sorted(list(df['Group'].unique()))
-        years = sorted(list(df['Year'].unique()))
-        types = sorted(list(df[category].unique()))
-        type_dict = {type: i for i, type in enumerate(types)}
-        #-------------------------
-        num_groups, num_bars = len(groups), len(years)
-        group_width = 0.7
-        bar_width = group_width / num_bars
-        x_positions = np.linspace(0, group_width, num_bars)
-        kwargs_1 = {'nrows': 2, 'ncols': 1, 'sharex':True, 'figsize': (16, 9)}
-        kwargs_2 = {'gridspec_kw': {'height_ratios': [1, 3]}}
-        fig, (ax2, ax1) = plt.subplots(**(kwargs_1 | kwargs_2))
-        fig.subplots_adjust(left= 0.4, hspace=0.05)
-        color_dict = self.color_dict(self.group_colors_multi if grouped else self.school_colors_multi)
-        self.remove_boundaries(ax1, ax2)
-        #--------------------------
-        my_max = 1 if pie else np.nanmax(df['Value'])
-        ax1.set_ylim(0, begin_break)
-        ax2.set_ylim(end_break, my_max)
-        filter_sort_func = self.filter_and_sort(df, groups, years)
-        if pie:
-            for i in range(num_groups):
-                bar_positions = x_positions + i
-                for j in range(len(years)):
-                    df_part = filter_sort_func(i, j)
-                    bottom = 0
-                    for k in range(len(types)):
-                        type = types[k]
-                        try:
-                            value = list(df_part.loc[lambda df: df[category] == type]['Value'])[0]
-                        except Exception:
-                            print(df_part)
-                        args = {"x": bar_positions[j], "height": value, "width": bar_width,
-                                "color": color_dict[(groups[i], k)], "bottom": bottom, "edgecolor": 'black'}
-                        for ax in [ax1, ax2]:
+                        for ax in axes:
                             ax.bar(**args)
                         bottom = bottom + value
         else:
@@ -416,35 +307,41 @@ class IPEDS_DB:
                         type_index = type_dict[df_part.at[k, category]]
                         args = {"x": bar_positions[j], "height": df_part.at[k, 'Value'] - bottom, "width": bar_width,
                                 "color":color_dict[(groups[i], type_index)] , "bottom": bottom, "edgecolor": 'black'}
-                        ax1.bar(**args)
-                        ax2.bar(**args)
+                        for ax in axes:
+                            ax.bar(**args)
                         bottom = df_part.at[k, 'Value']
-        #---------------------------------------------------------------------------------------------------------------
-        label_positions = np.arange(0, num_groups, 1) + group_width / 2
         labels = groups if grouped else [self.sch_abbrev_df.at[school, 'Abbreviation'] for school in groups]
         fig.text(0.35, 0.5, "Student Count", va="center", rotation="vertical", fontsize=14) if not percent else None
-        plt.suptitle(title, fontsize=20, y=0.95)
+        if len(groups) > 1:
+            label_positions = np.arange(0, num_groups, 1) + group_width / 2
+            for ax in axes:
+                ax.set_xticks(label_positions)
+                ax.set_xticklabels(labels, rotation=0, fontsize=12)
+            fig.text(0.6, 0.04, f"Schools Chronologically ({base_year}-{end_year})", ha='center',
+                     fontsize=14) if not grouped else None
+        else:
+            title = f"{groups[0]} {title}"
+            for ax in axes:
+                ax.set_xticks(x_positions)
+                ax.set_xticklabels(years)
+        wrapped_title = "\n".join(title.split(" - "))
+        plt.suptitle(wrapped_title, fontsize=20)
+        for ax in axes:
+            ax.grid(axis='y', linestyle='--', alpha=0.7)
+            ax.set_xlabel("")
+            ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0)) if percent else None
         str_func = lambda x, t: f"{x} - {t}" if grouped else f"{x} ({self.sch_abbrev_df.at[x, "Abbreviation"]}) - {t}"
         leg_labels = [str_func(x, type) for (x, type) in product(groups, types)]
         leg_colors = reduce(lambda x, y: x + y, [[color_dict[(j, i)] for i in range(len(types))] for j in groups])
-        leg_elems = [Patch(facecolor=color, label=label) for color, label in zip(leg_colors, leg_labels)]
+        leg_elems = [Patch(facecolor=color, label=leg_label) for color, leg_label in zip(leg_colors, leg_labels)]
+        fig.legend(handles=leg_elems, title=category, loc='upper left', bbox_to_anchor=(0, 1), borderaxespad=0.)
+        if not pd.isna(begin_break):
+            ax2, ax1 = axes
+            self.make_diag_marks(ax1, ax2)
+            self.make_dashed_lines(ax1, ax2)
+            self.make_gray_rectangle(fig, ax1, ax2)
         by_path = ['By Peer Grouping'] if grouped else ['By School']
-        path = [self.chart_path, 'Grouped, Stacked Bar Charts'] + by_path + [title + " (With Break).png"]
-        for ax in [ax1, ax2]:
-            ax.set_xticks(label_positions)
-            ax.set_xticklabels(labels, rotation=0, fontsize=12)
-            ax.grid(axis='y', linestyle='--', alpha=0.7)
-            ax.yaxis.set_major_formatter(PercentFormatter(xmax=1.0)) if percent else None
-        ax1.set_xlabel("")
-        ax2.set_xlabel("")
-        fig.text(0.6, 0.04, f"Schools Chronologically ({base_year}-{end_year})", ha='center', fontsize=14) if not grouped else None
-        args_1 = {"handles": leg_elems, "title": category, "loc": "upper left"}
-        args_2 = {"bbox_to_anchor": (0, 1), "borderaxespad": 0}
-        args = args_1 | args_2
-        fig.legend(**args)
-        self.make_diag_marks(ax1, ax2)
-        self.make_dashed_lines(ax1, ax2)
-        self.make_gray_rectangle(fig, ax1, ax2)
+        path = [self.chart_path, 'Grouped, Stacked Bar Charts'] + by_path + [title + ".png"]
         plt.savefig(os.path.join(*path), dpi=300)
         plt.show()
         plt.close()
@@ -486,41 +383,23 @@ class IPEDS_DB:
                     print(f"Creating {name}")
                     self.year_values_df(name, base_year, end_year, grouped)
 
-    def save_dfs_line_charts_all(self, base_year, end_year = None, make_df = True, is_grouped = (False, True)):
+    def save_dfs_line_charts_all(self, make_df = True, is_grouped = (False, True)):
         names = self.metrics.loc[lambda df: df['Line'] == True]['Name']
         for (grouped, name) in product(is_grouped, names):
-            self.line_graph(name, base_year, end_year, grouped, make_df=make_df, cat_metric=False)
+            self.line_graph(name, grouped, make_df=make_df, cat_metric=False)
         names = self.cat_metrics.loc[lambda df: df['Line'] == True]['Name']
         for (grouped, name) in product(is_grouped, names):
-            self.line_graph(name, base_year, end_year, grouped, make_df=make_df, cat_metric=True)
+            self.line_graph(name, grouped, make_df=make_df, cat_metric=True)
 
-    def save_dfs_gsb_charts_all(self, base_year, end_year = None, make_df = True, is_grouped = (False, True)):
+    def save_dfs_gsb_charts_all(self, make_df = True, is_grouped = (False, True)):
         cat_mets = self.cat_metrics.loc[lambda df: df['Bar'] == True]
         for (grouped, name) in product(is_grouped, cat_mets['Name']):
-            self.bar_chart_grouped_stacked(name, base_year, end_year, grouped, make_df)
+            self.bar_chart_grouped_stacked(name, grouped, make_df)
 
-    def make_all_dfs_charts(self, base_year, end_year, make_df):
-        #self.save_dfs_line_charts_all(base_year, end_year, make_df)
-        self.save_dfs_gsb_charts_all(base_year, end_year, make_df)
-        self.adjusted_charts_all(make_df)
+    def make_all_dfs_charts(self, make_df):
+        self.save_dfs_line_charts_all(make_df)
+        self.save_dfs_gsb_charts_all(make_df)
 
-    def adjusted_chart(self, i, make_df):
-        if i == 0:
-            self.bar_chart_grouped_stacked_2("Academic Level Enrollments",
-                                             2015, 2023, 3000, 5000, True, make_df)
-        if i == 1:
-            self.bar_chart_grouped_stacked_2("Academic Level Enrollments",
-                                             2015, 2023, 4000, 7000, False, make_df)
-        if i == 2:
-            self.line_graph('Graduate Enrollment', 2018, 2023, True, make_df)
-            self.line_graph_2('Graduate Enrollment', 2018, 2023, 200, 550, True, make_df)
-        if i == 3:
-            self.line_graph('Undergraduate Enrollment', 2018, 2023, True, make_df)
-
-
-    def adjusted_charts_all(self, make_df):
-        for i in range(4):
-            self.adjusted_chart(i, make_df)
 
 
 

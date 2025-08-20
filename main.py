@@ -27,21 +27,19 @@ def f(i):
     if i == 4:
         X.adjusted_charts_all()
     if i == 5:
-        X.save_dfs_line_charts_all(2015, 2023, make_df=True)
+        X.save_dfs_line_charts_all(make_df=False)
     if i == 6:
-        X.save_dfs_gsb_charts_all(2015, 2023, make_df=False)
-    if i == 7:
-        X.make_all_dfs_charts(2015, 2023, make_df=True)
+        X.save_dfs_gsb_charts_all(make_df=False)
     if i == 8:
-        X.adjusted_charts_all(False)
+        X.make_all_dfs_charts(make_df=False)
 
 def g(i):
     X = IPEDS_DB("NWCCU_Carroll")
     if i == 1:
-        X.save_dfs_line_charts_all(2015, 2023, make_df=False, is_grouped=[False])
+        X.save_dfs_line_charts_all(make_df=False, is_grouped=[False])
     if i == 2:
-        X.save_dfs_gsb_charts_all(2015, 2023, make_df=False, is_grouped=[False])
-
+        X.save_dfs_gsb_charts_all(make_df=False, is_grouped=[False])
 
 if __name__ == '__main__':
-    g(1)
+    df = pd.read_csv('\\'.join([os.getcwd(), "FVT_GE", "Awards.csv"]))
+    print(df_query(df))
