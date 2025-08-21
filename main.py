@@ -11,6 +11,7 @@ from Pell import Pell
 from Null_Analysis import Null_Analysis
 from ConsumerReports import ConsumerReports
 from IPEDS_DB import IPEDS_DB
+from FVT_GE import FVT_GE
 
 def df_query(df, cols  = None):
     cols = df.columns if cols is None else cols
@@ -40,6 +41,21 @@ def g(i):
     if i == 2:
         X.save_dfs_gsb_charts_all(make_df=False, is_grouped=[False])
 
+def h(i):
+    X = FVT_GE()
+    if i == 1:
+        query = X.df_query(X.given_data)
+        X.print(X.ODS_SQL(query))
+    if i == 2:
+        X.col_count(['College_Student_ID'])
+    if i == 3:
+        X.col_count_check(1)
+    if i == 4:
+        X.save_keys()
+    if i == 5:
+        X.getColumn_N()
+        X.getColumn_O()
+
+
 if __name__ == '__main__':
-    df = pd.read_csv('\\'.join([os.getcwd(), "FVT_GE", "Awards.csv"]))
-    print(df_query(df))
+    h(5)
