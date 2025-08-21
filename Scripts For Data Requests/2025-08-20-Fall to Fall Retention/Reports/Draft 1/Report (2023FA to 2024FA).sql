@@ -5,7 +5,7 @@ FROM (
          SELECT ID,
                 CASE
                     WHEN EXISTS (SELECT 1
-                                 FROM SPT_STUDENT_ACAD_CRED
+                                 FROM SPT_STUDENT_ACAD_CRED AS STC
                                  WHERE STC_CURRENT_STATUS IN ('N', 'A')
                                    AND STC_TERM = '2024FA'
                                    AND STC_PERSON_ID = ID
@@ -37,16 +37,5 @@ FROM (
      ) AS X
 --(End 3)---------------------------------------------------------------------------------------------------------------
 
-
-
-
-
 SELECT *
-FROM Z01_APPLICATIONS
-
-SELECT *
-FROM SPT_STUDENT_ACAD_CRED
-
-
-SELECT DISTINCT STC_CRED_TYPE
 FROM SPT_STUDENT_ACAD_CRED

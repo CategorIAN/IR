@@ -19,17 +19,3 @@ WHERE STC_TERM = '2025FA'
 AND STC_CRED_TYPE = 'INST'
 --(End 1)---------------------------------------------------------------------------------------------------------------
 ORDER BY LAST_NAME
-
-
-SELECT *
-FROM Z01_STU_TYPE_INFO
-WHERE STUDENTS_ID IN ('5644376', '6182177')
-
-SELECT *
-FROM SPT_STUDENT_PROGRAMS
-WHERE STPR_STUDENT IN ('5644376', '6182177')
-
-
-SELECT *
-FROM Z01_STU_TYPE_INFO_BK
-WHERE STUDENTS_ID = '5644376'
