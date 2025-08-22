@@ -43,9 +43,6 @@ def g(i):
 
 def h(i):
     X = FVT_GE()
-    if i == 1:
-        query = X.df_query(X.given_data)
-        X.print(X.ODS_SQL(query))
     if i == 2:
         X.col_count(['College_Student_ID'])
     if i == 3:
@@ -53,9 +50,10 @@ def h(i):
     if i == 4:
         X.save_keys()
     if i == 5:
-        X.getColumn_N()
-        X.getColumn_O()
+        X.getColumn('Q')
+    if i == 6:
+        X.big_join()
 
 
 if __name__ == '__main__':
-    h(5)
+    h(6)
