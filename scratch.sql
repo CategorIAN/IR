@@ -1,29 +1,27 @@
 SELECT *
-FROM AWARDS
-WHERE AW_DESCRIPTION IN (
-                            'VA Allowances (Books, Supplies, Housing)',
-                            'VA Ben/Stipend',
-                            'VA Ben/Tuition',
-                            'VA Yellow Ribbon Carroll Match',
-                            'VA Yellow Ribbon Fees',
-                            'VA Yellow Ribbon Match'
-    )
+FROM AR_DEPOSITS
+JOIN AR_DEPOSIT_TYPES ON AR_DEPOSITS.ARD_DEPOSIT_TYPE = AR_DEPOSIT_TYPES_ID
+WHERE ARD_PERSON_ID = '5079083'
 
-SELECT *
-FROM F22_AWARD_LIST
-JOIN AWARDS ON SA_AWARD = AW_ID
-WHERE AW_DESCRIPTION IN (
-                            'VA Allowances (Books, Supplies, Housing)',
-                            'VA Ben/Stipend',
-                            'VA Ben/Tuition',
-                            'VA Yellow Ribbon Carroll Match',
-                            'VA Yellow Ribbon Fees',
-                            'VA Yellow Ribbon Match'
-    )
+SELECT ARP_DATE,
+       ARP_TERM,
+       ARP_AMT,
+       ARP_REVERSAL_AMT,
+       ART_DESC
+FROM AR_PAYMENTS
+JOIN AR_TYPES ON AR_PAYMENTS.ARP_AR_TYPE = AR_TYPES.AR_TYPES_ID
+WHERE ARP_PERSON_ID = '5079083'
 
 
 SELECT *
-FROM STUDENT_ACAD_PROGRAMS_VIEW
-WHERE STUDENT_ID = '6184539'
+FROM AR_BILLING_PAYMENTS_VIEW
+
+SELECT *
+
+SELECT *
+FROM BOOKS
+
+SELECT *
+FROM TOTAL
 
 

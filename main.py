@@ -43,17 +43,9 @@ def g(i):
 
 def h(i):
     X = FVT_GE()
-    if i == 2:
-        X.col_count(['College_Student_ID'])
-    if i == 3:
-        X.col_count_check(1)
-    if i == 4:
-        X.save_keys()
-    if i == 5:
-        X.getColumn('Q')
-    if i == 6:
-        X.big_join()
+    if i == 1:
+        X.getColumn('Z')
 
 
 if __name__ == '__main__':
-    h(6)
+    h(1)
