@@ -44,7 +44,7 @@ def g(i):
 def h(i):
     X = FVT_GE()
     if i == 1:
-        X.getColumn('Z')
+        X.getColumn('AI')
 
 
 if __name__ == '__main__':
