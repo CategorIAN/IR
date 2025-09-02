@@ -19,7 +19,7 @@ class Null_Analysis:
     def irSQL(self, query):
         try:
             env = environ.Env()
-            environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
+            environ.Env.read_env(os.path.join(BASE_DIR, "2024FA.env"))
             my_str = (f'DRIVER={{SQL Server}};'
                               f'SERVER={env("DB_HOST")};'
                               f'DATABASE={env("DB_Name")};'
@@ -38,7 +38,7 @@ class Null_Analysis:
     def snapshotSQL(self, query):
         try:
             env = environ.Env()
-            environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
+            environ.Env.read_env(os.path.join(BASE_DIR, "2024FA.env"))
             my_str = (
                 f"DRIVER={{{env('DATABASE_DRIVER')}}};"
                 f"SERVER={env('DATABASE_HOST')};"

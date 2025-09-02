@@ -38,7 +38,7 @@ class FVT_GE:
     def ODS_SQL(self, query):
         try:
             env = environ.Env()
-            environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
+            environ.Env.read_env(os.path.join(BASE_DIR, "2024FA.env"))
             my_str = (
                 f"DRIVER={{{env('ODS_DRIVER')}}};"
                 f"SERVER={env('ODS_HOST')};"
@@ -352,7 +352,6 @@ class FVT_GE:
     #         'COA During Student''s Entire Enrollment in the Program'
     # I have no idea how to find this. I need to ask KaRena.
     def getColumn_T(self):
-
         '''
         For GE programs, the total amount in Cost of Attendance (COA) for books, supplies, and equipment charged the
         student for the entire GE program the student for the entire GE program (not just for this award year).

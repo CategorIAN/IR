@@ -51,7 +51,7 @@ class Pell:
     def readSQL(self, query):
         try:
             env = environ.Env()
-            environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
+            environ.Env.read_env(os.path.join(BASE_DIR, "2024FA.env"))
             my_str = (
                 f"DRIVER={{{env('DATABASE_DRIVER')}}};"
                 f"SERVER={env('DATABASE_HOST')};"

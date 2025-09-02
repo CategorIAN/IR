@@ -4,7 +4,7 @@ __pycache__/
 *.pyo
 
 # Ignore environment configuration
-.env
+My Envs/2024FA.env
 *.env
 
 # Ignore virtual environment folders

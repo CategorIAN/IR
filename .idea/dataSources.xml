@@ -29,5 +29,12 @@
       <jdbc-url>jdbc:sqlserver://carroll-2.cbeq26equftn.us-east-2.rds.amazonaws.com;database=MyDatabase</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
+    <data-source source="LOCAL" name="2023FA_SNAPSHOT@obsidian" uuid="37519ee7-6142-456b-9f20-c1edd0ecc247">
+      <driver-ref>sqlserver.ms</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>com.microsoft.sqlserver.jdbc.SQLServerDriver</jdbc-driver>
+      <jdbc-url>jdbc:sqlserver://obsidian:1433;database=2023FA_SNAPSHOT</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
   </component>
 </project>
