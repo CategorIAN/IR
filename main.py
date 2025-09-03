@@ -27,12 +27,6 @@ def df_query(df, cols  = None):
 def f(i):
     X = Reports()
     if i == 1:
-        X.getStudentNames()
-    if i == 2:
-        X.getForCreditStudents()
-    if i == 3:
-        X.fallToFallRetention()
-    if i == 4:
         X.newToCarroll()
 
 def h(i):
@@ -42,4 +36,4 @@ def h(i):
 
 
 if __name__ == '__main__':
-    f(4)
+    f(1)

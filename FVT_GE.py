@@ -281,8 +281,9 @@ class FVT_GE:
         """
         self.ODS_SQL(query).to_csv(os.path.join(self.folder, f'R. {title}.csv'), index=False)
 
-    # 'Total Amount of Tution & Fees Assessed During Student''s Entire Enrollment in the Program'
-    # I need to check with KaRena on this one.
+    '''
+    'Total Amount of Tution & Fees Assessed During Student''s Entire Enrollment in the Program'
+    '''
     def getColumn_S(self):
         '''
         For GE Programs, the total amount of tuition and fees student incurred during their enrollment in the reported
@@ -348,9 +349,10 @@ class FVT_GE:
         self.print_table(query)
         self.ODS_SQL(query).to_csv(os.path.join(self.folder, f'S. {title}.csv'), index=False)
 
-    # 'Total Amount of Allowance for books, supplies, and equipment included in the student''s title IV, HEA'
-    #         'COA During Student''s Entire Enrollment in the Program'
-    # I have no idea how to find this. I need to ask KaRena.
+    '''
+    'Total Amount of Allowance for books, supplies, and equipment included in the student''s title IV, HEA'
+       'COA During Student''s Entire Enrollment in the Program'
+    '''
     def getColumn_T(self):
         '''
         For GE programs, the total amount in Cost of Attendance (COA) for books, supplies, and equipment charged the
@@ -434,8 +436,10 @@ class FVT_GE:
         self.print_table(query)
         self.ODS_SQL(query).to_csv(os.path.join(self.folder, f'U. {title}.csv'), index=False)
 #================================ANNUAL AMOUNT RECORDS========================================
-    # 'Annual Cost of Attendance (COA)'
-    # I think I am done. I just got this from the website. I will need to check with KaRena.
+    '''
+     'Annual Cost of Attendance (COA)'
+     I think I am done. I just got this from the website. I will need to check with KaRena.
+    '''
     def getColumn_Z(self):
         '''
         The total cost of attendance for the reported award year. Value must be numeric and 0-9.
@@ -546,8 +550,10 @@ class FVT_GE:
         self.print_table(query)
         self.ODS_SQL(query).to_csv(os.path.join(self.folder, f'AB. {title}.csv'), index=False)
 
-    # 'Allowance for Books, Supplies, and Equipment'
-    # I have no idea how to find this. I need to ask KaRena.
+    '''
+     'Allowance for Books, Supplies, and Equipment'
+     I have no idea how to find this. I need to ask KaRena.
+    '''
     def getColumn_AC(self):
         '''
         Allowance amount in Cost of Attendance (COA) for books, supplies, and equipment for the reported award year.
@@ -562,8 +568,10 @@ class FVT_GE:
         '''
         pass
 
-    # 'Allowance for Housing and Food'
-    # I have no idea how to find this. I need to ask KaRena.
+    '''
+     'Allowance for Housing and Food'
+     I have no idea how to find this. I need to ask KaRena.
+    '''
     def getColumn_AD(self):
         '''
         Allowance amount in Cost of Attendance (COA) for Housing and Food for this award year.
@@ -631,8 +639,10 @@ class FVT_GE:
         self.print_table(query)
         self.ODS_SQL(query).to_csv(os.path.join(self.folder, f'AE. {title}.csv'), index=False)
 
-    # 'Other State, Tribal, or Private Grants
-    # I have no idea how to find this. I need to ask KaRena.
+    '''
+     'Other State, Tribal, or Private Grants'
+     I have no idea how to find this. I need to ask KaRena.
+    '''
     def getColumn_AF(self):
         '''
         Amount of other state, tribal or private grants the student received for the reported award year.
