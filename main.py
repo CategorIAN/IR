@@ -27,13 +27,12 @@ def df_query(df, cols  = None):
 def f(i):
     X = Reports()
     if i == 1:
-        X.newToCarroll()
+        X.getTotalUndergraduateByResidencyState_2025FA()
 
 def h(i):
     X = FVT_GE()
     if i == 1:
         X.getColumn('AI')
-
 
 if __name__ == '__main__':
     f(1)

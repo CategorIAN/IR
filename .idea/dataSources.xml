@@ -36,5 +36,12 @@
       <jdbc-url>jdbc:sqlserver://obsidian:1433;database=2023FA_SNAPSHOT</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
+    <data-source source="LOCAL" name="2025FA_SNAPSHOT@OBSIDIAN" uuid="ee44cf76-db45-453a-92b3-49755f878ac8">
+      <driver-ref>sqlserver.ms</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>com.microsoft.sqlserver.jdbc.SQLServerDriver</jdbc-driver>
+      <jdbc-url>jdbc:sqlserver://OBSIDIAN:1433;database=2025FA_SNAPSHOT</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
   </component>
 </project>
