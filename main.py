@@ -27,12 +27,12 @@ def df_query(df, cols  = None):
 def f(i):
     X = Reports()
     if i == 1:
-        X.getTotalUndergraduateByResidencyState_2025FA()
+        X.getThoseStudentsFoundWhoGotSumma()
 
 def h(i):
     X = FVT_GE()
     if i == 1:
-        X.getColumn('AI')
+        X.getColumn('AA')
 
 if __name__ == '__main__':
-    f(1)
+    h(1)

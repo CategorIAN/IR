@@ -460,10 +460,9 @@ class FVT_GE:
         self.ODS_SQL(query).to_csv(os.path.join(self.folder, f'Z. {title}.csv'), index=False)
 
     # 'Tuition and Fees Amount for Award Year being Reported'
-    # Done!
     def getColumn_AA(self):
         '''
-        Report total amount of tuition and fees charged to the student for the reported award year.
+        Reports total amount of tuition and fees charged to the student for the reported award year.
 
         Value must be numeric and 0-9.
 
@@ -473,54 +472,32 @@ class FVT_GE:
         - Program is neither a GE nor eligible non-GE program.
         '''
         title = 'Tuition and Fees Amount for Award Year being Reported'
+
         query = f"""
-        SELECT {self.col_string(self.key_df.columns, 'X')},
-        CASE WHEN [Record Type] = 'AA' THEN CAST(COALESCE(SUM(CHARGES), 0) AS INT)
-        END AS [{title}]
-        FROM (
         SELECT DISTINCT 
-        {self.col_string(self.joined_data.columns, 'DATA')},
-        CHARGE_TABLE.CHARGE_ID,
-        CHARGES
+                {self.col_string(self.joined_data.columns, 'DATA')},
+                ARC_DESC,
+                INVI_DESC
         FROM ({self.df_query(self.joined_data)}) AS DATA
         LEFT JOIN SPT_STUDENT_PROGRAMS AS RECORD_STUDENT_PROGRAM 
             ON DATA.[STUDENT_PROGRAMS_ID] = RECORD_STUDENT_PROGRAM.STUDENT_PROGRAMS_ID
         LEFT JOIN SPT_STUDENT_PROGRAMS AS ALL_SP_AT_CRED 
             ON ALL_SP_AT_CRED.STPR_STUDENT = RECORD_STUDENT_PROGRAM.STPR_STUDENT
-                AND ALL_SP_AT_CRED.STPR_ACAD_LEVEL = RECORD_STUDENT_PROGRAM.STPR_ACAD_LEVEL
-        LEFT JOIN (
-            SELECT CHARGE_ID, STUDENT_ID, TERM, CHARGES, TERM_START_DATE, TERM_END_DATE
-            FROM (
-            SELECT 'TUITION' + '*' + STTR_STUDENT + '*' + STTR_TERM AS CHARGE_ID,
-                    STTR_STUDENT AS STUDENT_ID,
-                    STTR_TERM AS TERM,
-                    TUIT_CHARGES AS CHARGES
-            FROM Z01_BE_TUITION_REVENUE AS TUITION
-            UNION
-            SELECT 'DINING' + '*' + STTR_STUDENT + '*' + STTR_TERM AS CHARGE_ID,
-                    STTR_STUDENT AS STUDENT_ID,
-                    STTR_TERM AS TERM,
-                    DINING_CHARGES AS CHARGES
-            FROM Z01_BE_DINING_REVENUE AS DINING
-            UNION
-            SELECT 'ROOM' + '*' + STTR_STUDENT + '*' + STTR_TERM AS CHARGE_ID,
-                    STTR_STUDENT AS STUDENT_ID,
-                    STTR_TERM AS TERM,
-                    ROOM_CHARGES AS CHARGES
-            FROM Z01_BE_HOUSING_REVENUE_WITH_COHORTS
-            ) AS X
-            JOIN ODS_TERMS ON X.TERM = ODS_TERMS.TERMS_ID
-        ) AS CHARGE_TABLE
-            ON DATA.[College Student ID] = CHARGE_TABLE.STUDENT_ID
-            AND TERM IN ('2024FA', '2025SP', '2025SU')
+            AND ALL_SP_AT_CRED.STPR_ACAD_LEVEL = RECORD_STUDENT_PROGRAM.STPR_ACAD_LEVEL
+        JOIN (
+            SELECT *
+            FROM Z01_AR_INVOICE
+            JOIN Z01_AR_CODES ON Z01_AR_INVOICE.INVI_AR_CODE = Z01_AR_CODES.AR_CODES_ID
+            JOIN ODS_TERMS ON INV_TERM = TERMS_ID
+        ) AS INVOICES
+            ON DATA.[College Student ID] = INVOICES.PERSON_ID
             AND TERM_START_DATE <= COALESCE(ALL_SP_AT_CRED.END_DATE, GETDATE())
             AND TERM_END_DATE >= ALL_SP_AT_CRED.START_DATE
-        ) AS X
-        GROUP BY {self.col_string(self.joined_data.columns)}
-        ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
+        WHERE INVI_AR_CODE IN ('STUFE', 'ACTFE')
+        ORDER BY ARC_DESC, INVI_DESC
         """
         self.print_table(query)
-        self.ODS_SQL(query).to_csv(os.path.join(self.folder, f'AA. {title}.csv'), index=False)
+        self.ODS_SQL(query).to_csv(os.path.join(self.folder, f'AA. {title}--STUFE and ACTFE Categories.csv'), index=False)
 
     # 'Residency Tuition Status by State or District'
     # Done!

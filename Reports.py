@@ -111,9 +111,9 @@ class Reports:
                     print(tabulate(df.head(1000), headers='keys', tablefmt='psql'))
                     df.to_csv(os.path.join(folder_path, f"{name} ({key}).csv"))
                     with open(os.path.join(folder_path, f"{name} ({key}).txt"), "w") as text_file:
-                        text_file.write(query)
+                        text_file.write(transformed_query)
                     with open(os.path.join(code_folder_path, f"{name} ({key}).txt"), "w") as text_file:
-                        text_file.write(query)
+                        text_file.write(transformed_query)
                     if key == "Agg":
                         df.to_csv(os.path.join(agg_folder_path, f"{name}.csv"))
                     if key == "Names":
@@ -122,12 +122,13 @@ class Reports:
 
 
 #==================Reports==============================================================================================
+    #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     '''
     ID: Unknown
     Name: 2025-04-22
     '''
 
-
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     '''
     ID: Unknown
     Name: 2025-09-02-Snapshot Calculations
@@ -332,6 +333,7 @@ class Reports:
         name = "New Students According To ID and Type"
         self.save_query_results(query, snapshot_term = '2024FA')(report, name)
     # ===================================================================================================================
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     '''
     ID: Unknown
     Name: 2025-09-03-More Snapshot Calculations
@@ -1072,7 +1074,7 @@ class Reports:
         self.save_query_results(query, {"Agg": agg_func, "Names": name_func},
                                 snapshot_term='2024FA')(report, name)
 
-
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     '''
     ID: Unknown
     Name: 2025-09-04-2025FA Snapshot Calculations
@@ -1423,7 +1425,44 @@ class Reports:
         """
         report = "2025-09-04-2025FA Snapshot Calculations"
         name = "Total Undergraduates By Pell Status"
-        self.save_query_results(query, {"Agg": agg_func, "Names": name_func}, snapshot_term="2025FA")(report, name)
+        #self.save_query_results(query, {"Agg": agg_func, "Names": name_func}, snapshot_term="2025FA")(report, name)
+        new_query = f"""
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        SELECT DISTINCT STC_PERSON_ID AS ID,
+                CASE WHEN EXISTS (
+                    SELECT 1
+                    FROM F{'2025FA'[2:4]}_AWARD_LIST AS ST_AWARDS
+                    JOIN AWARDS ON ST_AWARDS.SA_AWARD = AWARDS.AW_ID
+                    WHERE SA_STUDENT_ID = STC_PERSON_ID
+                    AND SA_ACTION = 'A'
+                    AND AW_DESCRIPTION = 'Federal Pell Grant'
+                ) THEN 'Received Pell Grant' ELSE 'Did Not Receive Pell Grant' END AS PELL_STATUS
+        FROM STUDENT_ACAD_CRED AS STC
+        LEFT JOIN STC_STATUSES AS STATUS ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND STATUS.POS = 1
+        LEFT JOIN STUDENT_COURSE_SEC AS SEC ON STC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+        JOIN PERSON ON STC.STC_PERSON_ID = PERSON.ID
+        LEFT JOIN (
+            SELECT   STUDENT_ID,
+                     STP_PROGRAM_TITLE AS PROGRAM,
+                     STP_ACAD_LEVEL AS LEVEL,
+                     IPEDS_RACE_ETHNIC_DESC AS RACE,
+                     ROW_NUMBER() OVER (PARTITION BY STUDENT_ID ORDER BY STP_START_DATE DESC) AS RANK
+              FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+              WHERE STP_CURRENT_STATUS = 'Active'
+              ) AS SP ON STC_PERSON_ID = SP.STUDENT_ID AND SP.RANK = 1
+        WHERE STC_TERM = '2025FA'
+        AND STATUS.STC_STATUS IN ('N', 'A')
+        AND LEVEL = 'UG'
+        --AND PROGRAM != 'Non-Degree Seeking Students'
+        AND LAST_NAME = 'Alfonzo'
+        --(End 1)-------------------------------------------------------------------------------------------------------
+        """
+        person_query = f"""
+        SELECT *
+        FROM STUDENT_ACAD_CRED AS STC
+        WHERE STC_PERSON_ID = '6192307'
+        """
+        self.print_table(person_query, snapshot_term="2025FA")
 
 
     '''
@@ -1485,7 +1524,6 @@ class Reports:
         report = "2025-09-04-2025FA Snapshot Calculations"
         name = "Total Undergraduates By GI_Vet Status"
         self.save_query_results(query, {"Agg": agg_func, "Names": name_func}, snapshot_term="2025FA")(report, name)
-
 
     '''
     Fall to Fall Retention
@@ -1831,6 +1869,105 @@ class Reports:
         name = "New Students According To ID and Type"
         self.save_query_results(query, snapshot_term='2025FA')(report, name)
     # ==================================================================================================================
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    '''
+    ID: Unknown
+    Name: 2025-09-08-2025 Graduating Class Statistics
+    Person: Timmie Smart
+    Start Date: 2025-09-08
+    End Date:
+    Due Date:
+    Description: 
+    I am hoping to find out how many students in the 2025 graduating class graduated in three years as well as those 
+    graduating with a degree in Biology. Also, of those two groups, how many graduated with Highest Honors/Summa Cum 
+    Laude. This information will be used to help in applications for Doctorate programs.
+    '''
+    def getThoseWhoGraduatedInThreeYears(self):
+        query = f"""
+        SELECT STUDENT_PROGRAMS_ID,
+                STPR_STUDENT,
+                STPR_ACAD_PROGRAM
+        FROM SPT_STUDENT_PROGRAMS
+        JOIN ODS_TERMS AS GRADUATING_TERM ON TERMS_ID = '2025SP'
+        WHERE STPR_CURRENT_STATUS = 'G'
+        AND END_DATE <= GRADUATING_TERM.TERM_END_DATE
+        AND END_DATE >= GRADUATING_TERM.TERM_START_DATE
+        AND DATEDIFF(DAY, START_DATE, END_DATE) / 365.25 <= 3
+        """
+        report = "2025-09-08-2025 Graduating Class Statistics"
+        name = "Those That Graduated Within Three Years"
+        agg = lambda query: f"""
+        SELECT COUNT(*) AS NUMBER_THAT_GRADUATED_WITHIN_THREE_YEARS FROM ({query}) AS X
+        """
+        names = lambda query: f"""
+        SELECT STUDENT_PROGRAMS_ID, STPR_STUDENT, FIRST_NAME, LAST_NAME,  STPR_ACAD_PROGRAM
+        FROM ({query}) AS X JOIN ODS_PERSON P ON X.STPR_STUDENT = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        self.save_query_results(query, {"Agg": agg, "Names": names}, db="ODS")(report, name)
+
+    def getThoseWhoGraduatedInBiology(self):
+        query = f"""
+        SELECT *
+        FROM SPT_STUDENT_PROGRAMS
+        JOIN ODS_TERMS AS GRADUATING_TERM ON TERMS_ID = '2025SP'
+        WHERE STPR_CURRENT_STATUS = 'G'
+        AND END_DATE <= GRADUATING_TERM.TERM_END_DATE
+        AND END_DATE >= GRADUATING_TERM.TERM_START_DATE
+        AND STPR_ACAD_PROGRAM = 'BIOL.BA'
+        """
+        report = "2025-09-08-2025 Graduating Class Statistics"
+        name = "Those That Graduated With A Biology Degree"
+        agg = lambda query: f"""
+        SELECT COUNT(*) AS NUMBER_THAT_GRADUATED_WITH_BIOLOGY FROM ({query}) AS X
+        """
+        names = lambda query: f"""
+        SELECT STUDENT_PROGRAMS_ID, STPR_STUDENT, FIRST_NAME, LAST_NAME,  STPR_ACAD_PROGRAM
+        FROM ({query}) AS X JOIN ODS_PERSON P ON X.STPR_STUDENT = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        self.save_query_results(query, {"Agg": agg, "Names": names}, db="ODS")(report, name)
+
+    def getThoseStudentsFoundWhoGotSumma(self):
+        query = f"""
+        SELECT STUDENT_PROGRAMS_ID,
+        STPR_STUDENT,
+        STPR_ACAD_PROGRAM,
+        CASE WHEN (DATEDIFF(DAY, START_DATE, END_DATE) / 365.25 <= 3) THEN 1 ELSE 0 END AS GRADUATED_IN_THREE_YEARS,
+        CASE WHEN (STPR_ACAD_PROGRAM = 'BIOL.BA') THEN 1 ELSE 0 END AS BIOLOGY_DEGREE
+        FROM SPT_STUDENT_PROGRAMS
+        JOIN ODS_TERMS AS GRADUATING_TERM ON TERMS_ID = '2025SP'
+        JOIN ODS_ACAD_CREDENTIALS 
+            ON STPR_STUDENT = ACAD_PERSON_ID
+            AND ACAD_INSTITUTIONS_ID = '5000000'
+            AND END_DATE = ACAD_END_DATE
+        WHERE STPR_CURRENT_STATUS = 'G'
+        AND END_DATE <= GRADUATING_TERM.TERM_END_DATE
+        AND END_DATE >= GRADUATING_TERM.TERM_START_DATE
+        AND (DATEDIFF(DAY, START_DATE, END_DATE) / 365.25 <= 3 OR STPR_ACAD_PROGRAM = 'BIOL.BA')
+        AND HONORS_1_DESC = 'Summa Cum Laude'
+        """
+        report = "2025-09-08-2025 Graduating Class Statistics"
+        name = "Of Those Students, The Number With Summ Cum Laude"
+        agg = lambda query: f"""
+        SELECT SUM(GRADUATED_IN_THREE_YEARS) AS NUMBER_GRADUATED_IN_THREE_YEARS,
+               SUM(BIOLOGY_DEGREE) AS NUMBER_THAT_GRADUATED_WITH_BIOLOGY FROM ({query}) AS X
+        """
+        self.print_table(query, db='ODS')
+        names = lambda query: f"""
+        SELECT STUDENT_PROGRAMS_ID, 
+        STPR_STUDENT, 
+        FIRST_NAME, 
+        LAST_NAME,  
+        STPR_ACAD_PROGRAM, 
+        GRADUATED_IN_THREE_YEARS,
+        BIOLOGY_DEGREE
+        FROM ({query}) AS X JOIN ODS_PERSON P ON X.STPR_STUDENT = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        self.save_query_results(query, {"Agg": agg, "Names": names}, db="ODS")(report, name)
+
+
 
 
 
