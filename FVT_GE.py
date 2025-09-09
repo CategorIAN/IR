@@ -14,6 +14,7 @@ class FVT_GE:
         self.cip_df = pd.read_csv(os.path.join(self.folder, 'CIP.csv'))
         self.prog_match_df = pd.read_csv(os.path.join(self.folder, 'My Program Matches.csv'))
         self.joined_data = pd.read_csv(os.path.join(self.folder, 'Joined Data.csv'))
+        self.ar_keep = pd.read_csv(os.path.join(self.folder, 'AR_KEEP.csv'))
 
     def print_table(self, query):
         df = self.ODS_SQL(query)
@@ -159,8 +160,11 @@ class FVT_GE:
         self.ODS_SQL(query).to_csv(os.path.join(self.folder, 'Joined Data.csv'), index=False)
 
     #----------------------TOTAL AMOUNT RECORDS-------------------------------------------------------------------------
-    # 'Comprehensive Transition and Postsecondary (CTP) Program Indicator'
-    # Done!
+    '''
+    'Comprehensive Transition and Postsecondary (CTP) Program Indicator'
+    
+    Status: Done
+    '''
     def getColumn_N(self):
         '''
         Flag to indicate if the program is a Comprehensive Transition and Postsecondary (CTP) Program.
@@ -179,8 +183,11 @@ class FVT_GE:
         """
         self.ODS_SQL(query).to_csv(os.path.join(self.folder, f'N. {title}.csv'), index=False)
 
-    # 'Approved Prison Education Program Indicator'
-    # Done!
+    '''
+    'Approved Prison Education Program Indicator'
+    
+    Status: Done
+    '''
     def getColumn_O(self):
         '''
         Flag to indicate if the program is an Approved Prison Program.
@@ -199,9 +206,12 @@ class FVT_GE:
         """
         self.ODS_SQL(query).to_csv(os.path.join(self.folder, f'O. {title}.csv'), index=False)
 
-    # 'Total Amount Student Received in Private Education Loans During Student''s Entire Enrollment'
-    #                  'in the Program'
-    # Done!
+    '''
+    'Total Amount Student Received in Private Education Loans During Student''s Entire Enrollment'
+                     'in the Program'
+                     
+    Status: Done!
+    '''
     def getColumn_Q(self):
         '''
         For GE Programs, the total amount of private education loans the student received for enrollment in the program.
@@ -226,6 +236,7 @@ class FVT_GE:
                 CASE WHEN [Record Type] = 'TA' THEN CAST(COALESCE(SUM(TA_TERM_AMOUNT), 0) AS INT)
                 END AS [{title}]
         FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
         SELECT DISTINCT 
                 {self.col_string(self.joined_data.columns, 'DATA')},
                 COMPOUND_ID,
@@ -238,12 +249,13 @@ class FVT_GE:
                 AND ALL_SP_AT_CRED.STPR_ACAD_LEVEL = RECORD_STUDENT_PROGRAM.STPR_ACAD_LEVEL
         LEFT JOIN ODS_FA_TERM_AWARDS AS STU_AWARDS 
                 ON LEFT(COMPOUND_ID, 7) = DATA.[College Student ID]
-                AND ACADEMIC_YEAR = '2024' 
+                -- AND ACADEMIC_YEAR = '2024' (Do not use here.)
                 AND TA_ACAD_LEVEL = RECORD_STUDENT_PROGRAM.STPR_ACAD_LEVEL
                 AND TA_TERM_ACTION = 'A'
                 AND AWARD_PERIOD_START_DATE <= COALESCE(ALL_SP_AT_CRED.END_DATE, GETDATE())
                 AND AWARD_PERIOD_END_DATE >= ALL_SP_AT_CRED.START_DATE
                 AND AWARD_CATEGORY_ID = 'ALT'
+        --(End 1)-------------------------------------------------------------------------------------------------------
         ) AS X
         GROUP BY {self.col_string(self.joined_data.columns)}
         ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
@@ -251,8 +263,11 @@ class FVT_GE:
         self.print_table(query)
         self.ODS_SQL(query).to_csv(os.path.join(self.folder, f'Q. {title}.csv'), index=False)
 
-    # 'Total Amount of Institutional Debt During Student''s Entire Enrollment in the Program'
-    # Done!
+    '''
+    'Total Amount of Institutional Debt During Student''s Entire Enrollment in the Program'
+    
+    Status: Look at Rebecca's email. I am not sure what to do with that information.
+    '''
     def getColumn_R(self):
         '''
         For GE programs, the total amount of institutional debt owned by the student for attendance in any GE program
@@ -283,6 +298,8 @@ class FVT_GE:
 
     '''
     'Total Amount of Tution & Fees Assessed During Student''s Entire Enrollment in the Program'
+    
+    Status: Complete
     '''
     def getColumn_S(self):
         '''
@@ -301,51 +318,46 @@ class FVT_GE:
         '''
         title = 'Total Amount of Tution & Fees Assessed During Student''s Entire Enrollment in the Program'
         query = f"""
-        SELECT {self.col_string(self.key_df.columns, 'X')},
-        CASE WHEN [Record Type] = 'TA' THEN CAST(COALESCE(SUM(CHARGES), 0) AS INT)
-        END AS [{title}]
-        FROM (
-        SELECT DISTINCT 
-        {self.col_string(self.joined_data.columns, 'DATA')},
-        CHARGE_TABLE.CHARGE_ID,
-        CHARGES
-        FROM ({self.df_query(self.joined_data)}) AS DATA
-        LEFT JOIN SPT_STUDENT_PROGRAMS AS RECORD_STUDENT_PROGRAM 
-            ON DATA.[STUDENT_PROGRAMS_ID] = RECORD_STUDENT_PROGRAM.STUDENT_PROGRAMS_ID
-        LEFT JOIN SPT_STUDENT_PROGRAMS AS ALL_SP_AT_CRED 
-            ON ALL_SP_AT_CRED.STPR_STUDENT = RECORD_STUDENT_PROGRAM.STPR_STUDENT
-                AND ALL_SP_AT_CRED.STPR_ACAD_LEVEL = RECORD_STUDENT_PROGRAM.STPR_ACAD_LEVEL
-        LEFT JOIN (
-            SELECT CHARGE_ID, STUDENT_ID, TERM, CHARGES, TERM_START_DATE, TERM_END_DATE
-            FROM (
-            SELECT 'TUITION' + '*' + STTR_STUDENT + '*' + STTR_TERM AS CHARGE_ID,
-                    STTR_STUDENT AS STUDENT_ID,
-                    STTR_TERM AS TERM,
-                    TUIT_CHARGES AS CHARGES
-            FROM Z01_BE_TUITION_REVENUE AS TUITION
-            UNION
-            SELECT 'DINING' + '*' + STTR_STUDENT + '*' + STTR_TERM AS CHARGE_ID,
-                    STTR_STUDENT AS STUDENT_ID,
-                    STTR_TERM AS TERM,
-                    DINING_CHARGES AS CHARGES
-            FROM Z01_BE_DINING_REVENUE AS DINING
-            UNION
-            SELECT 'ROOM' + '*' + STTR_STUDENT + '*' + STTR_TERM AS CHARGE_ID,
-                    STTR_STUDENT AS STUDENT_ID,
-                    STTR_TERM AS TERM,
-                    ROOM_CHARGES AS CHARGES
-            FROM Z01_BE_HOUSING_REVENUE_WITH_COHORTS
-            ) AS X
-            JOIN ODS_TERMS ON X.TERM = ODS_TERMS.TERMS_ID
-        ) AS CHARGE_TABLE
-            ON DATA.[College Student ID] = CHARGE_TABLE.STUDENT_ID
-            AND TERM IN ('2024FA', '2025SP', '2025SU')
-            AND TERM_START_DATE <= COALESCE(ALL_SP_AT_CRED.END_DATE, GETDATE())
-            AND TERM_END_DATE >= ALL_SP_AT_CRED.START_DATE
-        ) AS X
-        GROUP BY {self.col_string(self.joined_data.columns)}
-        ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
-        """
+                --(Begin 2)-----------------------------------------------------------------------------------------------------
+                SELECT {self.col_string(self.key_df.columns, 'X')},
+                CASE WHEN [Record Type] = 'TA' THEN CAST(COALESCE(SUM(INVI_CHARGE_AMT), 0) AS INT)
+                END AS [{title}]
+                FROM (
+                --(Begin 1)-----------------------------------------------------------------------------------------------------
+                SELECT DISTINCT 
+                        {self.col_string(self.joined_data.columns, 'DATA')},
+                        AR_INVOICE_ITEMS_ID,
+                        INVI_CHARGE_AMT
+                FROM ({self.df_query(self.joined_data)}) AS DATA
+                LEFT JOIN SPT_STUDENT_PROGRAMS AS RECORD_STUDENT_PROGRAM 
+                    ON DATA.[STUDENT_PROGRAMS_ID] = RECORD_STUDENT_PROGRAM.STUDENT_PROGRAMS_ID
+                LEFT JOIN SPT_STUDENT_PROGRAMS AS ALL_SP_AT_CRED 
+                    ON ALL_SP_AT_CRED.STPR_STUDENT = RECORD_STUDENT_PROGRAM.STPR_STUDENT
+                    AND ALL_SP_AT_CRED.STPR_ACAD_LEVEL = RECORD_STUDENT_PROGRAM.STPR_ACAD_LEVEL
+                LEFT JOIN (
+                    SELECT AR_INVOICE_ITEMS_ID,
+                           PERSON_ID,
+                           INV_TERM,
+                           TERM_START_DATE,
+                           TERM_END_DATE,
+                           AR_KEEP.KEEP,
+                           INVI_CHARGE_AMT
+                    FROM Z01_AR_INVOICE
+                    JOIN Z01_AR_CODES ON Z01_AR_INVOICE.INVI_AR_CODE = Z01_AR_CODES.AR_CODES_ID
+                    JOIN ({self.df_query(self.ar_keep)}) AS AR_KEEP ON Z01_AR_INVOICE.INVI_AR_CODE = AR_KEEP.INVI_AR_CODE
+                    JOIN ODS_TERMS ON INV_TERM = TERMS_ID
+                ) AS INVOICES
+                    ON DATA.[College Student ID] = INVOICES.PERSON_ID
+                    -- AND INV_TERM IN ('2024FA', '2025SP', '2025SU') (Do not use here.)
+                    AND TERM_START_DATE <= COALESCE(ALL_SP_AT_CRED.END_DATE, GETDATE())
+                    AND TERM_END_DATE >= ALL_SP_AT_CRED.START_DATE
+                    AND INVOICES.KEEP = 1
+                --(End 1)-------------------------------------------------------------------------------------------------------
+                ) AS X
+                GROUP BY {self.col_string(self.joined_data.columns)}
+                ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
+                --(End 2)-------------------------------------------------------------------------------------------------------
+                """
         self.print_table(query)
         self.ODS_SQL(query).to_csv(os.path.join(self.folder, f'S. {title}.csv'), index=False)
 
@@ -375,9 +387,11 @@ class FVT_GE:
         title = ('Total Amount of Allowance for books, supplies, and equipment included in the student''s title IV, HEA'
         'COA During Student''s Entire Enrollment in the Program')
 
-    # 'Total Amount of Grants and Scholarships the student received During Student''s Entire Enrollment '
-    #                  'in the Program'
-    # Done!
+    '''
+     'Total Amount of Grants and Scholarships the student received During Student''s Entire Enrollment '
+                      'in the Program'
+     Status: Done
+    '''
     def getColumn_U(self):
         '''
         For GE programs, the total amount of institutional grants and scholarships received by the student at any time
@@ -415,7 +429,7 @@ class FVT_GE:
                 AND ALL_SP_AT_CRED.STPR_ACAD_LEVEL = RECORD_STUDENT_PROGRAM.STPR_ACAD_LEVEL
         LEFT JOIN ODS_FA_TERM_AWARDS AS STU_AWARDS 
                 ON LEFT(COMPOUND_ID, 7) = DATA.[College Student ID]
-                AND ACADEMIC_YEAR = '2024' 
+                -- AND ACADEMIC_YEAR = '2024' (Do not use here.)
                 AND TA_ACAD_LEVEL = RECORD_STUDENT_PROGRAM.STPR_ACAD_LEVEL
                 AND TA_TERM_ACTION = 'A'
                 AND AWARD_PERIOD_START_DATE <= COALESCE(ALL_SP_AT_CRED.END_DATE, GETDATE())
@@ -438,7 +452,8 @@ class FVT_GE:
 #================================ANNUAL AMOUNT RECORDS========================================
     '''
      'Annual Cost of Attendance (COA)'
-     I think I am done. I just got this from the website. I will need to check with KaRena.
+     
+     Status: Complete
     '''
     def getColumn_Z(self):
         '''
@@ -459,7 +474,11 @@ class FVT_GE:
         self.print_table(query)
         self.ODS_SQL(query).to_csv(os.path.join(self.folder, f'Z. {title}.csv'), index=False)
 
-    # 'Tuition and Fees Amount for Award Year being Reported'
+    '''
+    'Tuition and Fees Amount for Award Year being Reported'
+    
+    Status: Done
+    '''
     def getColumn_AA(self):
         '''
         Reports total amount of tuition and fees charged to the student for the reported award year.
@@ -472,12 +491,17 @@ class FVT_GE:
         - Program is neither a GE nor eligible non-GE program.
         '''
         title = 'Tuition and Fees Amount for Award Year being Reported'
-
-        query = f"""
+        restricted_query = f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT {self.col_string(self.key_df.columns, 'X')},
+        CASE WHEN [Record Type] = 'AA' THEN CAST(COALESCE(SUM(INVI_CHARGE_AMT), 0) AS INT)
+        END AS [{title} (STUFE and ACTFE Only)]
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
         SELECT DISTINCT 
                 {self.col_string(self.joined_data.columns, 'DATA')},
-                ARC_DESC,
-                INVI_DESC
+                AR_INVOICE_ITEMS_ID,
+                INVI_CHARGE_AMT
         FROM ({self.df_query(self.joined_data)}) AS DATA
         LEFT JOIN SPT_STUDENT_PROGRAMS AS RECORD_STUDENT_PROGRAM 
             ON DATA.[STUDENT_PROGRAMS_ID] = RECORD_STUDENT_PROGRAM.STUDENT_PROGRAMS_ID
@@ -491,13 +515,64 @@ class FVT_GE:
             JOIN ODS_TERMS ON INV_TERM = TERMS_ID
         ) AS INVOICES
             ON DATA.[College Student ID] = INVOICES.PERSON_ID
+            AND INV_TERM IN ('2024FA', '2025SP', '2025SU')
             AND TERM_START_DATE <= COALESCE(ALL_SP_AT_CRED.END_DATE, GETDATE())
             AND TERM_END_DATE >= ALL_SP_AT_CRED.START_DATE
-        WHERE INVI_AR_CODE IN ('STUFE', 'ACTFE')
-        ORDER BY ARC_DESC, INVI_DESC
+            AND INVI_AR_CODE IN ('STUFE', 'ACTFE')
+        --(End 1)-------------------------------------------------------------------------------------------------------
+        ) AS X
+        GROUP BY {self.col_string(self.joined_data.columns)}
+        ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
+        --(End 2)-------------------------------------------------------------------------------------------------------
         """
+        '''
+        self.print_table(restricted_query)
+        self.ODS_SQL(restricted_query).to_csv(os.path.join(self.folder,
+                                                           f'AA. {title}--STUFE and ACTFE Categories.csv'), index=False)
+        '''
+        query = f"""
+                --(Begin 2)-----------------------------------------------------------------------------------------------------
+                SELECT {self.col_string(self.key_df.columns, 'X')},
+                CASE WHEN [Record Type] = 'AA' THEN CAST(COALESCE(SUM(INVI_CHARGE_AMT), 0) AS INT)
+                END AS [{title}]
+                FROM (
+                --(Begin 1)-----------------------------------------------------------------------------------------------------
+                SELECT DISTINCT 
+                        {self.col_string(self.joined_data.columns, 'DATA')},
+                        AR_INVOICE_ITEMS_ID,
+                        INVI_CHARGE_AMT
+                FROM ({self.df_query(self.joined_data)}) AS DATA
+                LEFT JOIN SPT_STUDENT_PROGRAMS AS RECORD_STUDENT_PROGRAM 
+                    ON DATA.[STUDENT_PROGRAMS_ID] = RECORD_STUDENT_PROGRAM.STUDENT_PROGRAMS_ID
+                LEFT JOIN SPT_STUDENT_PROGRAMS AS ALL_SP_AT_CRED 
+                    ON ALL_SP_AT_CRED.STPR_STUDENT = RECORD_STUDENT_PROGRAM.STPR_STUDENT
+                    AND ALL_SP_AT_CRED.STPR_ACAD_LEVEL = RECORD_STUDENT_PROGRAM.STPR_ACAD_LEVEL
+                LEFT JOIN (
+                    SELECT AR_INVOICE_ITEMS_ID,
+                           PERSON_ID,
+                           INV_TERM,
+                           TERM_START_DATE,
+                           TERM_END_DATE,
+                           AR_KEEP.KEEP,
+                           INVI_CHARGE_AMT
+                    FROM Z01_AR_INVOICE
+                    JOIN Z01_AR_CODES ON Z01_AR_INVOICE.INVI_AR_CODE = Z01_AR_CODES.AR_CODES_ID
+                    JOIN ({self.df_query(self.ar_keep)}) AS AR_KEEP ON Z01_AR_INVOICE.INVI_AR_CODE = AR_KEEP.INVI_AR_CODE
+                    JOIN ODS_TERMS ON INV_TERM = TERMS_ID
+                ) AS INVOICES
+                    ON DATA.[College Student ID] = INVOICES.PERSON_ID
+                    AND INV_TERM IN ('2024FA', '2025SP', '2025SU')
+                    AND TERM_START_DATE <= COALESCE(ALL_SP_AT_CRED.END_DATE, GETDATE())
+                    AND TERM_END_DATE >= ALL_SP_AT_CRED.START_DATE
+                    AND INVOICES.KEEP = 1
+                --(End 1)-------------------------------------------------------------------------------------------------------
+                ) AS X
+                GROUP BY {self.col_string(self.joined_data.columns)}
+                ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
+                --(End 2)-------------------------------------------------------------------------------------------------------
+                """
         self.print_table(query)
-        self.ODS_SQL(query).to_csv(os.path.join(self.folder, f'AA. {title}--STUFE and ACTFE Categories.csv'), index=False)
+        self.ODS_SQL(query).to_csv(os.path.join(self.folder, f'AA. {title}.csv'), index=False)
 
     # 'Residency Tuition Status by State or District'
     # Done!
@@ -529,7 +604,8 @@ class FVT_GE:
 
     '''
      'Allowance for Books, Supplies, and Equipment'
-     I have no idea how to find this. I need to ask KaRena.
+     
+     Status: 
     '''
     def getColumn_AC(self):
         '''
@@ -543,7 +619,15 @@ class FVT_GE:
         - Student withdrew from an eligible non-GE program and should be excluded from the cohort.
         - Program is neither a GE nor eligible non-GE program.
         '''
-        pass
+        title = 'Allowance for Books, Supplies, and Equipment'
+        query = f"""
+        SELECT {self.col_string(self.key_df.columns)},
+                CASE WHEN [Record Type] = 'AA' THEN 800 
+                END AS [{title}]
+        FROM ({self.df_query(self.key_df)}) AS X
+        """
+        self.print_table(query)
+        self.ODS_SQL(query).to_csv(os.path.join(self.folder, f'AC. {title}.csv'), index=False)
 
     '''
      'Allowance for Housing and Food'
@@ -561,7 +645,15 @@ class FVT_GE:
         - Student withdrew from an eligible non-GE program and should be excluded from the cohort.
         - Program is neither a GE nor eligible non-GE program.
         '''
-        pass
+        title = 'Allowance for Housing and Food'
+        query = f"""
+        SELECT {self.col_string(self.key_df.columns)},
+                CASE WHEN [Record Type] = 'AA' THEN 12060 
+                END AS [{title}]
+        FROM ({self.df_query(self.key_df)}) AS X
+        """
+        self.print_table(query)
+        self.ODS_SQL(query).to_csv(os.path.join(self.folder, f'AD. {title}.csv'), index=False)
 
     # 'Institutional Grants and Scholarships'
     # Done!
@@ -618,7 +710,8 @@ class FVT_GE:
 
     '''
      'Other State, Tribal, or Private Grants'
-     I have no idea how to find this. I need to ask KaRena.
+     
+     Status: Done!
     '''
     def getColumn_AF(self):
         '''
@@ -631,7 +724,38 @@ class FVT_GE:
         - Student withdrew from an eligible non-GE program and should be excluded from the cohort.
         - Program is neither a GE nor eligible non-GE program.
         '''
-        pass
+        title = 'Other State, Tribal, or Private Grants'
+        query = f"""
+        SELECT {self.col_string(self.key_df.columns, 'X')},
+                CASE WHEN [Record Type] = 'AA' THEN CAST(COALESCE(SUM(TA_TERM_AMOUNT), 0) AS INT)
+                END AS [{title}]
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        SELECT DISTINCT 
+                {self.col_string(self.joined_data.columns, 'DATA')},
+                COMPOUND_ID,
+                TA_TERM_AMOUNT
+        FROM ({self.df_query(self.joined_data)}) AS DATA
+        LEFT JOIN SPT_STUDENT_PROGRAMS AS RECORD_STUDENT_PROGRAM 
+        ON DATA.[STUDENT_PROGRAMS_ID] = RECORD_STUDENT_PROGRAM.STUDENT_PROGRAMS_ID
+        LEFT JOIN SPT_STUDENT_PROGRAMS AS ALL_SP_AT_CRED 
+            ON ALL_SP_AT_CRED.STPR_STUDENT = RECORD_STUDENT_PROGRAM.STPR_STUDENT
+                AND ALL_SP_AT_CRED.STPR_ACAD_LEVEL = RECORD_STUDENT_PROGRAM.STPR_ACAD_LEVEL
+        LEFT JOIN ODS_FA_TERM_AWARDS AS STU_AWARDS 
+                ON LEFT(COMPOUND_ID, 7) = DATA.[College Student ID]
+                AND ACADEMIC_YEAR = '2024'
+                AND TA_ACAD_LEVEL = RECORD_STUDENT_PROGRAM.STPR_ACAD_LEVEL
+                AND TA_TERM_ACTION = 'A'
+                AND AWARD_PERIOD_START_DATE <= COALESCE(ALL_SP_AT_CRED.END_DATE, GETDATE())
+                AND AWARD_PERIOD_END_DATE >= ALL_SP_AT_CRED.START_DATE
+                AND AWARD_CATEGORY_ID IN ('OUTSI', 'THRD')
+        --(End 1)-------------------------------------------------------------------------------------------------------
+        ) AS X
+        GROUP BY {self.col_string(self.joined_data.columns)}
+        ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
+        """
+        self.print_table(query)
+        self.ODS_SQL(query).to_csv(os.path.join(self.folder, f'AF. {title}.csv'), index=False)
 
     # 'Private Loans Amount'
     # Done

@@ -122,11 +122,97 @@ class Reports:
 
 
 #==================Reports==============================================================================================
+    '''
+    ID: Unknown
+    Name: 2025-02-13-Current Student List By Major
+    Start Date:
+    End Date:
+    Description:
+        I needed to get a list of students and their majors.
+    '''
+    def getStudentMajors(self):
+        query = f"""
+        SELECT CURRENT_MAJORS.MAJ_DESC AS MAJOR,
+               STUDENT_ID
+        FROM MAJORS AS CURRENT_MAJORS
+        CROSS JOIN (SELECT * FROM STUDENT_ACAD_PROGRAMS_VIEW WHERE STP_CURRENT_STATUS = 'Active') AS SAPV
+        LEFT JOIN STPR_MAJOR_LIST_VIEW ON SAPV.STUDENT_ID = STPR_MAJOR_LIST_VIEW.STPR_STUDENT 
+        AND SAPV.STP_ACADEMIC_PROGRAM = STPR_MAJOR_LIST_VIEW.STPR_ACAD_PROGRAM
+        LEFT JOIN MAJORS AS ADDNL_MAJOR ON STPR_MAJOR_LIST_VIEW.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
+        LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
+        WHERE (
+                CURRENT_MAJORS.MAJ_DESC = MAIN_MAJOR.MAJ_DESC
+        OR (
+            CURRENT_MAJORS.MAJ_DESC = ADDNL_MAJOR.MAJ_DESC
+            AND STPR_MAJOR_LIST_VIEW.STPR_ADDNL_MAJOR_END_DATE IS NULL
+            )
+        )
+        AND STP_START_DATE < '2025-05-01'
+        GROUP BY CURRENT_MAJORS.MAJ_DESC, STUDENT_ID, STP_START_DATE
+        """
+        agg = lambda query: f"""
+        SELECT MAJOR,
+                COUNT(*) AS STUDENT_COUNT
+        FROM ({query}) AS STUDENT_MAJORS GROUP BY MAJOR ORDER BY MAJOR
+        """
+        names = lambda query: f"""
+        SELECT STUDENT_ID,
+        LAST_NAME,
+        FIRST_NAME,
+        PERSON_EMAIL_ADDRESSES AS EMAIL,
+        MAJOR
+        FROM ({query}) AS STUDENT_MAJORS
+        JOIN PERSON ON STUDENT_MAJORS.STUDENT_ID = PERSON.ID
+        JOIN PEOPLE_EMAIL ON STUDENT_MAJORS.STUDENT_ID = PEOPLE_EMAIL.ID
+        WHERE PERSON_PREFERRED_EMAIL = 'Y'
+        ORDER BY MAJOR, LAST_NAME, FIRST_NAME
+        """
+        report = "2025-04-22-Current UG Emails"
+        name = "Current UG Emails"
+        self.save_query_results(query, snapshot_term="2025SP")(report, name)
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     '''
     ID: Unknown
-    Name: 2025-04-22
+    Name: 2025-04-22-Current UG Emails
+    Person: Annette Walstad
+    Start Date: 2025-04-22
+    Due Date: 
+    End Date: 2025-04-24
+    Description:
+        Annette needed a list of undergraduate student emails.
     '''
+    def getUGStudentEmails(self):
+        query = f"""
+        SELECT DISTINCT SAPV.STUDENT_ID AS ID,
+                SAPV.STUDENT_LAST_NAME AS LAST_NAME,
+                SAPV.STUDENT_FIRST_NAME AS FIRST_NAME,
+                COALESCE(
+                        (SELECT TOP 1 PERSON_EMAIL_ADDRESSES
+                        FROM PEOPLE_EMAIL
+                        WHERE ID = SAPV.STUDENT_ID
+                        AND PERSON_EMAIL_TYPES = 'COL'), 'Unknown') AS SCHOOL_EMAIL
+        FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+        WHERE STP_CURRENT_STATUS = 'Active'
+        AND STP_ACAD_LEVEL = 'UG'
+        AND STP_PROGRAM_TITLE NOT IN ('Accelerated Nursing', 'Non-Degree Seeking Students')
+        AND STP_START_DATE IS NOT NULL
+        AND STP_START_DATE <= GETDATE()
+        AND (STP_END_DATE IS NULL OR STP_END_DATE > GETDATE())
+        AND EXISTS (
+                    SELECT 1 FROM STUDENT_ENROLLMENT_VIEW AS SEV
+                             WHERE SEV.STUDENT_ID = SAPV.STUDENT_ID
+                             AND ENROLL_TERM = '2025SP'
+                    )
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-04-22-Current UG Emails"
+        name = "Current UG Emails"
+        self.save_query_results(query, snapshot_term="2025SP")(report, name)
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     '''
@@ -1962,6 +2048,52 @@ class Reports:
         STPR_ACAD_PROGRAM, 
         GRADUATED_IN_THREE_YEARS,
         BIOLOGY_DEGREE
+        FROM ({query}) AS X JOIN ODS_PERSON P ON X.STPR_STUDENT = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        self.save_query_results(query, {"Agg": agg, "Names": names}, db="ODS")(report, name)
+
+
+    def threeYearGradBiologySumma(self):
+        query = f"""
+        --(Begin 1)----------------------------------------------------------------------------------------------------
+        SELECT DISTINCT STPR_STUDENT,
+        CASE WHEN (DATEDIFF(DAY, START_DATE, END_DATE) / 365.25 <= 3) THEN 'Yes' ELSE 'No' END AS GRADUATED_IN_THREE_YEARS,
+        CASE WHEN (STPR_ACAD_PROGRAM = 'BIOL.BA') THEN 'Yes' ELSE 'No' END AS BIOLOGY_DEGREE,
+        CASE WHEN HONORS_1_DESC = 'Summa Cum Laude' THEN 'Yes' ELSE 'No' END AS SUMMA_CUM_LAUDE
+        FROM SPT_STUDENT_PROGRAMS
+        JOIN ODS_TERMS AS GRADUATING_TERM ON TERMS_ID = '2025SP'
+        JOIN ODS_ACAD_CREDENTIALS 
+            ON STPR_STUDENT = ACAD_PERSON_ID
+            AND ACAD_INSTITUTIONS_ID = '5000000'
+            AND END_DATE = ACAD_END_DATE
+        WHERE STPR_CURRENT_STATUS = 'G'
+        AND END_DATE <= GRADUATING_TERM.TERM_END_DATE
+        AND END_DATE >= GRADUATING_TERM.TERM_START_DATE
+        --(End 1)-------------------------------------------------------------------------------------------------------
+        """
+        report = "2025-09-08-2025 Graduating Class Statistics"
+        name = "Stats on 2025SP Graduated Students"
+        agg = lambda query: f"""
+        SELECT  GRADUATED_IN_THREE_YEARS,
+                BIOLOGY_DEGREE,
+                SUMMA_CUM_LAUDE,
+                COUNT(*) AS STUDENT_COUNT FROM ({query}) 
+                AS X GROUP BY GRADUATED_IN_THREE_YEARS,
+                BIOLOGY_DEGREE,
+                SUMMA_CUM_LAUDE
+                ORDER BY GRADUATED_IN_THREE_YEARS DESC,
+                BIOLOGY_DEGREE DESC,
+                SUMMA_CUM_LAUDE DESC
+        """
+        names = lambda query: f"""
+        SELECT 
+        STPR_STUDENT, 
+        FIRST_NAME, 
+        LAST_NAME,  
+        GRADUATED_IN_THREE_YEARS,
+        BIOLOGY_DEGREE,
+        SUMMA_CUM_LAUDE
         FROM ({query}) AS X JOIN ODS_PERSON P ON X.STPR_STUDENT = P.ID
         ORDER BY LAST_NAME, FIRST_NAME
         """
