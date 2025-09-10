@@ -159,6 +159,30 @@ class FVT_GE:
         self.print_table(query)
         self.ODS_SQL(query).to_csv(os.path.join(self.folder, 'Joined Data.csv'), index=False)
 
+    def find_oldest_program(self):
+        query = f"""
+        SELECT DISTINCT 
+                {self.col_string(self.joined_data.columns, 'DATA')},
+                RECORD_STUDENT_PROGRAM.START_DATE
+        FROM ({self.df_query(self.joined_data)}) AS DATA
+        LEFT JOIN SPT_STUDENT_PROGRAMS AS RECORD_STUDENT_PROGRAM 
+        ON DATA.[STUDENT_PROGRAMS_ID] = RECORD_STUDENT_PROGRAM.STUDENT_PROGRAMS_ID
+        LEFT JOIN SPT_STUDENT_PROGRAMS AS ALL_SP_AT_CRED 
+            ON ALL_SP_AT_CRED.STPR_STUDENT = RECORD_STUDENT_PROGRAM.STPR_STUDENT
+                AND ALL_SP_AT_CRED.STPR_ACAD_LEVEL = RECORD_STUDENT_PROGRAM.STPR_ACAD_LEVEL
+        ORDER BY START_DATE
+        """
+        self.print_table(query)
+
+    def getDistinctStudents(self):
+        query = f"""
+        SELECT DISTINCT [College Student ID]
+        FROM ({self.df_query(self.joined_data)}) AS DATA
+        ORDER BY [College Student ID]
+        """
+        self.print_table(query)
+        self.ODS_SQL(query).to_csv(os.path.join(self.folder, f'FVT_GE Students.csv'), index=False)
+
     #----------------------TOTAL AMOUNT RECORDS-------------------------------------------------------------------------
     '''
     'Comprehensive Transition and Postsecondary (CTP) Program Indicator'
@@ -491,45 +515,6 @@ class FVT_GE:
         - Program is neither a GE nor eligible non-GE program.
         '''
         title = 'Tuition and Fees Amount for Award Year being Reported'
-        restricted_query = f"""
-        --(Begin 2)-----------------------------------------------------------------------------------------------------
-        SELECT {self.col_string(self.key_df.columns, 'X')},
-        CASE WHEN [Record Type] = 'AA' THEN CAST(COALESCE(SUM(INVI_CHARGE_AMT), 0) AS INT)
-        END AS [{title} (STUFE and ACTFE Only)]
-        FROM (
-        --(Begin 1)-----------------------------------------------------------------------------------------------------
-        SELECT DISTINCT 
-                {self.col_string(self.joined_data.columns, 'DATA')},
-                AR_INVOICE_ITEMS_ID,
-                INVI_CHARGE_AMT
-        FROM ({self.df_query(self.joined_data)}) AS DATA
-        LEFT JOIN SPT_STUDENT_PROGRAMS AS RECORD_STUDENT_PROGRAM 
-            ON DATA.[STUDENT_PROGRAMS_ID] = RECORD_STUDENT_PROGRAM.STUDENT_PROGRAMS_ID
-        LEFT JOIN SPT_STUDENT_PROGRAMS AS ALL_SP_AT_CRED 
-            ON ALL_SP_AT_CRED.STPR_STUDENT = RECORD_STUDENT_PROGRAM.STPR_STUDENT
-            AND ALL_SP_AT_CRED.STPR_ACAD_LEVEL = RECORD_STUDENT_PROGRAM.STPR_ACAD_LEVEL
-        JOIN (
-            SELECT *
-            FROM Z01_AR_INVOICE
-            JOIN Z01_AR_CODES ON Z01_AR_INVOICE.INVI_AR_CODE = Z01_AR_CODES.AR_CODES_ID
-            JOIN ODS_TERMS ON INV_TERM = TERMS_ID
-        ) AS INVOICES
-            ON DATA.[College Student ID] = INVOICES.PERSON_ID
-            AND INV_TERM IN ('2024FA', '2025SP', '2025SU')
-            AND TERM_START_DATE <= COALESCE(ALL_SP_AT_CRED.END_DATE, GETDATE())
-            AND TERM_END_DATE >= ALL_SP_AT_CRED.START_DATE
-            AND INVI_AR_CODE IN ('STUFE', 'ACTFE')
-        --(End 1)-------------------------------------------------------------------------------------------------------
-        ) AS X
-        GROUP BY {self.col_string(self.joined_data.columns)}
-        ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
-        --(End 2)-------------------------------------------------------------------------------------------------------
-        """
-        '''
-        self.print_table(restricted_query)
-        self.ODS_SQL(restricted_query).to_csv(os.path.join(self.folder,
-                                                           f'AA. {title}--STUFE and ACTFE Categories.csv'), index=False)
-        '''
         query = f"""
                 --(Begin 2)-----------------------------------------------------------------------------------------------------
                 SELECT {self.col_string(self.key_df.columns, 'X')},

@@ -27,12 +27,16 @@ def df_query(df, cols  = None):
 def f(i):
     X = Reports()
     if i == 1:
-        X.getUGStudentEmails()
+        X.getDistinctStudents()
 
 def h(i):
     X = FVT_GE()
     if i == 1:
-        X.getColumn('AF')
+        X.getColumn('AA')
+    if i == 2:
+        X.find_oldest_program()
+    if i == 3:
+        X.getDistinctStudents()
 
 if __name__ == '__main__':
-    f(1)
+    h(3)
