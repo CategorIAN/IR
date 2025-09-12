@@ -36,7 +36,7 @@ def h(i):
     if i == 2:
         X.getAllColumns()
     if i == 3:
-        X.getDistinctStudents()
+        X.getFullData()
 
 if __name__ == '__main__':
-    h(2)
+    h(3)

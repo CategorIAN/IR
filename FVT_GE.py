@@ -4,6 +4,7 @@ import pyodbc, environ
 from pathlib import Path
 from tabulate import tabulate
 BASE_DIR = Path(__file__).resolve()
+from functools import reduce
 
 class FVT_GE:
     def __init__(self):
@@ -19,6 +20,28 @@ class FVT_GE:
         self.ar_keep = pd.read_csv(os.path.join(self.folder, 'AR_KEEP.csv'))
         self.book_allowance = pd.read_csv(os.path.join(self.folder, 'Books and Supplies Allowances.csv'))
         self.at_same_cred = "all eligible non-GE programs at the same credential level"
+        self.calc_cols = {
+            'N': 'Comprehensive Transition and Postsecondary (CTP) Program Indicator',
+            'O': 'Approved Prison Education Program Indicator',
+            'Q': ('Total Amount Student Received in Private Education Loans During Student''s Entire Enrollment'
+                 'in the Program'),
+            'R': 'Total Amount of Institutional Debt During Student''s Entire Enrollment in the Program',
+            'S': 'Total Amount of Tution & Fees Assessed During Student''s Entire Enrollment in the Program',
+            'T': ('Total Amount of Allowance for books, supplies, and equipment included in the student''s title IV, HEA'
+       'COA During Student''s Entire Enrollment in the Program'),
+            'U': ('Total Amount of Grants and Scholarships the student received During Student''s Entire Enrollment '
+                 'in the Program'),
+            'Z': 'Annual Cost of Attendance (COA)',
+            'AA': 'Tuition and Fees Amount for Award Year being Reported',
+            'AB': 'Residency Tuition Status by State or District',
+            'AC': 'Allowance for Books, Supplies, and Equipment',
+            'AD': 'Allowance for Housing and Food',
+            'AE': 'Institutional Grants and Scholarships',
+            'AF': 'Other State, Tribal, or Private Grants',
+            'AG': 'Private Loans Amount',
+            'AH': 'Invalid Flag',
+            'AI': 'GE Program Flag'
+        }
 
     def print_table(self, query):
         df = self.ODS_SQL(query)
@@ -189,6 +212,13 @@ class FVT_GE:
         self.print_table(query)
         self.ODS_SQL(query).to_csv(os.path.join(self.folder, f'FVT_GE Students.csv'), index=False)
 
+    def createDF(self, col, query_func):
+        title = self.calc_cols[col]
+        print(title)
+        df = self.ODS_SQL(query_func(col))
+        df.to_csv(os.path.join(self.output, f'{col}. {title}.csv'), index=False)
+        return df
+
     #----------------------TOTAL AMOUNT RECORDS-------------------------------------------------------------------------
     '''
     'Comprehensive Transition and Postsecondary (CTP) Program Indicator'
@@ -204,15 +234,13 @@ class FVT_GE:
         - N: No
         - Space: No
         '''
-        title = 'Comprehensive Transition and Postsecondary (CTP) Program Indicator'
-        query = f"""
+        query = lambda title: f"""
         SELECT {self.col_string(self.key_df.columns)},
                 CASE WHEN [Record Type] = 'TA' THEN 'N' 
                 END AS [{title}]
         FROM ({self.df_query(self.key_df)}) AS X
         """
-        print(title)
-        self.ODS_SQL(query).to_csv(os.path.join(self.output, f'N. {title}.csv'), index=False)
+        return self.createDF('N', query)
 
     '''
     'Approved Prison Education Program Indicator'
@@ -228,15 +256,13 @@ class FVT_GE:
         - N: No
         - Space: No
         '''
-        title = 'Approved Prison Education Program Indicator'
-        query = f"""
+        query = lambda title: f"""
         SELECT {self.col_string(self.key_df.columns)},
                 CASE WHEN [Record Type] = 'TA' THEN 'N' 
                 END AS [{title}]
         FROM ({self.df_query(self.key_df)}) AS X
         """
-        print(title)
-        self.ODS_SQL(query).to_csv(os.path.join(self.output, f'O. {title}.csv'), index=False)
+        return self.createDF('O', query)
 
     '''
     'Total Amount Student Received in Private Education Loans During Student''s Entire Enrollment'
@@ -263,7 +289,7 @@ class FVT_GE:
         '''
         title = ('Total Amount Student Received in Private Education Loans During Student''s Entire Enrollment'
                  'in the Program')
-        query_1 = f"""
+        query_1 = lambda title: f"""
         SELECT {self.col_string(self.key_df.columns, 'X')},
                 CASE WHEN [Record Type] = 'TA' THEN CAST(COALESCE(SUM(TA_TERM_AMOUNT), 0) AS INT)
                 END AS [{title}]
@@ -289,7 +315,7 @@ class FVT_GE:
         GROUP BY {self.col_string(self.joined_data.columns)}
         ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
         """
-        query_2 = f"""
+        query_2 = lambda title: f"""
                 SELECT {self.col_string(self.key_df.columns, 'X')},
                 CASE WHEN [Record Type] = 'TA' THEN CAST(COALESCE(SUM(TA_TERM_AMOUNT), 0) AS INT)
                 END AS [{title}]
@@ -318,9 +344,7 @@ class FVT_GE:
         GROUP BY {self.col_string(self.joined_data.columns)}
         ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
         """
-        print(title)
-        self.ODS_SQL(query_1).to_csv(os.path.join(self.output, f'Q. {title}.csv'), index=False)
-        self.ODS_SQL(query_2).to_csv(os.path.join(self.output_2, f'Q. {title} ({self.at_same_cred}).csv'), index=False)
+        return self.createDF('Q', query_1)
 
     '''
     'Total Amount of Institutional Debt During Student''s Entire Enrollment in the Program'
@@ -347,14 +371,13 @@ class FVT_GE:
         - Program is neither a GE nor eligible non-GE program.
         '''
         title = 'Total Amount of Institutional Debt During Student''s Entire Enrollment in the Program'
-        query = f"""
+        query = lambda title: f"""
         SELECT {self.col_string(self.key_df.columns)},
                 CASE WHEN [Record Type] = 'TA' THEN 0 
                 END AS [{title}]
         FROM ({self.df_query(self.key_df)}) AS X
         """
-        print(title)
-        self.ODS_SQL(query).to_csv(os.path.join(self.output, f'R. {title}.csv'), index=False)
+        return self.createDF('R', query)
 
     '''
     'Total Amount of Tution & Fees Assessed During Student''s Entire Enrollment in the Program'
@@ -377,7 +400,7 @@ class FVT_GE:
         - Program is neither a GE nor eligible non-GE program.
         '''
         title = 'Total Amount of Tution & Fees Assessed During Student''s Entire Enrollment in the Program'
-        query_1 = f"""
+        query_1 = lambda title: f"""
                 --(Begin 2)-----------------------------------------------------------------------------------------------------
                 SELECT {self.col_string(self.key_df.columns, 'X')},
                 CASE WHEN [Record Type] = 'TA' THEN CAST(COALESCE(SUM(INVI_CHARGE_AMT), 0) AS INT)
@@ -415,7 +438,7 @@ class FVT_GE:
                 ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
                 --(End 2)-------------------------------------------------------------------------------------------------------
                 """
-        query_2 = f"""
+        query_2 = lambda title:  f"""
                 --(Begin 2)-----------------------------------------------------------------------------------------------------
                 SELECT {self.col_string(self.key_df.columns, 'X')},
                 CASE WHEN [Record Type] = 'TA' THEN CAST(COALESCE(SUM(INVI_CHARGE_AMT), 0) AS INT)
@@ -456,9 +479,7 @@ class FVT_GE:
                 ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
                 --(End 2)-------------------------------------------------------------------------------------------------------
                 """
-        print(title)
-        self.ODS_SQL(query_1).to_csv(os.path.join(self.output, f'S. {title}.csv'), index=False)
-        self.ODS_SQL(query_2).to_csv(os.path.join(self.output_2, f'S. {title} ({self.at_same_cred}).csv'), index=False)
+        return self.createDF('S', query_1)
 
     '''
     'Total Amount of Allowance for books, supplies, and equipment included in the student''s title IV, HEA'
@@ -483,8 +504,7 @@ class FVT_GE:
         - Student withdrew from an eligible non-GE program and should be excluded from the cohort.
         - Program is neither a GE nor eligible non-GE program.
         '''
-        title = ('Total Amount of Allowance for books, supplies')
-        query = f"""
+        query = lambda title: f"""
                 SELECT {self.col_string(self.key_df.columns, 'X')},
                 CASE WHEN [Record Type] = 'TA' THEN CAST(SUM(COALESCE(ALLOWANCE_AMOUNT, 0)) AS INT)
                 END AS [{title}]
@@ -506,7 +526,7 @@ class FVT_GE:
                 GROUP BY {self.col_string(self.joined_data.columns)}
                 ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
                 """
-        self.ODS_SQL(query).to_csv(os.path.join(self.output, f'T. {title}.csv'), index=False)
+        return self.createDF('T', query)
 
     '''
      'Total Amount of Grants and Scholarships the student received During Student''s Entire Enrollment '
@@ -533,7 +553,7 @@ class FVT_GE:
         '''
         title = ('Total Amount of Grants and Scholarships the student received During Student''s Entire Enrollment '
                  'in the Program')
-        query_1 = f"""
+        query_1 = lambda title: f"""
         SELECT {self.col_string(self.key_df.columns, 'X')},
         CASE WHEN [Record Type] = 'TA' THEN CAST(COALESCE(SUM(TA_TERM_AMOUNT), 0) AS INT)
         END AS [{title}]
@@ -600,9 +620,7 @@ class FVT_GE:
         GROUP BY {self.col_string(self.joined_data.columns)}
         ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
         """
-        print(title)
-        self.ODS_SQL(query_1).to_csv(os.path.join(self.output, f'U. {title}.csv'), index=False)
-        self.ODS_SQL(query_2).to_csv(os.path.join(self.output_2, f'U. {title} ({self.at_same_cred}).csv'), index=False)
+        return self.createDF('U', query_1)
 #================================ANNUAL AMOUNT RECORDS========================================
     '''
      'Annual Cost of Attendance (COA)'
@@ -619,14 +637,13 @@ class FVT_GE:
         - Program is neither a GE nor eligible non-GE program.
         '''
         title = 'Annual Cost of Attendance (COA)'
-        query = f"""
+        query = lambda title: f"""
         SELECT {self.col_string(self.key_df.columns)},
                 CASE WHEN [Record Type] = 'AA' THEN 59302 
                 END AS [{title}]
         FROM ({self.df_query(self.key_df)}) AS X
         """
-        print(title)
-        self.ODS_SQL(query).to_csv(os.path.join(self.output, f'Z. {title}.csv'), index=False)
+        return self.createDF('Z', query)
 
     '''
     'Tuition and Fees Amount for Award Year being Reported'
@@ -645,7 +662,7 @@ class FVT_GE:
         - Program is neither a GE nor eligible non-GE program.
         '''
         title = 'Tuition and Fees Amount for Award Year being Reported'
-        query_1 = f"""
+        query_1 = lambda title: f"""
                 --(Begin 2)-----------------------------------------------------------------------------------------------------
                 SELECT {self.col_string(self.key_df.columns, 'X')},
                 CASE WHEN [Record Type] = 'AA' THEN CAST(COALESCE(SUM(INVI_CHARGE_AMT), 0) AS INT)
@@ -683,7 +700,7 @@ class FVT_GE:
                 ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
                 --(End 2)-------------------------------------------------------------------------------------------------------
                 """
-        query_2 = f"""
+        query_2 = lambda title: f"""
                 --(Begin 2)-----------------------------------------------------------------------------------------------------
                 SELECT {self.col_string(self.key_df.columns, 'X')},
                 CASE WHEN [Record Type] = 'AA' THEN CAST(COALESCE(SUM(INVI_CHARGE_AMT), 0) AS INT)
@@ -724,9 +741,7 @@ class FVT_GE:
                 ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
                 --(End 2)-------------------------------------------------------------------------------------------------------
                 """
-        print(title)
-        self.ODS_SQL(query_1).to_csv(os.path.join(self.output, f'AA. {title}.csv'), index=False)
-        self.ODS_SQL(query_2).to_csv(os.path.join(self.output_2, f'AA. {title} ({self.at_same_cred}).csv'), index=False)
+        return self.createDF('AA', query_1)
 
     # 'Residency Tuition Status by State or District'
     # Done!
@@ -747,14 +762,13 @@ class FVT_GE:
         - Program is neither a GE nor eligible non-GE program.
         '''
         title = 'Residency Tuition Status by State or District'
-        query = f"""
+        query = lambda title: f"""
         SELECT {self.col_string(self.key_df.columns)},
                 CASE WHEN [Record Type] = 'AA' THEN 'OS' 
                 END AS [{title}]
         FROM ({self.df_query(self.key_df)}) AS X
         """
-        print(title)
-        self.ODS_SQL(query).to_csv(os.path.join(self.output, f'AB. {title}.csv'), index=False)
+        return self.createDF('AB', query)
 
     '''
      'Allowance for Books, Supplies, and Equipment'
@@ -774,14 +788,13 @@ class FVT_GE:
         - Program is neither a GE nor eligible non-GE program.
         '''
         title = 'Allowance for Books, Supplies, and Equipment'
-        query = f"""
+        query = lambda title: f"""
         SELECT {self.col_string(self.key_df.columns)},
                 CASE WHEN [Record Type] = 'AA' THEN 800 
                 END AS [{title}]
         FROM ({self.df_query(self.key_df)}) AS X
         """
-        print(title)
-        self.ODS_SQL(query).to_csv(os.path.join(self.output, f'AC. {title}.csv'), index=False)
+        return self.createDF('AC', query)
 
     '''
      'Allowance for Housing and Food'
@@ -799,14 +812,13 @@ class FVT_GE:
         - Program is neither a GE nor eligible non-GE program.
         '''
         title = 'Allowance for Housing and Food'
-        query = f"""
+        query = lambda title: f"""
         SELECT {self.col_string(self.key_df.columns)},
                 CASE WHEN [Record Type] = 'AA' THEN 12060 
                 END AS [{title}]
         FROM ({self.df_query(self.key_df)}) AS X
         """
-        print(title)
-        self.ODS_SQL(query).to_csv(os.path.join(self.output, f'AD. {title}.csv'), index=False)
+        return self.createDF('AD', query)
 
     # 'Institutional Grants and Scholarships'
     # Done!
@@ -823,7 +835,7 @@ class FVT_GE:
         - Program is neither a GE nor eligible non-GE program.
         '''
         title = 'Institutional Grants and Scholarships'
-        query_1 = f"""
+        query_1 = lambda title: f"""
         SELECT {self.col_string(self.key_df.columns, 'X')},
         CASE WHEN [Record Type] = 'AA' THEN CAST(COALESCE(SUM(TA_TERM_AMOUNT), 0) AS INT)
         END AS [{title}]
@@ -855,7 +867,7 @@ class FVT_GE:
         GROUP BY {self.col_string(self.joined_data.columns)}
         ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
         """
-        query_2 = f"""
+        query_2 = lambda title: f"""
         SELECT {self.col_string(self.key_df.columns, 'X')},
         CASE WHEN [Record Type] = 'AA' THEN CAST(COALESCE(SUM(TA_TERM_AMOUNT), 0) AS INT)
         END AS [{title}]
@@ -890,9 +902,7 @@ class FVT_GE:
         GROUP BY {self.col_string(self.joined_data.columns)}
         ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
         """
-        print(title)
-        self.ODS_SQL(query_1).to_csv(os.path.join(self.output, f'AE. {title}.csv'), index=False)
-        self.ODS_SQL(query_2).to_csv(os.path.join(self.output_2, f'AE. {title} ({self.at_same_cred}).csv'), index=False)
+        return self.createDF('AE', query_1)
 
     '''
      'Other State, Tribal, or Private Grants'
@@ -911,7 +921,7 @@ class FVT_GE:
         - Program is neither a GE nor eligible non-GE program.
         '''
         title = 'Other State, Tribal, or Private Grants'
-        query_1 = f"""
+        query_1 = lambda title: f"""
         SELECT {self.col_string(self.key_df.columns, 'X')},
                 CASE WHEN [Record Type] = 'AA' THEN CAST(COALESCE(SUM(TA_TERM_AMOUNT), 0) AS INT)
                 END AS [{title}]
@@ -937,7 +947,7 @@ class FVT_GE:
         GROUP BY {self.col_string(self.joined_data.columns)}
         ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
         """
-        query_2 = f"""
+        query_2 = lambda title: f"""
         SELECT {self.col_string(self.key_df.columns, 'X')},
                 CASE WHEN [Record Type] = 'AA' THEN CAST(COALESCE(SUM(TA_TERM_AMOUNT), 0) AS INT)
                 END AS [{title}]
@@ -966,9 +976,7 @@ class FVT_GE:
         GROUP BY {self.col_string(self.joined_data.columns)}
         ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
         """
-        print(title)
-        self.ODS_SQL(query_1).to_csv(os.path.join(self.output, f'AF. {title}.csv'), index=False)
-        self.ODS_SQL(query_2).to_csv(os.path.join(self.output_2, f'AF. {title} ({self.at_same_cred}).csv'), index=False)
+        return self.createDF('AF', query_1)
 
     # 'Private Loans Amount'
     # Done
@@ -984,7 +992,7 @@ class FVT_GE:
         - Program is neither a GE nor eligible non-GE program.
         '''
         title = 'Private Loans Amount'
-        query_1 = f"""
+        query_1 = lambda title: f"""
         SELECT {self.col_string(self.key_df.columns, 'X')},
                 CASE WHEN [Record Type] = 'AA' THEN CAST(COALESCE(SUM(TA_TERM_AMOUNT), 0) AS INT)
                 END AS [{title}]
@@ -1008,7 +1016,7 @@ class FVT_GE:
         GROUP BY {self.col_string(self.joined_data.columns)}
         ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
         """
-        query_2 = f"""
+        query_2 = lambda title: f"""
         SELECT {self.col_string(self.key_df.columns, 'X')},
                 CASE WHEN [Record Type] = 'AA' THEN CAST(COALESCE(SUM(TA_TERM_AMOUNT), 0) AS INT)
                 END AS [{title}]
@@ -1035,8 +1043,9 @@ class FVT_GE:
         GROUP BY {self.col_string(self.joined_data.columns)}
         ORDER BY [Record Type] DESC, [College Student ID], [CIP Code]
         """
-        self.ODS_SQL(query_1).to_csv(os.path.join(self.output, f'AG. {title}.csv'), index=False)
-        self.ODS_SQL(query_2).to_csv(os.path.join(self.output_2, f'AG. {title} ({self.at_same_cred}).csv'), index=False)
+        return self.createDF('AG', query_1)
+
+
 #=======================================================================================================================
     # 'Invalid Flag'
     # Done!
@@ -1053,12 +1062,12 @@ class FVT_GE:
         - Space: No
         '''
         title = 'Invalid Flag'
-        query = f"""
+        query = lambda title: f"""
         SELECT {self.col_string(self.key_df.columns)},
                 'N' AS [{title}]
         FROM ({self.df_query(self.key_df)}) AS X
         """
-        self.ODS_SQL(query).to_csv(os.path.join(self.output, f'AH. {title}.csv'), index=False)
+        return self.createDF('AH', query)
 
     # 'GE Program Flag'
     # Done!
@@ -1074,39 +1083,55 @@ class FVT_GE:
         - Space: No
         '''
         title = 'GE Program Flag'
-        query = f"""
+        query = lambda title: f"""
         SELECT {self.col_string(self.key_df.columns)},
                 'N' AS [{title}]
         FROM ({self.df_query(self.key_df)}) AS X
         """
-        self.ODS_SQL(query).to_csv(os.path.join(self.output, f'AI. {title}.csv'), index=False)
+        return self.createDF('AI', query)
 
     # Get Column Function
     def getColumn(self, col):
-        if col == 'N': self.getColumn_N()  #Done
-        if col == 'O': self.getColumn_O()  #Done
-        if col == 'Q': self.getColumn_Q()  #Done
-        if col == 'R': self.getColumn_R()  #Done
-        if col == 'S': self.getColumn_S()  #Need help.
-        if col == 'T': self.getColumn_T()  #Need help.
-        if col == 'U': self.getColumn_U()  #Done
+        if col == 'N': return self.getColumn_N()  #Done
+        if col == 'O': return self.getColumn_O()  #Done
+        if col == 'Q': return self.getColumn_Q()  #Done
+        if col == 'R': return self.getColumn_R()  #Done
+        if col == 'S': return self.getColumn_S()  #Need help.
+        if col == 'T': return self.getColumn_T()  #Need help.
+        if col == 'U': return self.getColumn_U()  #Done
         #================================
-        if col == 'Z': self.getColumn_Z()  #Need help.
-        if col == 'AA': self.getColumn_AA() #Done
-        if col == 'AB': self.getColumn_AB() #Done
-        if col == 'AC': self.getColumn_AC() #Need help.
-        if col == 'AD': self.getColumn_AD() #Need help.
-        if col == 'AE': self.getColumn_AE() #Done
-        if col == 'AF': self.getColumn_AF() #Need help.
-        if col == 'AG': self.getColumn_AG() #Done
+        if col == 'Z': return self.getColumn_Z()  #Need help.
+        if col == 'AA': return self.getColumn_AA() #Done
+        if col == 'AB': return self.getColumn_AB() #Done
+        if col == 'AC': return self.getColumn_AC() #Need help.
+        if col == 'AD': return self.getColumn_AD() #Need help.
+        if col == 'AE': return self.getColumn_AE() #Done
+        if col == 'AF': return self.getColumn_AF() #Need help.
+        if col == 'AG': return self.getColumn_AG() #Done
         #=================================
-        if col == 'AH': self.getColumn_AH() #Done
-        if col == 'AI': self.getColumn_AI() #Done
+        if col == 'AH': return self.getColumn_AH() #Done
+        if col == 'AI': return self.getColumn_AI() #Done
 
 
     def getAllColumns(self):
-        for col in ['N', 'O', 'Q', 'R', 'S', 'T', 'U', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH', 'AI']:
+        for col in self.calc_cols:
             self.getColumn(col)
+
+
+    def getFullData(self):
+        def combine(df, col_index):
+            print(col_index)
+            new_df = self.getColumn(col_index)
+            title = self.calc_cols[col_index]
+            query = f"""
+            SELECT {self.col_string(df.columns, 'X')}, Y.[{col_index}]
+            FROM ({self.df_query(df)}) AS X
+            JOIN ({self.df_query(new_df)}) AS Y ON {'\nAND '.join([f"X.[{key}] = Y.[{key}]" for key in self.key_df.columns])}
+            """
+            return self.ODS_SQL(query)
+        df = reduce(combine, self.calc_cols.keys(), self.given_data).rename(columns=self.calc_cols)
+        df.to_csv(os.path.join(self.output, f'Completed.csv'), index=False)
+        return df
 
 
 
