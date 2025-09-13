@@ -27,7 +27,7 @@ def df_query(df, cols  = None):
 def f(i):
     X = Reports()
     if i == 1:
-        pass
+        X.getCourseCompletionRates()
 
 def h(i):
     X = FVT_GE()
@@ -39,4 +39,4 @@ def h(i):
         X.getFullData()
 
 if __name__ == '__main__':
-    h(3)
+    f(1)
