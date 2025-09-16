@@ -13,6 +13,8 @@ from ConsumerReports import ConsumerReports
 from IPEDS_DB import IPEDS_DB
 from FVT_GE import FVT_GE
 from Reports import Reports
+from IPEDS_IC import IPEDS_IC
+from FVT_GE_2 import FVT_GE_2
 
 def df_query(df, cols  = None):
     cols = df.columns if cols is None else cols
@@ -27,16 +29,31 @@ def df_query(df, cols  = None):
 def f(i):
     X = Reports()
     if i == 1:
-        X.getCourseCompletionRates()
+        X.getTermHeadcountByAthleteStatus_Pivoted()
+
+def g(i):
+    X = IPEDS_IC()
+    if i == 1:
+        X.getStudentEnrollment_5()
+        X.getStudentEnrollment_7()
+    if i == 2:
+        X.getDisability_9()
 
 def h(i):
     X = FVT_GE()
     if i == 1:
-        X.getColumn('T')
-    if i == 2:
-        X.getAllColumns()
-    if i == 3:
         X.getFullData()
 
+def m(i):
+    X = FVT_GE_2()
+    if i == 1:
+        X.big_join()
+    if i == 2:
+        X.match_check()
+    if i == 3:
+        X.create_transformed_data()
+    if i == 4:
+        X.getColumn_L()
+
 if __name__ == '__main__':
-    f(1)
+    m(4)

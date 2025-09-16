@@ -67,7 +67,7 @@ class Reports:
         :side effect: Prints the table generated from the query.
         '''
         df = self.db_table(query, db, snapshot_term)
-        print(tabulate(df.head(1000), headers='keys', tablefmt='psql'))
+        print(tabulate(df.head(100), headers='keys', tablefmt='psql'))
 
     '''
     I need a way to transform a dataframe into SQL query.
@@ -2143,6 +2143,846 @@ class Reports:
         report = "2025-05-08-Hispanic Student Enrollment"
         name = "Hispanic Student Enrollment"
         self.save_query_results(query, snapshot_term="2025SP")(report, name)
+
+    '''
+    ID: Unknown
+    Name: 2025-06-13-MSW Program Review
+    Person: Rebecca Schwartz
+    Start Date: 2025-06-13
+    End Date: 2025-06-13'
+    Description:
+        I needed to calculate things for the program review of the MSW program.
+    '''
+    def getMSWFacultyCourseEnrollments(self):
+        query = f"""
+        --(Begin 1)--------------------------------------------------------------------------------------
+                 SELECT STUDENTS.*,
+                        SEV.SECTION_COURSE_NAME          AS COURSE_NAME,
+                        SEV.SECTION_COURSE_TITLE         AS COURSE_TITLE,
+                        COURSE_SECTIONS.SEC_FACULTY_INFO AS FACULTY
+                 FROM (SELECT DISTINCT TERMS.TERMS_ID AS TERM,
+                                       TERMS.TERM_START_DATE,
+                                       SAPV.STUDENT_ID
+                       FROM MAJORS
+                                CROSS JOIN TERMS
+                                CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                                LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
+                                          ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+                                LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
+                                LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
+                       WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+                         AND TERMS.TERM_END_DATE < '2025-06-01'
+                         AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+                         AND (
+                           (
+                               MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
+                                   AND STP_START_DATE <= TERMS.TERM_END_DATE
+                                   AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+                               )
+                               OR (
+                               MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
+                                   AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
+                                   AND
+                               (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
+                               )
+                           )
+                         AND MAJORS.MAJ_DESC = 'Master of Social Work') AS STUDENTS
+                          JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON STUDENTS.STUDENT_ID = SEV.STUDENT_ID AND TERM = ENROLL_TERM
+                          JOIN COURSE_SECTIONS ON SEV.SECTION_COURSE_SECTION_ID = COURSE_SECTIONS_ID
+                 WHERE ENROLL_CURRENT_STATUS IN ('New', 'Add')
+        --(End 1)-------------------------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --(Begin 2)--------------------------------------------------------------------------------------
+        SELECT FACULTY,
+               COUNT(*) AS STUDENT_COUNT
+        FROM (
+        --(Begin 1)--------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+         ) AS X
+        GROUP BY FACULTY
+        --(End 2)-----------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-13-MSW Program Review"
+        name = "Faculty Course Enrollments"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict = {"Agg": agg, "Names": names})(report, name)
+
+    def getMSWFacultyCourseEnrollmentsByLevel(self):
+        query = f"""
+                 SELECT STUDENTS.*,
+                SEV.SECTION_COURSE_NAME          AS COURSE_NAME,
+                SEV.SECTION_COURSE_TITLE         AS COURSE_TITLE,
+                COURSE_SECTIONS.SEC_FACULTY_INFO AS FACULTY,
+                SEV.STUDENT_ACAD_LEVEL AS LEVEL
+         FROM (SELECT DISTINCT TERMS.TERMS_ID AS TERM,
+                               TERMS.TERM_START_DATE,
+                               SAPV.STUDENT_ID
+               FROM MAJORS
+                        CROSS JOIN TERMS
+                        CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                        LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
+                                  ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+                        LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
+                        LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
+               WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+                 AND TERMS.TERM_END_DATE < '2025-06-01'
+                 AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+                 AND (
+                   (
+                       MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
+                           AND STP_START_DATE <= TERMS.TERM_END_DATE
+                           AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+                       )
+                       OR (
+                       MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
+                           AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
+                           AND
+                       (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
+                       )
+                   )
+                 AND MAJORS.MAJ_DESC = 'Master of Social Work') AS STUDENTS
+                  JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON STUDENTS.STUDENT_ID = SEV.STUDENT_ID AND TERM = ENROLL_TERM
+                  JOIN COURSE_SECTIONS ON SEV.SECTION_COURSE_SECTION_ID = COURSE_SECTIONS_ID
+         WHERE ENROLL_CURRENT_STATUS IN ('New', 'Add')
+        """
+        agg = lambda query: f"""
+        --(Begin 2)--------------------------------------------------------------------------------------
+        SELECT FACULTY,
+               LEVEL,
+               COUNT(*) AS STUDENT_COUNT
+        FROM (
+        --(Begin 1)--------------------------------------------------------------------------------------
+        {query}
+        --(End 1)--------------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY FACULTY, LEVEL
+        --(End 2)--------------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-13-MSW Program Review"
+        name = "Faculty Course Enrollments By Level"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict = {"Agg": agg, "Names": names})(report, name)
+
+    def getMSWFacultyCourseEnrollmentsByLevel_Pivoted(self):
+        query = f"""
+                 SELECT STUDENTS.STUDENT_ID,
+                COURSE_SECTIONS.SEC_FACULTY_INFO AS FACULTY,
+                SEV.STUDENT_ACAD_LEVEL AS LEVEL
+         FROM (SELECT DISTINCT TERMS.TERMS_ID AS TERM,
+                               TERMS.TERM_START_DATE,
+                               SAPV.STUDENT_ID
+               FROM MAJORS
+                        CROSS JOIN TERMS
+                        CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                        LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
+                                  ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+                        LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
+                        LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
+               WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+                 AND TERMS.TERM_END_DATE < '2025-06-01'
+                 AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+                 AND (
+                   (
+                       MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
+                           AND STP_START_DATE <= TERMS.TERM_END_DATE
+                           AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+                       )
+                       OR (
+                       MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
+                           AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
+                           AND
+                       (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
+                       )
+                   )
+                 AND MAJORS.MAJ_DESC = 'Master of Social Work') AS STUDENTS
+                  JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON STUDENTS.STUDENT_ID = SEV.STUDENT_ID AND TERM = ENROLL_TERM
+                  JOIN COURSE_SECTIONS ON SEV.SECTION_COURSE_SECTION_ID = COURSE_SECTIONS_ID
+         WHERE ENROLL_CURRENT_STATUS IN ('New', 'Add')
+        """
+        agg = lambda query: f"""
+        --(Begin 2)--------------------------------------------------------------------------------------
+        SELECT FACULTY,
+               [GR]
+        FROM (
+        --(Begin 1)--------------------------------------------------------------------------------------
+        {query}
+        --(End 1)--------------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(STUDENT_ID) FOR LEVEL IN ([GR])) AS X
+        --(End 2)--------------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-13-MSW Program Review"
+        name = "Faculty Course Enrollments By Level (Pivoted)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict = {"Agg": agg, "Names": names})(report, name)
+
+    def getMSWFacultyCourseEnrollmentsByLoad(self):
+        query = f"""
+                 SELECT STUDENTS.*,
+                SEV.SECTION_COURSE_NAME          AS COURSE_NAME,
+                SEV.SECTION_COURSE_TITLE         AS COURSE_TITLE,
+                COURSE_SECTIONS.SEC_FACULTY_INFO AS FACULTY,
+                CASE WHEN SEV.STUDENT_LOAD IN ('F', 'O') THEN 'FT' ELSE 'PT' END AS LOAD
+         FROM (SELECT DISTINCT TERMS.TERMS_ID AS TERM,
+                               TERMS.TERM_START_DATE,
+                               SAPV.STUDENT_ID
+               FROM MAJORS
+                        CROSS JOIN TERMS
+                        CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                        LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
+                                  ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+                        LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
+                        LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
+               WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+                 AND TERMS.TERM_END_DATE < '2025-06-01'
+                 AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+                 AND (
+                   (
+                       MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
+                           AND STP_START_DATE <= TERMS.TERM_END_DATE
+                           AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+                       )
+                       OR (
+                       MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
+                           AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
+                           AND
+                       (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
+                       )
+                   )
+                 AND MAJORS.MAJ_DESC = 'Master of Social Work') AS STUDENTS
+                  JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON STUDENTS.STUDENT_ID = SEV.STUDENT_ID AND TERM = ENROLL_TERM
+                  JOIN COURSE_SECTIONS ON SEV.SECTION_COURSE_SECTION_ID = COURSE_SECTIONS_ID
+         WHERE ENROLL_CURRENT_STATUS IN ('New', 'Add')
+        """
+        agg = lambda query: f"""
+        --(Begin 2)--------------------------------------------------------------------------------------
+        SELECT FACULTY,
+               LOAD,
+               COUNT(*) AS STUDENT_COUNT
+        FROM (
+        --(Begin 1)--------------------------------------------------------------------------------------
+        {query}
+        --(End 1)--------------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY FACULTY, LOAD
+        --(End 2)--------------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-13-MSW Program Review"
+        name = "Faculty Course Enrollments By Load"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict = {"Agg": agg, "Names": names})(report, name)
+
+    def getMSWFacultyCourseEnrollmentsByLoad_Pivoted(self):
+        query = f"""
+                 SELECT STUDENTS.STUDENT_ID,
+                COURSE_SECTIONS.SEC_FACULTY_INFO AS FACULTY,
+                CASE WHEN SEV.STUDENT_LOAD IN ('F', 'O') THEN 'FT' ELSE 'PT' END AS LOAD
+         FROM (SELECT DISTINCT TERMS.TERMS_ID AS TERM,
+                               TERMS.TERM_START_DATE,
+                               SAPV.STUDENT_ID
+               FROM MAJORS
+                        CROSS JOIN TERMS
+                        CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                        LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
+                                  ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+                        LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
+                        LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
+               WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+                 AND TERMS.TERM_END_DATE < '2025-06-01'
+                 AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+                 AND (
+                   (
+                       MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
+                           AND STP_START_DATE <= TERMS.TERM_END_DATE
+                           AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+                       )
+                       OR (
+                       MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
+                           AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
+                           AND
+                       (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
+                       )
+                   )
+                 AND MAJORS.MAJ_DESC = 'Master of Social Work') AS STUDENTS
+                  JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON STUDENTS.STUDENT_ID = SEV.STUDENT_ID AND TERM = ENROLL_TERM
+                  JOIN COURSE_SECTIONS ON SEV.SECTION_COURSE_SECTION_ID = COURSE_SECTIONS_ID
+         WHERE ENROLL_CURRENT_STATUS IN ('New', 'Add')
+        """
+        agg = lambda query: f"""
+        --(Begin 2)--------------------------------------------------------------------------------------
+        SELECT FACULTY,
+               [FT],
+               [PT]
+        FROM (
+        --(Begin 1)--------------------------------------------------------------------------------------
+        {query}
+        --(End 1)--------------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(STUDENT_ID) FOR LOAD IN ([FT], [PT])) AS X
+        --(End 2)--------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-13-MSW Program Review"
+        name = "Faculty Course Enrollments By Load (Pivoted)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict = {"Agg": agg, "Names": names})(report, name)
+
+    def getMSWFacultyCourseEnrollmentsByRace(self):
+        query = f"""
+                 SELECT STUDENTS.STUDENT_ID,
+                SEV.SECTION_COURSE_NAME          AS COURSE_NAME,
+                SEV.SECTION_COURSE_TITLE         AS COURSE_TITLE,
+                COURSE_SECTIONS.SEC_FACULTY_INFO AS FACULTY,
+                STUDENTS.RACE
+         FROM (SELECT DISTINCT TERMS.TERMS_ID AS TERM,
+                               TERMS.TERM_START_DATE,
+                               SAPV.STUDENT_ID,
+                               SAPV.IPEDS_RACE_ETHNIC_DESC AS RACE
+               FROM MAJORS
+                        CROSS JOIN TERMS
+                        CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                        LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
+                                  ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+                        LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
+                        LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
+               WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+                 AND TERMS.TERM_END_DATE < '2025-06-01'
+                 AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+                 AND (
+                   (
+                       MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
+                           AND STP_START_DATE <= TERMS.TERM_END_DATE
+                           AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+                       )
+                       OR (
+                       MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
+                           AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
+                           AND
+                       (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
+                       )
+                   )
+                 AND MAJORS.MAJ_DESC = 'Master of Social Work') AS STUDENTS
+                  JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON STUDENTS.STUDENT_ID = SEV.STUDENT_ID AND TERM = ENROLL_TERM
+                  JOIN COURSE_SECTIONS ON SEV.SECTION_COURSE_SECTION_ID = COURSE_SECTIONS_ID
+         WHERE ENROLL_CURRENT_STATUS IN ('New', 'Add')
+        """
+        agg = lambda query: f"""
+        --(Begin 2)--------------------------------------------------------------------------------------
+        SELECT FACULTY,
+               RACE,
+               COUNT(*) AS STUDENT_COUNT
+        FROM (
+        --(Begin 1)--------------------------------------------------------------------------------------
+            {query}
+        --(End 1)--------------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY FACULTY, RACE
+        --(End 2)--------------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-13-MSW Program Review"
+        name = "Faculty Course Enrollments By Race"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict = {"Agg": agg, "Names": names})(report, name)
+
+    def getMSWFacultyCourseEnrollmentsByRace_Pivoted(self):
+        query = f"""
+                 SELECT STUDENTS.STUDENT_ID,
+                COURSE_SECTIONS.SEC_FACULTY_INFO AS FACULTY,
+                STUDENTS.RACE
+         FROM (SELECT DISTINCT TERMS.TERMS_ID AS TERM,
+                               TERMS.TERM_START_DATE,
+                               SAPV.STUDENT_ID,
+                               SAPV.IPEDS_RACE_ETHNIC_DESC AS RACE
+               FROM MAJORS
+                        CROSS JOIN TERMS
+                        CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                        LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
+                                  ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+                        LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
+                        LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
+               WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+                 AND TERMS.TERM_END_DATE < '2025-06-01'
+                 AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+                 AND (
+                   (
+                       MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
+                           AND STP_START_DATE <= TERMS.TERM_END_DATE
+                           AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+                       )
+                       OR (
+                       MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
+                           AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
+                           AND
+                       (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
+                       )
+                   )
+                 AND MAJORS.MAJ_DESC = 'Master of Social Work') AS STUDENTS
+                  JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON STUDENTS.STUDENT_ID = SEV.STUDENT_ID AND TERM = ENROLL_TERM
+                  JOIN COURSE_SECTIONS ON SEV.SECTION_COURSE_SECTION_ID = COURSE_SECTIONS_ID
+         WHERE ENROLL_CURRENT_STATUS IN ('New', 'Add')
+        """
+        agg = lambda query: f"""
+        --(Begin 2)--------------------------------------------------------------------------------------
+        SELECT FACULTY,
+               [American Indian],
+               [Hispanic/Latino],
+               [Two or More Races],
+               [Unknown],
+               [White]
+        FROM (
+        --(Begin 1)--------------------------------------------------------------------------------------
+        {query}
+        --(End 1)--------------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(STUDENT_ID) FOR RACE IN (
+               [American Indian],
+               [Hispanic/Latino],
+               [Two or More Races],
+               [Unknown],
+               [White])) AS X
+        --(End 2)--------------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-13-MSW Program Review"
+        name = "Faculty Course Enrollments By Race (Pivoted)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict = {"Agg": agg, "Names": names})(report, name)
+
+    def getMSWPercentUnderenrolled(self):
+        query = f"""
+                                                    SELECT DISTINCT TERMS.TERMS_ID           AS TERM,
+                                                            TERM_START_DATE,
+                                                            SAPV.STUDENT_ID,
+                                                            SEV.SECTION_COURSE_NAME  AS COURSE_NAME,
+                                                            SEV.SECTION_COURSE_TITLE AS COURSE_TITLE,
+                                                            SEV.ENROLL_CREDITS
+                                            FROM MAJORS
+                                                     CROSS JOIN TERMS
+                                                     CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                                                     LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
+                                                               ON SAPV.STUDENT_ID = STPR_STUDENT AND
+                                                                  STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+                                                     LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
+                                                     LEFT JOIN MAJORS AS ADDNL_MAJOR
+                                                               ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
+                                                     JOIN STUDENT_ENROLLMENT_VIEW AS SEV
+                                                          ON SAPV.STUDENT_ID = SEV.STUDENT_ID AND TERMS_ID = SEV.ENROLL_TERM
+                                            WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+                                              AND TERMS.TERM_END_DATE < '2025-06-01'
+                                              AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+                                              AND STP_CURRENT_STATUS != 'Did Not Enroll'
+                                              AND (
+                                                (
+                                                    MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
+                                                        AND STP_START_DATE <= TERMS.TERM_END_DATE
+                                                        AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+                                                    )
+                                                    OR (
+                                                    MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
+                                                        AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
+                                                        AND
+                                                    (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR
+                                                     STPR_ADDNL_MAJOR_END_DATE IS NULL)
+                                                    )
+                                                )
+                                              AND MAJORS.MAJ_DESC = 'Master of Social Work'
+                                              ---------------------------------------------------------------------------------
+                                              AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                """
+        agg = lambda query: f"""
+                --(Begin 5)------------------------------------------------------------------------------------------------------------
+        SELECT FORMAT(SUM(UNDER_ENROLLED) * 1.0 / COUNT(*), 'P') AS PERCENT_UNDER_ENROLLED
+        FROM (
+        --(Begin 4)-------------------------------------------------------------------------------------------------------------
+                 SELECT COURSE_TITLE,
+                        COURSE_NAME,
+                        CASE WHEN AVG_ENROLLMENT < 7 THEN 1 ELSE 0 END AS UNDER_ENROLLED
+                 FROM (
+        --(Begin 3)-------------------------------------------------------------------------------------------------------------
+                          SELECT COURSE_TITLE,
+                                 COURSE_NAME,
+                                 AVG(TOTAL_ENROLLMENT) AS AVG_ENROLLMENT
+                          FROM (
+        --(Begin 2)-------------------------------------------------------------------------------------------------------------
+                                   SELECT TERM,
+                                          COURSE_TITLE,
+                                          COURSE_NAME,
+                                          COUNT(STUDENT_ID) AS TOTAL_ENROLLMENT
+                                   FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End 1)--------------------------------------------------------------------------------------------------------------
+                                        ) AS X
+                                   GROUP BY TERM, TERM_START_DATE, COURSE_TITLE, COURSE_NAME
+        --(End 2)--------------------------------------------------------------------------------------------------------------
+                               ) AS X
+                          GROUP BY COURSE_TITLE, COURSE_NAME
+        --(End 3)--------------------------------------------------------------------------------------------------------------
+                      ) AS X
+        --(End 4)---------------------------------------------------------------------------------------------------------------
+             ) AS X
+        --(End 5)---------------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-13-MSW Program Review"
+        name = "Percent Underenrolled"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict = {"Agg": agg, "Names": names})(report, name)
+
+    def getMSWSCHPerTerm(self):
+        query = f"""
+                 SELECT DISTINCT TERMS.TERMS_ID    AS TERM,
+                TERM_START_DATE,
+                SAPV.STUDENT_ID,
+                SEV.SECTION_COURSE_TITLE,
+                SEV.SECTION_COURSE_NAME,
+                SEV.ENROLL_CREDITS
+         FROM MAJORS
+         CROSS JOIN TERMS
+         CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+         LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
+            ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+         LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
+         LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
+         JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON SAPV.STUDENT_ID = SEV.STUDENT_ID AND TERMS_ID = SEV.ENROLL_TERM
+          WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+           AND TERMS.TERM_END_DATE < '2025-06-01'
+           AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+           AND STP_CURRENT_STATUS != 'Did Not Enroll'
+           AND (
+             (
+               MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
+               AND STP_START_DATE <= TERMS.TERM_END_DATE
+               AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+             )
+                 OR (
+                     MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
+                 AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
+                 AND (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
+                 )
+             )
+           AND MAJORS.MAJ_DESC = 'Master of Social Work'
+        """
+        agg = lambda query: f"""
+                 SELECT DISTINCT TERMS.TERMS_ID    AS TERM,
+                TERM_START_DATE,
+                SAPV.STUDENT_ID,
+                SEV.SECTION_COURSE_TITLE,
+                SEV.SECTION_COURSE_NAME,
+                SEV.ENROLL_CREDITS
+         FROM MAJORS
+         CROSS JOIN TERMS
+         CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+         LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
+            ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+         LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
+         LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
+         JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON SAPV.STUDENT_ID = SEV.STUDENT_ID AND TERMS_ID = SEV.ENROLL_TERM
+          WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+           AND TERMS.TERM_END_DATE < '2025-06-01'
+           AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+           AND STP_CURRENT_STATUS != 'Did Not Enroll'
+           AND (
+             (
+               MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
+               AND STP_START_DATE <= TERMS.TERM_END_DATE
+               AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+             )
+                 OR (
+                     MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
+                 AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
+                 AND (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
+                 )
+             )
+           AND MAJORS.MAJ_DESC = 'Master of Social Work'
+           -------------------------------------------------------------------------------------------------------------
+           AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-13-MSW Program Review"
+        name = "SCH Per Term"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict = {"Agg": agg, "Names": names})(report, name)
+
+    def getMSWTermHeadcount(self):
+        query = f"""
+                 SELECT TERMS.TERMS_ID  AS TERM,
+                TERMS.TERM_START_DATE,
+                MAJORS.MAJ_DESC AS MAJOR,
+                STUDENT_ID,
+                STUDENT_LAST_NAME,
+                STUDENT_FIRST_NAME
+         FROM MAJORS
+                  CROSS JOIN TERMS
+                  CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                  LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
+                            ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+                  LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
+                  LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
+         WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+           AND TERMS.TERM_END_DATE < '2025-06-01'
+           AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+           AND STP_START_DATE <= TERMS.TERM_END_DATE
+           AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+           AND STP_CURRENT_STATUS != 'Did Not Enroll'
+           AND (
+             (MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID)
+                 OR (MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
+                 AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
+                 AND (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
+                 )
+             )
+           AND MAJORS.MAJ_DESC = 'Master of Social Work'
+        """
+        agg = lambda query: f"""
+        --(Begin 2)------------------------------------------------------------------------------------------------------------
+        SELECT TERM,
+               COUNT(*) AS MSW_STUDENT_COUNT
+        FROM (
+        --(Begin 1)------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End 1)------------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, TERM_START_DATE
+        --(End 2)------------------------------------------------------------------------------------------------------------
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-13-MSW Program Review"
+        name = "Term Headcount"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict = {"Agg": agg, "Names": names})(report, name)
+
+    def getTermHeadcountByAthleteStatus(self):
+        query = f"""
+                 SELECT DISTINCT TERMS.TERMS_ID  AS TERM,
+                TERMS.TERM_START_DATE,
+                MAJORS.MAJ_DESC AS MAJOR,
+                STUDENT_ID,
+                CASE WHEN EXISTS (
+                    SELECT 1
+                    FROM STA_OTHER_COHORTS_VIEW
+                    JOIN (SELECT VAL_INTERNAL_CODE AS CODE, VAL_EXTERNAL_REPRESENTATION AS COHORT
+                          FROM VALS
+                          WHERE VALCODE_ID = 'INSTITUTION.COHORTS') AS COHORT_CODES
+                    ON STA_OTHER_COHORTS_VIEW.STA_OTHER_COHORT_GROUPS = COHORT_CODES.CODE
+                    WHERE COHORT IN (
+                                        'Cheerleading',
+                                        'Dance',
+                                        'Football',
+                                        'Indoor Men''s Track',
+                                        'Indoor Women''s Track',
+                                        'Men''s Basketball',
+                                        'Men''s Cross Country',
+                                        'Men''s Golf',
+                                        'Men''s Soccer',
+                                        'Outdoor Men''s Track',
+                                        'Outdoor Women''s Track',
+                                        'Women''s Basketball',
+                                        'Women''s Cross Country',
+                                        'Women''s Golf',
+                                        'Women''s Soccer',
+                                        'Women''s Softball',
+                                        'Women''s Volleyball'
+                                     )
+                    AND STA_STUDENT = STUDENT_ID
+                    AND (STP_START_DATE <= STA_OTHER_COHORT_END_DATES OR STA_OTHER_COHORT_END_DATES IS NULL)
+                    AND (STP_END_DATE >= STA_OTHER_COHORT_START_DATES OR STP_END_DATE IS NULL)
+                ) THEN 'Athlete' ELSE 'Not Athlete' END AS ATHLETE_STATUS
+         FROM MAJORS
+                  CROSS JOIN TERMS
+                  CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                  LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
+                            ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+                  LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
+                  LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
+         WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+           AND TERMS.TERM_END_DATE < '2025-06-01'
+           AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+           AND STP_START_DATE <= TERMS.TERM_END_DATE
+           AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+           AND STP_CURRENT_STATUS != 'Did Not Enroll'
+           AND (
+             (MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID)
+                 OR (MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
+                 AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
+                 AND (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
+                 )
+             )
+           AND MAJORS.MAJ_DESC = 'Master of Social Work'
+        """
+        agg = lambda query: f"""
+        --(Begin 2)------------------------------------------------------------------------------------------------------------
+        SELECT TERM,
+               ATHLETE_STATUS,
+               COUNT(*) AS MSW_STUDENT_COUNT
+        FROM (
+        --(Begin 1)------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End 1)------------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, TERM_START_DATE, ATHLETE_STATUS
+        --(End 2)------------------------------------------------------------------------------------------------------------
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-13-MSW Program Review"
+        name = "Term Headcount By Athlete Status"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict = {"Agg": agg, "Names": names})(report, name)
+
+    def getTermHeadcountByAthleteStatus_Pivoted(self):
+        query = f"""
+                          SELECT DISTINCT TERMS.TERMS_ID             AS TERM,
+                                  STUDENT_ID,
+                                  CASE
+                                      WHEN EXISTS (SELECT 1
+                                                   FROM STA_OTHER_COHORTS_VIEW
+                                                            JOIN (SELECT VAL_INTERNAL_CODE AS CODE, VAL_EXTERNAL_REPRESENTATION AS COHORT
+                                                                  FROM VALS
+                                                                  WHERE VALCODE_ID = 'INSTITUTION.COHORTS') AS COHORT_CODES
+                                                                 ON STA_OTHER_COHORTS_VIEW.STA_OTHER_COHORT_GROUPS = COHORT_CODES.CODE
+                                                   WHERE COHORT IN (
+                                                                    'Cheerleading',
+                                                                    'Dance',
+                                                                    'Football',
+                                                                    'Indoor Men''s Track',
+                                                                    'Indoor Women''s Track',
+                                                                    'Men''s Basketball',
+                                                                    'Men''s Cross Country',
+                                                                    'Men''s Golf',
+                                                                    'Men''s Soccer',
+                                                                    'Outdoor Men''s Track',
+                                                                    'Outdoor Women''s Track',
+                                                                    'Women''s Basketball',
+                                                                    'Women''s Cross Country',
+                                                                    'Women''s Golf',
+                                                                    'Women''s Soccer',
+                                                                    'Women''s Softball',
+                                                                    'Women''s Volleyball'
+                                                       )
+                                                     AND STA_STUDENT = STUDENT_ID
+                                                     AND (STP_START_DATE <= STA_OTHER_COHORT_END_DATES OR
+                                                          STA_OTHER_COHORT_END_DATES IS NULL)
+                                                     AND (STP_END_DATE >= STA_OTHER_COHORT_START_DATES OR STP_END_DATE IS NULL))
+                                          THEN 'Athlete'
+                                      ELSE 'Not Athlete' END AS ATHLETE_STATUS
+                  FROM MAJORS
+                           CROSS JOIN TERMS
+                           CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                           LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
+                                     ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+                           LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
+                           LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
+                  WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+                    AND TERMS.TERM_END_DATE < '2025-06-01'
+                    AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+                    AND STP_START_DATE <= TERMS.TERM_END_DATE
+                    AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+                    AND STP_CURRENT_STATUS != 'Did Not Enroll'
+                    AND (
+                      (MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID)
+                          OR (MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
+                          AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
+                          AND (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
+                          )
+                      )
+                    AND MAJORS.MAJ_DESC = 'Master of Social Work'
+        """
+        agg = lambda query: f"""
+        --(Begin 3)------------------------------------------------------------------------------------------------------------
+        SELECT X.*
+        FROM (
+        --(Begin 2)------------------------------------------------------------------------------------------------------------
+                 SELECT TERM,
+                        [Athlete],
+                        [Not Athlete]
+                 FROM (
+        --(Begin 1)------------------------------------------------------------------------------------------------------------
+                {query}
+        --(End 1)------------------------------------------------------------------------------------------------------------
+                      ) AS X
+                          PIVOT (COUNT(STUDENT_ID) FOR ATHLETE_STATUS IN ([Athlete], [Not Athlete])) AS X
+        --(End 2)------------------------------------------------------------------------------------------------------------
+             ) AS X
+        JOIN TERMS ON TERM = TERMS_ID
+        --(End 3)------------------------------------------------------------------------------------------------------------
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-13-MSW Program Review"
+        name = "Term Headcount By Athlete Status (Pivoted)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+
 
     '''
     ID: Unknown

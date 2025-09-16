@@ -91,17 +91,12 @@ class FVT_GE:
         """
         return self.ODS_SQL(new_query).iat[0, 0]
 
-    def order_by(self, *names):
-        def f(query):
-            return f"""
-            SELECT * FROM ({query}) AS X ORDER BY {self.col_string(names)}
-            """
-        return f
+    def col_string(self, columns, table = None):
+        return ",\n".join([f"[{col}]" if table is None else f"{table}.[{col}]" for col in columns])
 
 ##======================================================================================================================
 #----------Find Primary Key---------------------------------------------------------------------------------------------
-    def col_string(self, columns, table = None):
-        return ",\n".join([f"[{col}]" if table is None else f"{table}.[{col}]" for col in columns])
+
 
     def col_count(self, columns):
         query = f"""
@@ -216,6 +211,7 @@ class FVT_GE:
         title = self.calc_cols[col]
         print(title)
         df = self.ODS_SQL(query_func(col))
+        print(tabulate(df.head(1000), headers='keys', tablefmt='psql'))
         df.to_csv(os.path.join(self.output, f'{col}. {title}.csv'), index=False)
         return df
 
