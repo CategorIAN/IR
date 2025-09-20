@@ -15,8 +15,10 @@ class IPEDS (Reports):
         for path in paths:
             Path(path).mkdir(parents=True, exist_ok=True)
 
-    def save(self, prompt, query, section, page, name, func_dict = None, snapshot_term = "2025FA", comments = None):
-        page_folder = "\\".join(self.report_path + [section, page])
+    def save(self, prompt, query, section, survey, page, name, func_dict = None, snapshot_term = "2025FA", comments = None):
+        print(f"Prompt:\n{prompt}\n{20 * "-"}")
+        print(f"Comments:\n{comments}\n{20 * "-"}")
+        page_folder = "\\".join(self.report_path + [survey, section, page])
         report_folder = os.path.join(page_folder, name)
         report_prompt_folder = os.path.join(page_folder, "[Prompts]")
         report_code_folder = os.path.join(page_folder, "[Code]")
@@ -34,30 +36,31 @@ class IPEDS (Reports):
                 text_file.write(comments)
             with open(os.path.join(report_comments_folder, f"{name}.txt"), "w") as text_file:
                 text_file.write(comments)
-        if func_dict is None:
-            df = self.db_table(query, db = 'MSSQL', snapshot_term = snapshot_term)
-            print(tabulate(df.head(1000), headers='keys', tablefmt='psql'))
-            df.to_csv(os.path.join(report_folder, f"{name}.csv"), index=False)
-            with open(os.path.join(report_folder, f"{name} (Code).txt"), "w") as text_file:
-                text_file.write(query)
-            with open(os.path.join(report_code_folder, f"{name}.txt"), "w") as text_file:
-                text_file.write(query)
-            df.to_csv(os.path.join(report_agg_folder, f"{name}.csv"))
-
-        else:
-            for key in func_dict:
-                transformed_query = func_dict[key](query)
-                df = self.db_table(transformed_query, db = 'MSSQL', snapshot_term = snapshot_term)
+        if query is not None:
+            if func_dict is None:
+                df = self.db_table(query, db = 'MSSQL', snapshot_term = snapshot_term)
                 print(tabulate(df.head(1000), headers='keys', tablefmt='psql'))
-                df.to_csv(os.path.join(report_folder, f"{name} ({key}).csv"))
-                with open(os.path.join(report_folder, f"{name} ({key}).txt"), "w") as text_file:
-                    text_file.write(transformed_query)
-                with open(os.path.join(report_code_folder, f"{name} ({key}).txt"), "w") as text_file:
-                    text_file.write(transformed_query)
-                if key == "Agg":
-                    df.to_csv(os.path.join(report_agg_folder, f"{name}.csv"))
-                if key == "Names":
-                    df.to_csv(os.path.join(report_names_folder, f"{name}.csv"))
+                df.to_csv(os.path.join(report_folder, f"{name}.csv"), index=False)
+                with open(os.path.join(report_folder, f"{name} (Code).txt"), "w") as text_file:
+                    text_file.write(query)
+                with open(os.path.join(report_code_folder, f"{name}.txt"), "w") as text_file:
+                    text_file.write(query)
+                df.to_csv(os.path.join(report_agg_folder, f"{name}.csv"))
+
+            else:
+                for key in func_dict:
+                    transformed_query = func_dict[key](query)
+                    df = self.db_table(transformed_query, db = 'MSSQL', snapshot_term = snapshot_term)
+                    print(tabulate(df.head(1000), headers='keys', tablefmt='psql'))
+                    df.to_csv(os.path.join(report_folder, f"{name} ({key}).csv"))
+                    with open(os.path.join(report_folder, f"{name} ({key}).txt"), "w") as text_file:
+                        text_file.write(transformed_query)
+                    with open(os.path.join(report_code_folder, f"{name} ({key}).txt"), "w") as text_file:
+                        text_file.write(transformed_query)
+                    if key == "Agg":
+                        df.to_csv(os.path.join(report_agg_folder, f"{name}.csv"))
+                    if key == "Names":
+                        df.to_csv(os.path.join(report_names_folder, f"{name}.csv"))
 
     def students(self, term = '2025FA'):
         query = f"""
@@ -68,5 +71,21 @@ class IPEDS (Reports):
         WHERE STATUS.STC_STATUS IN ('N', 'A')
         AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
         AND STC_TERM = '{term}'
+        """
+        return query
+
+    def ipeds_races(self):
+        query = """
+        SELECT *
+        FROM (
+            VALUES    ('Non-Resident Alien', 'U.S. Nonresident', 1),
+                      ('Hispanic/Latino', 'Hispanic/Latino', 2),
+                      ('American Indian', 'American Indian or Alaska Native', 3),
+                      ('Asian', 'Asian', 4),
+                      ('Black or African American', 'Black or African American', 5),
+                      ('Hawaiian/Pacific Islander', 'Native Hawaiian or Other Pacific Islander', 6),
+                      ('White', 'White', 7),
+                      ('Two or More Races', 'Two or more races', 8),
+                      ('Unknown', 'Race and ethnicity unknown', 9)) AS IPEDS_RACE(OUR_DESC, THEIR_DESC, N)
         """
         return query

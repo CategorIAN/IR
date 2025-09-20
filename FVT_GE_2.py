@@ -143,7 +143,7 @@ class FVT_GE_2:
     '''
     'Programmatically Accredited Indicator'
     
-    Status: In Progress
+    Status: Completed
     '''
     def getColumn_L(self):
         '''
@@ -169,18 +169,23 @@ class FVT_GE_2:
     '''
     'Accrediting Agency Name'
     
-    Status: In Progress
+    Status: This will be completed by someone else.
     '''
     def getColumn_M(self):
         '''
         The name of the agency that accredits the program.
         '''
-        pass
+        query = f"""
+        SELECT {self.col_string(self.key_df.columns)},
+                NULL AS M
+        FROM ({self.df_query(self.joined_data)}) AS X
+        """
+        return self.createDF('M', query)
 
     '''
-    'Liberal Arts Bachelor's Degree Program at Proprietary Institution
+    'Liberal Arts Bachelor's Degree Program at Proprietary Institution'
     
-    Status: In Progress
+    Status: Completed
     '''
     def getColumn_N(self):
         '''
@@ -193,36 +198,54 @@ class FVT_GE_2:
         • Space (N/A)
         Note: If this field is reported with a ‘Y’, the Credential Level for the program must equal ‘03’ (Bachelor’s degree).
         '''
-        pass
+        query = f"""
+        SELECT {self.col_string(self.key_df.columns, 'DATA')},
+                CASE WHEN ACPG_ACAD_LEVEL = 'UG' AND ACPG_START_DATE <= '2009-01-01' THEN 'Y' ELSE 'N' END AS N,
+                AP.*
+        FROM ({self.df_query(self.joined_data)}) AS DATA
+        JOIN ODS_ACAD_PROGRAMS AS AP ON DATA.ACAD_PROGRAMS_ID = AP.ACAD_PROGRAMS_ID
+        """
+        self.print_table(query)
+        #return self.createDF('N', query)
 
     '''
     'Count of Program Graduates who Attempted Licensure Exam'
     
-    Status: In Progress
+    Status: This will be completed by someone else.
     '''
     def getColumn_O(self):
         '''
         The total number of program graduates who took a licensure exam as most recently reported to the institution’s
         accrediting agency.
         '''
-        pass
+        query = f"""
+        SELECT {self.col_string(self.key_df.columns)},
+                NULL AS O
+        FROM ({self.df_query(self.joined_data)}) AS X
+        """
+        return self.createDF('O', query)
 
     '''
     'Count of Program Gradautes who Passed Licensure Exam'
     
-    Status: In Progress
+    Status: This will be completed by someone else.
     '''
     def getColumn_P(self):
         '''
         The total number of program graduates who passed a licensure exam as most recently reported to the institution’s
          accrediting agency.
         '''
-        pass
+        query = f"""
+        SELECT {self.col_string(self.key_df.columns)},
+                NULL AS P
+        FROM ({self.df_query(self.joined_data)}) AS X
+        """
+        return self.createDF('P', query)
 
     '''
     'Program Prepares Students for Licensure in State of Main Campus'
     
-    Status: In Progress
+    Status: This will be completed by someone else.
     '''
     def getColumn_S(self):
         '''
@@ -233,18 +256,28 @@ class FVT_GE_2:
         • 'N' (No)
         • 'X' (Not Applicable)
         '''
-        pass
+        query = f"""
+        SELECT {self.col_string(self.key_df.columns)},
+                NULL AS S
+        FROM ({self.df_query(self.joined_data)}) AS X
+        """
+        return self.createDF('S', query)
 
     '''
     'State Two in MSA of Main Campus'
     
-    Status: In Progress
+    Status: This will be completed by someone else.
     '''
     def getColumn_T(self):
         '''
         The second State in the metropolitan statistical area (MSA) in which the main campus is located, if applicable.
         '''
-        pass
+        query = f"""
+        SELECT {self.col_string(self.key_df.columns)},
+                NULL AS T
+        FROM ({self.df_query(self.joined_data)}) AS X
+        """
+        return self.createDF('T', query)
 
     '''
     'Program Prepares Students for Licensure in MSA State Two'
@@ -261,7 +294,12 @@ class FVT_GE_2:
         • ‘X’ (Not Applicable)
         • ‘Space’ (No State Two in MSA)
         '''
-        pass
+        query = f"""
+        SELECT {self.col_string(self.key_df.columns)},
+                NULL AS T
+        FROM ({self.df_query(self.joined_data)}) AS X
+        """
+        return self.createDF('U', query)
 
     '''
     'State Three in MSA of Main Campus'

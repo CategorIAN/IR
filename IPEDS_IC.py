@@ -28,7 +28,7 @@ class IPEDS_IC (IPEDS):
                 CASE WHEN (STUDENT_ADMIT.STATUS = 'FY') AND (STP_PROGRAM_TITLE != 'Non-Degree Seeking Students') 
                         THEN 1 ELSE 0 END AS [First-time, degree-seeking],
                 CASE WHEN STP_ACAD_LEVEL = 'GR' THEN 1 ELSE 0 END AS [Graduate]
-        FROM ({self.students()}) AS STUDENTS
+        FROM ({self.students('2024FA')}) AS STUDENTS
         LEFT JOIN (
         SELECT *,
                 ROW_NUMBER() OVER (PARTITION BY STUDENT_ID ORDER BY STP_START_DATE DESC) AS RANK
