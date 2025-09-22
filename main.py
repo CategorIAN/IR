@@ -9,7 +9,8 @@ def f(i):
 def g(i):
     X = IPEDS_Fall()
     if i == 1:
-        X.getCompletions_270101_DE()
+        X.getCompletions_380103()
+        X.getCompletions_380103_DE()
 
 
 if __name__ == '__main__':

@@ -1,10 +1,12 @@
 from Reports import Reports
 import os
 from IPEDS import IPEDS
+import pandas as pd
 
 class IPEDS_Fall (IPEDS):
     def __init__(self):
         super().__init__(folder='IPEDS_Fall', report="2025-09-17-IPEDS Fall Survey")
+        self.gender_assignment = pd.read_csv(os.path.join(self.folder, 'Gender Assignment To Unknowns.csv'))
 #==============================Cost 1=================================================================================
 #==============================Screening Questions=====================================================================
     '''
@@ -766,7 +768,7 @@ class IPEDS_Fall (IPEDS):
         self.save(**params)
 #===============================Completions============================================================================
 
-    def getCompletions(self, cip, major_rank = 1):
+    def getCompletions(self, cip, major_rank = 1, level = 'UG'):
         query = f"""
                  SELECT IPEDS_RACE.THEIR_DESC AS RACE,
                  IPEDS_RACE.N,
@@ -775,7 +777,7 @@ class IPEDS_Fall (IPEDS):
         FROM ({self.ipeds_races()}) AS IPEDS_RACE
          LEFT JOIN (
                     SELECT STUDENT_ID,
-                           STUDENT_GENDER,
+                           COALESCE(STUDENT_GENDER, GENDER_ASSIGNMENT.GENDER) AS STUDENT_GENDER,
                            IPEDS_RACE_ETHNIC_DESC,
                            ROW_NUMBER() OVER (PARTITION BY STUDENT_ID ORDER BY MAJORS_ID) AS MAJOR_RANK
                     FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
@@ -804,9 +806,11 @@ class IPEDS_Fall (IPEDS):
                                 AND SAPV.STUDENT_ID + '*' + SAPV.STP_ACADEMIC_PROGRAM = ALL_MAJORS.STUDENT_PROGRAMS_ID
                                 AND COALESCE(STPR_ADDNL_MAJOR_END_DATE, STP_END_DATE) >= STP_END_DATE
                             )
+                    LEFT JOIN ({self.df_query(self.gender_assignment)}) AS GENDER_ASSIGNMENT ON STUDENT_ID = GENDER_ASSIGNMENT.ID
                     WHERE STP_CURRENT_STATUS = 'Graduated'
                     AND STP_END_DATE BETWEEN '2024-07-01' AND '2025-06-30'
                     AND ACPG_CIP = '{cip}'
+                    AND STP_ACAD_LEVEL = '{level}'
                     ) AS STUDENT_PROGRAMS
             ON IPEDS_RACE.OUR_DESC = STUDENT_PROGRAMS.IPEDS_RACE_ETHNIC_DESC
             AND MAJOR_RANK = {major_rank}
@@ -1197,6 +1201,61 @@ class IPEDS_Fall (IPEDS):
                   "section": "Completions by CIP",
                   "page": "13.1202",
                   "name": "13.1202 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_131305(self):
+        prompt = """
+        "13.1305: English/Language Arts Teacher Education"
+        """
+        comments = None
+        query = self.getCompletions('13.1305')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "13.1305",
+                  "name": "13.1305 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_131305_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "13.1305",
+                  "name": "13.1305 (1st Major) (Distance Education)",
                   "func_dict": None,
                   }
         self.save(**params)
@@ -2542,6 +2601,2627 @@ class IPEDS_Fall (IPEDS):
                   "func_dict": None,
                   }
         self.save(**params)
+
+    def getCompletions_270301(self):
+        prompt = """
+        "27.0301: Applied Mathematics, General"
+        """
+        comments = None
+        query = self.getCompletions('27.0301')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "27.0301",
+                  "name": "27.0301 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_270301_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "27.0301",
+                  "name": "27.0301 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_279999(self):
+        prompt = """
+        "27.9999: Mathematics and Statistics, Other"
+        """
+        comments = None
+        query = self.getCompletions('27.9999')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "27.9999",
+                  "name": "27.9999 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_279999_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "27.9999",
+                  "name": "27.9999 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_309999(self):
+        prompt = """
+        "30.9999: Multi-/Interdisciplinary Studies, Other"
+        """
+        comments = None
+        query = self.getCompletions('30.9999')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "30.9999",
+                  "name": "30.9999 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_309999_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "30.9999",
+                  "name": "30.9999 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_310504(self):
+        prompt = """
+        "31.0504: Sport and Fitness Administration/Management"
+        """
+        comments = None
+        query = self.getCompletions('31.0504')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "31.0504",
+                  "name": "31.0504 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_310504_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "31.0504",
+                  "name": "31.0504 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_380101(self):
+        prompt = """
+        "38.0101: Philosophy"
+        """
+        comments = None
+        query = self.getCompletions('38.0101')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "38.0101",
+                  "name": "38.0101 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_380101_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "38.0101",
+                  "name": "38.0101 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_380101_2ND(self):
+        prompt = """
+        "38.0101: Philosophy"
+        """
+        comments = None
+        query = self.getCompletions('38.0101', major_rank=2)
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "38.0101",
+                  "name": "38.0101 (2nd Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_380101_2ND_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "38.0101",
+                  "name": "38.0101 (2nd Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+
+    def getCompletions_380103(self):
+        prompt = """
+        "38.0103: Ethics"
+        """
+        comments = None
+        query = self.getCompletions('38.0103')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "38.0103",
+                  "name": "38.0103 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_380103_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "38.0103",
+                  "name": "38.0103 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+
+    def getCompletions_380203(self):
+        prompt = """
+        "38.0203: Christian Studies"
+        """
+        comments = None
+        query = self.getCompletions('38.0203')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "38.0203",
+                  "name": "38.0203 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_380203_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "38.0203",
+                  "name": "38.0203 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+
+    def getCompletions_380203_2ND(self):
+        prompt = """
+        "38.0203: Christian Studies"
+        """
+        comments = None
+        query = self.getCompletions('38.0203', major_rank=2)
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "38.0203",
+                  "name": "38.0203 (2nd Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_380203_2ND_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "38.0203",
+                  "name": "38.0203 (2nd Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+
+    def getCompletions_390601(self):
+        prompt = """
+        "39.0601: Theology/Theological Studies"
+        """
+        comments = None
+        query = self.getCompletions('39.0601')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "39.0601",
+                  "name": "39.0601 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_390601_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "39.0601",
+                  "name": "39.0601 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+
+    def getCompletions_400501(self):
+        prompt = """
+        "40.0501: Chemistry, General"
+        """
+        comments = None
+        query = self.getCompletions('40.0501')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "40.0501",
+                  "name": "40.0501 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_400501_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "40.0501",
+                  "name": "40.0501 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+
+    def getCompletions_400801(self):
+        prompt = """
+        "40.0801: Physics, General"
+        """
+        comments = None
+        query = self.getCompletions('40.0801')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "40.0801",
+                  "name": "40.0801 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_400801_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "40.0801",
+                  "name": "40.0801 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+
+    def getCompletions_420101(self):
+        prompt = """
+        "42.0101: Psychology, General"
+        """
+        comments = None
+        query = self.getCompletions('42.0101')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "42.0101",
+                  "name": "42.0101 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_420101_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "42.0101",
+                  "name": "42.0101 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_420101_2ND(self):
+        prompt = """
+        "42.0101: Psychology, General"
+        """
+        comments = None
+        query = self.getCompletions('42.0101', major_rank=2)
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "42.0101",
+                  "name": "42.0101 (2nd Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_420101_2ND_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "42.0101",
+                  "name": "42.0101 (2nd Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+
+    def getCompletions_440701(self):
+        prompt = """
+        "44.0701: Social Work"
+        """
+        comments = None
+        query = self.getCompletions('44.0701', level='GR')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "44.0701",
+                  "name": "44.0701 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_440701_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("All programs in this CIP code in this award level can be completed entirely via distance "
+                    "education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "44.0701",
+                  "name": "44.0701 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+
+    def getCompletions_450901(self):
+        prompt = """
+        "45.0901: International Relations and Affairs"
+        """
+        comments = None
+        query = self.getCompletions('45.0901')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "45.0901",
+                  "name": "45.0901 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_450901_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "45.0901",
+                  "name": "45.0901 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_450901_2ND(self):
+        prompt = """
+        "45.0901: International Relations and Affairs"
+        """
+        comments = None
+        query = self.getCompletions('45.0901', major_rank=2)
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "45.0901",
+                  "name": "45.0901 (2nd Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_450901_2ND_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "45.0901",
+                  "name": "45.0901 (2nd Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_451001(self):
+        prompt = """
+        "45.1001: Political Science and Government, General"
+        """
+        comments = None
+        query = self.getCompletions('45.1001')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "45.1001",
+                  "name": "45.1001 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_451001_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "45.1001",
+                  "name": "45.1001 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_451001_2ND(self):
+        prompt = """
+        "45.1001: Political Science and Government, General"
+        """
+        comments = None
+        query = self.getCompletions('45.1001', major_rank=2)
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "45.1001",
+                  "name": "45.1001 (2nd Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_451001_2ND_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "45.1001",
+                  "name": "45.1001 (2nd Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+
+    def getCompletions_451101(self):
+        prompt = """
+        "45.1101: Sociology, General"
+        """
+        comments = None
+        query = self.getCompletions('45.1101')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "45.1101",
+                  "name": "45.1101 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_451101_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "45.1101",
+                  "name": "45.1101 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_451101_2ND(self):
+        prompt = """
+        "45.1101: Sociology, General"
+        """
+        comments = None
+        query = self.getCompletions('45.1101', major_rank=2)
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "45.1101",
+                  "name": "45.1101 (2nd Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_451101_2ND_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "45.1101",
+                  "name": "45.1101 (2nd Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_500101(self):
+        prompt = """
+        "50.0101: Visual and Performing Arts, General"
+        """
+        comments = None
+        query = self.getCompletions('50.0101')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "50.0101",
+                  "name": "50.0101 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_500101_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "50.0101",
+                  "name": "50.0101 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+
+    def getCompletions_500101_2ND(self):
+        prompt = """
+        "50.0101: Visual and Performing Arts, General"
+        """
+        comments = None
+        query = self.getCompletions('50.0101', major_rank=2)
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "50.0101",
+                  "name": "50.0101 (2nd Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_500101_2ND_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "50.0101",
+                  "name": "50.0101 (2nd Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+
+    def getCompletions_510000(self):
+        prompt = """
+        "51.0000: Health Services/Allied Health/Health Sciences, General"
+        """
+        comments = None
+        query = self.getCompletions('51.0000')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "51.0000",
+                  "name": "51.0000 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_510000_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "51.0000",
+                  "name": "51.0000 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+
+    def getCompletions_510000_2ND(self):
+        prompt = """
+        "51.0000: Health Services/Allied Health/Health Sciences, General"
+        """
+        comments = None
+        query = self.getCompletions('51.0000', major_rank = 2)
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "51.0000",
+                  "name": "51.0000 (2nd Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_510000_2ND_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "51.0000",
+                  "name": "51.0000 (2nd Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_511504(self):
+        prompt = """
+        "51.1504: Community Health Services/Liaison/Counseling"
+        """
+        comments = None
+        query = self.getCompletions('51.1504')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "51.1504",
+                  "name": "51.1504 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_511504_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "51.1504",
+                  "name": "51.1504 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_512207(self):
+        prompt = """
+        "51.2207: Public Health Education and Promotion"
+        """
+        comments = None
+        query = self.getCompletions('51.2207')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "51.2207",
+                  "name": "51.2207 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_512207_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "51.2207",
+                  "name": "51.2207 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_512207_2ND(self):
+        prompt = """
+        "51.2207: Public Health Education and Promotion"
+        """
+        comments = None
+        query = self.getCompletions('51.2207', major_rank = 2)
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "51.2207",
+                  "name": "51.2207 (2nd Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_512207_2ND_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "51.2207",
+                  "name": "51.2207 (2nd Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+
+    def getCompletions_512313(self):
+        prompt = """
+        "51.2313: Animal-Assisted Therapy"
+        """
+        comments = None
+        query = self.getCompletions('51.2313')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "51.2313",
+                  "name": "51.2313 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_512313_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "51.2313",
+                  "name": "51.2313 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_512313_2ND(self):
+        prompt = """
+        "51.2313: Animal-Assisted Therapy"
+        """
+        comments = None
+        query = self.getCompletions('51.2313', major_rank=2)
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "51.2313",
+                  "name": "51.2313 (2nd Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_512313_2ND_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "51.2313",
+                  "name": "51.2313 (2nd Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+
+    def getCompletions_513801(self):
+        prompt = """
+        "51.3801: Registered Nursing/Registered Nurse"
+        """
+        comments = None
+        query = self.getCompletions('51.3801')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "51.3801",
+                  "name": "51.3801 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_513801_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "51.3801",
+                  "name": "51.3801 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_520201(self):
+        prompt = """
+        "52.0201: Business Administration and Management, General"
+        """
+        comments = None
+        query = self.getCompletions('52.0201')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "52.0201",
+                  "name": "52.0201 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_520201_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "52.0201",
+                  "name": "52.0201 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+
+    def getCompletions_520201_2ND(self):
+        prompt = """
+        "52.0201: Business Administration and Management, General"
+        """
+        comments = None
+        query = self.getCompletions('52.0201', major_rank = 2)
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "52.0201",
+                  "name": "52.0201 (2nd Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_520201_2ND_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "52.0201",
+                  "name": "52.0201 (2nd Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_520301(self):
+        prompt = """
+        "52.0301: Accounting"
+        """
+        comments = None
+        query = self.getCompletions('52.0301')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "52.0301",
+                  "name": "52.0301 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_520301_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "52.0301",
+                  "name": "52.0301 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_520301_2ND(self):
+        prompt = """
+        "52.0301: Accounting"
+        """
+        comments = None
+        query = self.getCompletions('52.0301', major_rank=2)
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "52.0301",
+                  "name": "52.0301 (2nd Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_520301_2ND_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "52.0301",
+                  "name": "52.0301 (2nd Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_520301_GR(self):
+        prompt = """
+        "52.0301: Accounting"
+        """
+        comments = None
+        query = self.getCompletions('52.0301', level='GR')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "52.0301",
+                  "name": "52.0301 (Graduate) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_520301_GR_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "52.0301",
+                  "name": "52.0301 (Graduate) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_520801(self):
+        prompt = """
+        "52.0801: Finance, General"
+        """
+        comments = None
+        query = self.getCompletions('52.0801')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "52.0801",
+                  "name": "52.0801 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_520801_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "52.0801",
+                  "name": "52.0801 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+
+    def getCompletions_520804(self):
+        prompt = """
+        "52.0804: Financial Planning and Services"
+        """
+        comments = None
+        query = self.getCompletions('52.0804')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "52.0804",
+                  "name": "52.0804 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_520804_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "52.0804",
+                  "name": "52.0804 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_540101(self):
+        prompt = """
+        "54.0101: History, General"
+        """
+        comments = None
+        query = self.getCompletions('54.0101')
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "54.0101",
+                  "name": "54.0101 (1st Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_540101_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "54.0101",
+                  "name": "54.0101 (1st Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompletions_540101_2ND(self):
+        prompt = """
+        "54.0101: History, General"
+        """
+        comments = None
+        query = self.getCompletions('54.0101', major_rank = 2)
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "54.0101",
+                  "name": "54.0101 (2nd Major) (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletions_540101_2ND_DE(self):
+        prompt = """
+        Is at least one program within this CIP code offered as a distance education program?
+        """
+        comments = ("None of the programs in this CIP code in this award level can be completed entirely via "
+                    "distance education.")
+        query = None
+
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completions by CIP",
+                  "page": "54.0101",
+                  "name": "54.0101 (2nd Major) (Distance Education)",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def getCompleters_All(self):
+        prompt = """    
+        All Completers
+        Institutions must report the following information. (Some data will be pre-populated from the completions by CIP
+         code data.)
+        Number of students by sex and race and ethnicity earning an award between July 1, 2024 and June 30, 2025. Count 
+        each student only once, regardless of how many awards he/she earned. The intent of this screen is to collect an 
+        unduplicated count of total numbers of completers.
+        Report Hispanic/Latino individuals of any race as Hispanic/Latino
+        Report race for non-Hispanic/Latino individuals only
+        """
+        comments = None
+        query = f"""
+                 SELECT DISTINCT IPEDS_RACE.THEIR_DESC AS RACE,
+                 IPEDS_RACE.N,
+                 STUDENT_ID             AS ID,
+                 STUDENT_GENDER AS GENDER
+        FROM ({self.ipeds_races()}) AS IPEDS_RACE
+         LEFT JOIN (
+                    SELECT STUDENT_ID,
+                           COALESCE(STUDENT_GENDER, GENDER_ASSIGNMENT.GENDER) AS STUDENT_GENDER,
+                           IPEDS_RACE_ETHNIC_DESC
+                    FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                    LEFT JOIN ACAD_PROGRAMS AS AP
+                    ON SAPV.STP_ACADEMIC_PROGRAM = AP.ACAD_PROGRAMS_ID
+                    LEFT JOIN ({self.df_query(self.gender_assignment)}) AS GENDER_ASSIGNMENT ON STUDENT_ID = GENDER_ASSIGNMENT.ID
+                    WHERE STP_CURRENT_STATUS = 'Graduated'
+                    AND STP_END_DATE BETWEEN '2024-07-01' AND '2025-06-30'
+                    ) AS STUDENT_PROGRAMS
+            ON IPEDS_RACE.OUR_DESC = STUDENT_PROGRAMS.IPEDS_RACE_ETHNIC_DESC
+        """
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "All Completers",
+                  "page": "All Completers",
+                  "name": "All Completers (Data)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompleters_SexUnknown(self):
+        prompt = """    
+        Sex Unknown
+        The purpose of this supplemental section is to determine whether institutions are able to report the number of 
+        students for whom sex is unknown. Note that these students must still be allocated into the 'Male' and 'Female'
+         categories in all other sections of the survey component.
+        """
+        comments = None
+        query = f"""
+                    SELECT DISTINCT STUDENT_ID AS ID,
+                           STUDENT_GENDER,
+                           IPEDS_RACE_ETHNIC_DESC,
+                           STP_PROGRAM_TITLE,
+                           ACPG_CIP,
+                           STP_ACAD_LEVEL
+                    FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                    LEFT JOIN ACAD_PROGRAMS AS AP
+                    ON SAPV.STP_ACADEMIC_PROGRAM = AP.ACAD_PROGRAMS_ID
+                    WHERE STP_CURRENT_STATUS = 'Graduated'
+                    AND STP_END_DATE BETWEEN '2024-07-01' AND '2025-06-30'
+                    AND STUDENT_GENDER IS NULL
+        """
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT [UG] AS [Undergraduate Students],
+                [GR] AS [Graduate Students]
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR STP_ACAD_LEVEL IN ([UG], [GR])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "All Completers",
+                  "page": "All Completers",
+                  "name": "All Completers (Sex Unknown)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompletersSimple(self, level = 'UG'):
+        query = f"""
+                 SELECT IPEDS_RACE.THEIR_DESC AS RACE,
+                 IPEDS_RACE.N,
+                 STUDENT_ID             AS ID,
+                 STUDENT_GENDER AS GENDER
+        FROM ({self.ipeds_races()}) AS IPEDS_RACE
+         LEFT JOIN (
+                    SELECT DISTINCT STUDENT_ID,
+                           COALESCE(STUDENT_GENDER, GENDER_ASSIGNMENT.GENDER) AS STUDENT_GENDER,
+                           IPEDS_RACE_ETHNIC_DESC
+                    FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                    LEFT JOIN ACAD_PROGRAMS AS AP
+                    ON SAPV.STP_ACADEMIC_PROGRAM = AP.ACAD_PROGRAMS_ID
+                    LEFT JOIN ({self.df_query(self.gender_assignment)}) AS GENDER_ASSIGNMENT ON STUDENT_ID = GENDER_ASSIGNMENT.ID
+                    WHERE STP_CURRENT_STATUS = 'Graduated'
+                    AND STP_END_DATE BETWEEN '2024-07-01' AND '2025-06-30'
+                    AND STP_ACAD_LEVEL = '{level}'
+                    ) AS STUDENT_PROGRAMS
+            ON IPEDS_RACE.OUR_DESC = STUDENT_PROGRAMS.IPEDS_RACE_ETHNIC_DESC
+        """
+        return query
+
+
+    def getCompleters_UG_BySex(self):
+        prompt = """    
+        Completers by Level
+        Bachelor's degree
+        Number of students by sex, by race and ethnicity, and by age earning this award between July 1, 2024 and 
+        June 30, 2025. Each student should be counted once per award level. For example, if a student earned a master's 
+        degree and a doctor's degree, he/she should be counted once in master's and once in doctor's. A student earning
+         two master's degrees should be counted only once.
+        Report Hispanic/Latino individuals of any race as Hispanic/Latino
+        Report race for non-Hispanic/Latino individuals only
+        """
+        comments = None
+        query = self.getCompletersSimple('UG')
+        agg = lambda query: f"""
+        SELECT GENDER AS [By Sex],
+        COUNT(ID) AS [Number of Students]
+        FROM ({query}) AS X
+        WHERE ID IS NOT NULL
+        GROUP BY GENDER
+        ORDER BY GENDER
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completers by Level",
+                  "page": "Bachelor's Degree",
+                  "name": "By Sex",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompleters_UG_ByRace(self):
+        prompt = """    
+        Completers by Level
+        Bachelor's degree
+        Number of students by sex, by race and ethnicity, and by age earning this award between July 1, 2024 and 
+        June 30, 2025. Each student should be counted once per award level. For example, if a student earned a master's 
+        degree and a doctor's degree, he/she should be counted once in master's and once in doctor's. A student earning
+         two master's degrees should be counted only once.
+        Report Hispanic/Latino individuals of any race as Hispanic/Latino
+        Report race for non-Hispanic/Latino individuals only
+        """
+        comments = None
+        query = self.getCompletersSimple('UG')
+        agg = lambda query: f"""
+        SELECT RACE AS [By Race/Ethnicity],
+        COUNT(ID) AS [Number of Students]
+        FROM ({query}) AS X
+        GROUP BY RACE, N
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completers by Level",
+                  "page": "Bachelor's Degree",
+                  "name": "By Race-Ethnicity",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompleters_UG_ByAge(self):
+        prompt = """    
+        Completers by Level
+        Bachelor's degree
+        Number of students by sex, by race and ethnicity, and by age earning this award between July 1, 2024 and 
+        June 30, 2025. Each student should be counted once per award level. For example, if a student earned a master's 
+        degree and a doctor's degree, he/she should be counted once in master's and once in doctor's. A student earning
+         two master's degrees should be counted only once.
+        Report Hispanic/Latino individuals of any race as Hispanic/Latino
+        Report race for non-Hispanic/Latino individuals only
+        """
+        comments = None
+        query = f"""
+        SELECT X.*,
+                AGE_CATEGORY_ORDER.N AS AGE_CATEGORY_ORDER
+        FROM (
+        SELECT X.*,
+                CASE WHEN AGE < 18 THEN 'Under 18'
+                WHEN AGE BETWEEN 18 AND 24 THEN '18-24'
+                WHEN AGE BETWEEN 25 AND 39 THEN '25-39'
+                WHEN AGE >= 40 THEN '40 and Above'
+                ELSE 'Age Unknown'
+                END AS AGE_CATEGORY
+        FROM (
+        SELECT X.*,
+                DATEDIFF(DAY, P.BIRTH_DATE, '2024-07-01') / 365.25 AS AGE
+        FROM ({self.getCompletersSimple('UG')}) AS X
+        JOIN PERSON P ON X.ID = P.ID
+        ) AS X
+        ) AS X 
+        JOIN (VALUES 
+                ('Under 18', 1),
+                ('18-24', 2),
+                ('25-39', 3),
+                ('40 and Above', 4),
+                ('Age Unknown', 5)
+                ) AS AGE_CATEGORY_ORDER(CAT, N) ON X.AGE_CATEGORY = AGE_CATEGORY_ORDER.CAT
+        """
+        agg = lambda query: f"""
+        SELECT AGE_CATEGORY AS [By Age],
+        COUNT(ID) AS [Number of Students]
+        FROM ({query}) AS X
+        GROUP BY AGE_CATEGORY, AGE_CATEGORY_ORDER
+        ORDER BY AGE_CATEGORY_ORDER
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completers by Level",
+                  "page": "Bachelor's Degree",
+                  "name": "By Age",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompleters_GR_BySex(self):
+        prompt = """    
+        Completers by Level
+        Bachelor's degree
+        Number of students by sex, by race and ethnicity, and by age earning this award between July 1, 2024 and 
+        June 30, 2025. Each student should be counted once per award level. For example, if a student earned a master's 
+        degree and a doctor's degree, he/she should be counted once in master's and once in doctor's. A student earning
+         two master's degrees should be counted only once.
+        Report Hispanic/Latino individuals of any race as Hispanic/Latino
+        Report race for non-Hispanic/Latino individuals only
+        """
+        comments = None
+        query = self.getCompletersSimple('GR')
+        agg = lambda query: f"""
+        SELECT GENDER AS [By Sex],
+        COUNT(ID) AS [Number of Students]
+        FROM ({query}) AS X
+        WHERE ID IS NOT NULL
+        GROUP BY GENDER
+        ORDER BY GENDER
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completers by Level",
+                  "page": "Master's Degree",
+                  "name": "By Sex",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompleters_GR_ByRace(self):
+        prompt = """    
+        Completers by Level
+        Bachelor's degree
+        Number of students by sex, by race and ethnicity, and by age earning this award between July 1, 2024 and 
+        June 30, 2025. Each student should be counted once per award level. For example, if a student earned a master's 
+        degree and a doctor's degree, he/she should be counted once in master's and once in doctor's. A student earning
+         two master's degrees should be counted only once.
+        Report Hispanic/Latino individuals of any race as Hispanic/Latino
+        Report race for non-Hispanic/Latino individuals only
+        """
+        comments = None
+        query = self.getCompletersSimple('GR')
+        agg = lambda query: f"""
+        SELECT RACE AS [By Race/Ethnicity],
+        COUNT(ID) AS [Number of Students]
+        FROM ({query}) AS X
+        GROUP BY RACE, N
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completers by Level",
+                  "page": "Master's Degree",
+                  "name": "By Race-Ethnicity",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCompleters_GR_ByAge(self):
+        prompt = """    
+        Completers by Level
+        Bachelor's degree
+        Number of students by sex, by race and ethnicity, and by age earning this award between July 1, 2024 and 
+        June 30, 2025. Each student should be counted once per award level. For example, if a student earned a master's 
+        degree and a doctor's degree, he/she should be counted once in master's and once in doctor's. A student earning
+         two master's degrees should be counted only once.
+        Report Hispanic/Latino individuals of any race as Hispanic/Latino
+        Report race for non-Hispanic/Latino individuals only
+        """
+        comments = None
+        query = f"""
+        SELECT X.*,
+                AGE_CATEGORY_ORDER.N AS AGE_CATEGORY_ORDER
+        FROM (
+        SELECT X.*,
+                CASE WHEN AGE < 18 THEN 'Under 18'
+                WHEN AGE BETWEEN 18 AND 24 THEN '18-24'
+                WHEN AGE BETWEEN 25 AND 39 THEN '25-39'
+                WHEN AGE >= 40 THEN '40 and Above'
+                ELSE 'Age Unknown'
+                END AS AGE_CATEGORY
+        FROM (
+        SELECT X.*,
+                DATEDIFF(DAY, P.BIRTH_DATE, '2024-07-01') / 365.25 AS AGE
+        FROM ({self.getCompletersSimple('GR')}) AS X
+        JOIN PERSON P ON X.ID = P.ID
+        ) AS X
+        ) AS X 
+        JOIN (VALUES 
+                ('Under 18', 1),
+                ('18-24', 2),
+                ('25-39', 3),
+                ('40 and Above', 4),
+                ('Age Unknown', 5)
+                ) AS AGE_CATEGORY_ORDER(CAT, N) ON X.AGE_CATEGORY = AGE_CATEGORY_ORDER.CAT
+        """
+        agg = lambda query: f"""
+        SELECT AGE_CATEGORY AS [By Age],
+        COUNT(ID) AS [Number of Students]
+        FROM ({query}) AS X
+        GROUP BY AGE_CATEGORY, AGE_CATEGORY_ORDER
+        ORDER BY AGE_CATEGORY_ORDER
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "Completions",
+                  "section": "Completers by Level",
+                  "page": "Master's Degree",
+                  "name": "By Age",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
 
 
 
