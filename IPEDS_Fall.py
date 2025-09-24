@@ -1156,7 +1156,6 @@ class IPEDS_Fall (IPEDS):
                   }
         self.save(**params)
 
-
     def getCompletions_131202(self):
         prompt = """
         "13.1202: Elementary Education and Teaching"
@@ -5277,9 +5276,9 @@ class IPEDS_Fall (IPEDS):
     def enrolledStudents(self, level = None, load = None, gender = None, start = '2024-07-01'):
         query = f"""
         SELECT ID,
-               LEVEL,
-               LOAD,
-               GENDER
+                LEVEL,
+                LOAD,
+                GENDER
         FROM (
         SELECT DISTINCT STC_PERSON_ID     AS ID,
                   STC_ACAD_LEVEL          AS LEVEL,
@@ -5295,17 +5294,12 @@ class IPEDS_Fall (IPEDS):
         LEFT JOIN ({self.df_query(self.gender_assignment_enrollment)}) AS ASSIGNED_GENDER ON STC_PERSON_ID = ASSIGNED_GENDER.ID
         WHERE STATUS.STC_STATUS IN ('N', 'A')
         AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
-        AND (
-              TERMS_ID LIKE '%FA'
-              OR TERMS_ID LIKE '%SP'
-              OR TERMS_ID LIKE '%SU'
-          )
-        AND TERM_START_DATE < DATEADD(YEAR, 1, '{start}')
+        AND TERM_START_DATE < '2025-07-01'
         AND TERM_END_DATE >= '{start}'
         AND STC.STC_CRED > 0
         ) AS X
         WHERE LL_RANK = 1
-        AND {"LEVEL = '{level}'" if level is not None else "LEVEL = LEVEL"}
+        AND {f"LEVEL = '{level}'" if level is not None else "LEVEL = LEVEL"}
         AND {"LOAD IN ('F', 'O')" if load == "FT" else "LOAD NOT IN ('F', 'O')" if load == "PT" else "LOAD = LOAD"}
         AND {f"GENDER = '{gender}'" if gender is not None else "GENDER = GENDER"}
         """
@@ -5349,7 +5343,7 @@ class IPEDS_Fall (IPEDS):
         query = f"""
         SELECT ID,
                CASE WHEN TERM_END_DATE < '{start}' THEN 'Continuing/Returning'
-               WHEN APPL_ADMIT_STATUS IN ('TR', 'PB') THEN 'Transfer'
+               WHEN APPL_ADMIT_STATUS IN ('TR', 'PB') THEN 'Transfer-in'
                WHEN APPL_ADMIT_STATUS = 'FY' OR APPL_ADMIT_STATUS IS NULL THEN 'First-time'
                END AS STATUS
         FROM (
@@ -5444,6 +5438,7 @@ class IPEDS_Fall (IPEDS):
         ) AS STU_PROGRAM ON STUDENTS.ID = STU_PROGRAM.ID
         ) AS TARGET_STUDENTS ON IPEDS_RACE.OUR_DESC = TARGET_STUDENTS.RACE
         """
+
         agg = lambda query: f"""
         --(Begin 2)-----------------------------------------------------------------------------------------------------
         SELECT RACE,
