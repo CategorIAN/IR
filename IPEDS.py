@@ -74,6 +74,25 @@ class IPEDS (Reports):
         """
         return query
 
+    def students_all(self):
+        query = f"""
+        SELECT DISTINCT STC_PERSON_ID AS ID
+        FROM STUDENT_ACAD_CRED AS STC
+        LEFT JOIN STC_STATUSES AS STATUS ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND POS = 1
+        LEFT JOIN STUDENT_COURSE_SEC AS SEC ON STC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+        LEFT JOIN TERMS ON STC.STC_TERM = TERMS_ID
+        WHERE STATUS.STC_STATUS IN ('N', 'A')
+        AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
+        AND (
+            TERMS_ID LIKE '%FA'
+            OR TERMS_ID LIKE '%SP'
+            OR TERMS_ID LIKE '%SU'
+        )
+        AND TERM_START_DATE <= '2025-06-30'
+        AND TERM_END_DATE >= '2024-07-01'
+        AND STC.STC_CRED > 0
+        """
+
     def ipeds_races(self):
         query = """
         SELECT *

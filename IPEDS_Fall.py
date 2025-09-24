@@ -7,8 +7,15 @@ class IPEDS_Fall (IPEDS):
     def __init__(self):
         super().__init__(folder='IPEDS_Fall', report="2025-09-17-IPEDS Fall Survey")
         self.gender_assignment = pd.read_csv(os.path.join(self.folder, 'Gender Assignment To Unknowns.csv'))
+        self.gender_assignment_enrollment = pd.read_csv(os.path.join(self.folder, 'Gender Assignment To Unknowns '
+                                                                                  '(12 Month Enrollment).csv'))
+        self.status_str = ",\n".join([f"[{s}]" for s in ["First-time",
+                                                       "Transfer-in",
+                                                       "Continuing/Returning",
+                                                       "Non-degree/non-certificate-seeking"]])
 #==============================Cost 1=================================================================================
 #==============================Screening Questions=====================================================================
+
     '''
     Status: Completed
     '''
@@ -5221,6 +5228,809 @@ class IPEDS_Fall (IPEDS):
                   "func_dict": {"Agg": agg, "Names": names},
                   }
         self.save(**params)
+
+#=====================================12-Month Enrollment Screening Questions===========================================
+    def get12MonthEnrollmentScreeningQuestions_1(self):
+        prompt = """
+        1. Which instructional activity units will you use to report undergraduate instructional activity?
+        Undergraduate instructional activity data in Part B may be reported in units of clock hours or credit hours.
+        Please note that any graduate level instructional activity must be reported in credit hours. 
+        (4-year institutions only)
+        """
+        comments = """
+        Credit hours
+        """
+        query = None
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "12-month Enrollment",
+                  "section": "Screening Questions",
+                  "page": "Screening Questions",
+                  "name": "1. Instructional Activity Units",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def get12MonthEnrollmentScreeningQuestions_2(self):
+        prompt = """
+        2. Did your institution enroll high school students in college courses for credit during the 12-month Enrollment
+         (E12) reporting period of July 1, 2024 - June 30, 2025?
+        If you answer Yes to this question, you will be able to report the unduplicated count of high school students 
+        enrolled in college courses for credit on Part C of the 12-month Enrollment (E12) survey component.
+        """
+        comments = """
+        Yes, within a dual enrollment program.
+        """
+        query = None
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "12-month Enrollment",
+                  "section": "Screening Questions",
+                  "page": "Screening Questions",
+                  "name": "2. High School Student College Credits",
+                  "func_dict": None,
+                  }
+        self.save(**params)
+
+    def enrolledStudents(self, level = None, load = None, gender = None, start = '2024-07-01'):
+        query = f"""
+        SELECT ID,
+               LEVEL,
+               LOAD,
+               GENDER
+        FROM (
+        SELECT DISTINCT STC_PERSON_ID     AS ID,
+                  STC_ACAD_LEVEL          AS LEVEL,
+                  STTR_STUDENT_LOAD       AS LOAD,
+                  COALESCE(PERSON.GENDER, ASSIGNED_GENDER.GENDER) AS GENDER,
+                  ROW_NUMBER() OVER (PARTITION BY STC_PERSON_ID ORDER BY TERM_START_DATE) AS LL_RANK
+        FROM STUDENT_ACAD_CRED AS STC
+        LEFT JOIN STC_STATUSES AS STATUS ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND POS = 1
+        LEFT JOIN STUDENT_COURSE_SEC AS SEC ON STC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+        LEFT JOIN STUDENT_TERMS_VIEW STV ON STC.STC_PERSON_ID = STV.STTR_STUDENT AND STC.STC_TERM = STV.STTR_TERM
+        LEFT JOIN TERMS ON STC.STC_TERM = TERMS_ID
+        LEFT JOIN PERSON ON STC_PERSON_ID = PERSON.ID
+        LEFT JOIN ({self.df_query(self.gender_assignment_enrollment)}) AS ASSIGNED_GENDER ON STC_PERSON_ID = ASSIGNED_GENDER.ID
+        WHERE STATUS.STC_STATUS IN ('N', 'A')
+        AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
+        AND (
+              TERMS_ID LIKE '%FA'
+              OR TERMS_ID LIKE '%SP'
+              OR TERMS_ID LIKE '%SU'
+          )
+        AND TERM_START_DATE < DATEADD(YEAR, 1, '{start}')
+        AND TERM_END_DATE >= '{start}'
+        AND STC.STC_CRED > 0
+        ) AS X
+        WHERE LL_RANK = 1
+        AND {"LEVEL = '{level}'" if level is not None else "LEVEL = LEVEL"}
+        AND {"LOAD IN ('F', 'O')" if load == "FT" else "LOAD NOT IN ('F', 'O')" if load == "PT" else "LOAD = LOAD"}
+        AND {f"GENDER = '{gender}'" if gender is not None else "GENDER = GENDER"}
+        """
+        return query
+
+    def dist_status(self, start = '2024-07-01'):
+        query = f"""
+        SELECT ID,
+                CASE WHEN ALL_DISTANCE_COURSES = 1 THEN 'Enrolled Exclusively in DE'
+                WHEN EXIST_DISTANCE_COURSE = 1 THEN 'Enrolled in At Least One DE But Not All'
+                ELSE 'Not Enrolled in Any DE' END AS STATUS
+        FROM (
+        SELECT ID,
+               MAX(DISTANCE) AS EXIST_DISTANCE_COURSE,
+               MIN(DISTANCE) AS ALL_DISTANCE_COURSES
+        FROM (
+        SELECT DISTINCT STC_PERSON_ID     AS ID,
+               CASE WHEN CSM_INSTR_METHOD IN ('REMOT', 'CYBER', 'HYBRD') THEN 1 ELSE 0 END AS DISTANCE
+        FROM STUDENT_ACAD_CRED AS STC
+        LEFT JOIN STC_STATUSES AS STATUS ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND POS = 1
+        LEFT JOIN STUDENT_COURSE_SEC AS SEC ON STC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+        LEFT JOIN TERMS ON STC.STC_TERM = TERMS_ID
+        LEFT JOIN Z01_RHC_CLASS_SCHEDULE AS SCH ON SEC.SCS_COURSE_SECTION = SCH.COURSE_SECTIONS_ID
+        WHERE STATUS.STC_STATUS IN ('N', 'A')
+        AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
+        AND (
+              TERMS_ID LIKE '%FA'
+              OR TERMS_ID LIKE '%SP'
+              OR TERMS_ID LIKE '%SU'
+          )
+        AND TERM_START_DATE < DATEADD(YEAR, 1, '{start}')
+        AND TERM_END_DATE >= '{start}'
+        AND STC.STC_CRED > 0
+        ) AS X
+        GROUP BY ID
+        ) AS X
+        """
+        return query
+
+    def appl_status(self, start = '2024-07-01'):
+        query = f"""
+        SELECT ID,
+               CASE WHEN TERM_END_DATE < '{start}' THEN 'Continuing/Returning'
+               WHEN APPL_ADMIT_STATUS IN ('TR', 'PB') THEN 'Transfer'
+               WHEN APPL_ADMIT_STATUS = 'FY' OR APPL_ADMIT_STATUS IS NULL THEN 'First-time'
+               END AS STATUS
+        FROM (
+        SELECT APPL_APPLICANT AS ID,
+                APPL_ADMIT_STATUS,
+                TERM_END_DATE,
+               ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS APPL_RANK
+        FROM APPLICATIONS
+        JOIN TERMS ON APPL_START_TERM = TERMS_ID
+        WHERE APPL_DATE IS NOT NULL
+        ) AS X
+        WHERE APPL_RANK = 1
+        """
+        return query
+
+    def deg_status(self, start ='2024-07-01'):
+        query = f"""
+        SELECT ID,
+                CASE WHEN STP_PROGRAM_TITLE != 'Non-Degree Seeking Students' 
+                THEN 'Degree-Seeking' ELSE 'Non-Degree-Seeking' END AS STATUS
+        FROM (
+        SELECT STUDENT_ID AS ID,
+                STP_PROGRAM_TITLE,
+                ROW_NUMBER() OVER (PARTITION BY STUDENT_ID ORDER BY
+                CASE WHEN STP_PROGRAM_TITLE != 'Non-Degree Seeking Students' THEN 0 ELSE 1 END) AS PROGRAM_RANK
+        FROM STUDENT_ACAD_PROGRAMS_VIEW
+        WHERE STP_START_DATE < DATEADD(YEAR, 1, '{start}')
+        AND COALESCE(STP_END_DATE, '{start}') >= '{start}'
+        ) AS X
+        WHERE PROGRAM_RANK = 1
+        """
+        return query
+
+    def race_status(self):
+        query = f"""
+        SELECT ID,
+                IPEDS_RACE_ETHNIC_DESC AS RACE
+        FROM Z01_ALL_RACE_ETHNIC_W_FLAGS
+        """
+        return query
+
+    def stu_type(self, start = '2024-07-01'):
+        query = f"""
+        SELECT  ID,
+                TYPE
+        FROM (
+        SELECT STUDENTS_ID AS ID,
+                STU_TYPES AS TYPE,
+                ROW_NUMBER() OVER (PARTITION BY STUDENTS_ID ORDER BY STU_TYPE_DATES DESC) AS TYPE_RANK
+        FROM STU_TYPE_INFO
+        WHERE STU_TYPE_DATES < DATEADD(YEAR, 1, '{start}')
+        ) AS X
+        WHERE TYPE_RANK = 1
+        """
+        return query
+
+
+    def getCount_FT_UG_Men(self):
+        prompt = """
+        12-month Unduplicated Count by Race/Ethnicity and Sex - Full-time Undergraduate Students
+        July 1, 2024 – June 30, 2025
+        Reporting Reminders:
+        The 12-month unduplicated count must be equal or greater than the corresponding prior year fall enrollment.
+        Report Hispanic/Latino individuals of any race as Hispanic/Latino
+        Report race for non-Hispanic/Latino individuals only
+        Even though Teacher Preparation certificate programs may require a bachelor's degree for admission, they are 
+        considered subbaccalaureate undergraduate programs, and students in these programs are undergraduate students.
+        """
+        comments = None
+        query = f"""
+        SELECT IPEDS_RACE.THEIR_DESC AS RACE,
+        IPEDS_RACE.N,
+        TARGET_STUDENTS.ID,
+        TARGET_STUDENTS.STATUS
+        FROM ({self.ipeds_races()}) AS IPEDS_RACE
+        LEFT JOIN (
+        SELECT STUDENTS.ID,
+        RACE,
+        CASE WHEN STU_PROGRAM.STATUS = 'Non-Degree-Seeking' THEN 'Non-degree/non-certificate-seeking'
+        ELSE STU_APPL.STATUS END AS STATUS
+        FROM (
+        {self.enrolledStudents(level = "UG", load = "FT", gender = "M")}
+        ) AS STUDENTS
+        JOIN (
+        {self.race_status()}
+        ) AS STU_RACE ON STUDENTS.ID = STU_RACE.ID
+        JOIN (
+        {self.appl_status()}
+        ) AS STU_APPL ON STUDENTS.ID = STU_APPL.ID
+        JOIN (
+        {self.deg_status()}
+        ) AS STU_PROGRAM ON STUDENTS.ID = STU_PROGRAM.ID
+        ) AS TARGET_STUDENTS ON IPEDS_RACE.OUR_DESC = TARGET_STUDENTS.RACE
+        """
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               {self.status_str}
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR STATUS IN ({self.status_str})) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "12-month Enrollment",
+                  "section": "Unduplicated Count",
+                  "page": "Full-time UG Students",
+                  "name": "Full-time UG Students (Men)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCount_FT_UG_Women(self):
+        prompt = """
+        12-month Unduplicated Count by Race/Ethnicity and Sex - Full-time Undergraduate Students
+        July 1, 2024 – June 30, 2025
+        Reporting Reminders:
+        The 12-month unduplicated count must be equal or greater than the corresponding prior year fall enrollment.
+        Report Hispanic/Latino individuals of any race as Hispanic/Latino
+        Report race for non-Hispanic/Latino individuals only
+        Even though Teacher Preparation certificate programs may require a bachelor's degree for admission, they are 
+        considered subbaccalaureate undergraduate programs, and students in these programs are undergraduate students.
+        """
+        comments = None
+        query = f"""
+        SELECT IPEDS_RACE.THEIR_DESC AS RACE,
+        IPEDS_RACE.N,
+        TARGET_STUDENTS.ID,
+        TARGET_STUDENTS.STATUS
+        FROM ({self.ipeds_races()}) AS IPEDS_RACE
+        LEFT JOIN (
+        SELECT STUDENTS.ID,
+        RACE,
+        CASE WHEN STU_PROGRAM.STATUS = 'Non-Degree-Seeking' THEN 'Non-degree/non-certificate-seeking'
+        ELSE STU_APPL.STATUS END AS STATUS
+        FROM (
+        {self.enrolledStudents(level = "UG", load = "FT", gender = "F")}
+        ) AS STUDENTS
+        JOIN (
+        {self.race_status()}
+        ) AS STU_RACE ON STUDENTS.ID = STU_RACE.ID
+        JOIN (
+        {self.appl_status()}
+        ) AS STU_APPL ON STUDENTS.ID = STU_APPL.ID
+        JOIN (
+        {self.deg_status()}
+        ) AS STU_PROGRAM ON STUDENTS.ID = STU_PROGRAM.ID
+        ) AS TARGET_STUDENTS ON IPEDS_RACE.OUR_DESC = TARGET_STUDENTS.RACE
+        """
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               {self.status_str}
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR STATUS IN ({self.status_str})) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "12-month Enrollment",
+                  "section": "Unduplicated Count",
+                  "page": "Full-time UG Students",
+                  "name": "Full-time UG Students (Women)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCount_PT_UG_Men(self):
+        prompt = """
+        12-month Unduplicated Count by Race/Ethnicity and Sex - Part-time Undergraduate Students
+        July 1, 2024 – June 30, 2025
+        Reporting Reminders:
+        The 12-month unduplicated count must be equal or greater than the corresponding prior year fall enrollment.
+        Report Hispanic/Latino individuals of any race as Hispanic/Latino
+        Report race for non-Hispanic/Latino individuals only
+        Even though Teacher Preparation certificate programs may require a bachelor's degree for admission, they are 
+        considered subbaccalaureate undergraduate programs, and students in these programs are undergraduate students.
+        """
+        comments = None
+        query = f"""
+        SELECT IPEDS_RACE.THEIR_DESC AS RACE,
+        IPEDS_RACE.N,
+        TARGET_STUDENTS.ID,
+        TARGET_STUDENTS.STATUS
+        FROM ({self.ipeds_races()}) AS IPEDS_RACE
+        LEFT JOIN (
+        SELECT STUDENTS.ID,
+        RACE,
+        CASE WHEN STU_PROGRAM.STATUS = 'Non-Degree-Seeking' THEN 'Non-degree/non-certificate-seeking'
+        ELSE STU_APPL.STATUS END AS STATUS
+        FROM (
+        {self.enrolledStudents(level = "UG", load = "PT", gender = "M")}
+        ) AS STUDENTS
+        JOIN (
+        {self.race_status()}
+        ) AS STU_RACE ON STUDENTS.ID = STU_RACE.ID
+        JOIN (
+        {self.appl_status()}
+        ) AS STU_APPL ON STUDENTS.ID = STU_APPL.ID
+        JOIN (
+        {self.deg_status()}
+        ) AS STU_PROGRAM ON STUDENTS.ID = STU_PROGRAM.ID
+        ) AS TARGET_STUDENTS ON IPEDS_RACE.OUR_DESC = TARGET_STUDENTS.RACE
+        """
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               {self.status_str}
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR STATUS IN ({self.status_str})) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "12-month Enrollment",
+                  "section": "Unduplicated Count",
+                  "page": "Part-time UG Students",
+                  "name": "Part-time UG Students (Men)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCount_PT_UG_Women(self):
+        prompt = """
+        12-month Unduplicated Count by Race/Ethnicity and Sex - Part-time Undergraduate Students
+        July 1, 2024 – June 30, 2025
+        Reporting Reminders:
+        The 12-month unduplicated count must be equal or greater than the corresponding prior year fall enrollment.
+        Report Hispanic/Latino individuals of any race as Hispanic/Latino
+        Report race for non-Hispanic/Latino individuals only
+        Even though Teacher Preparation certificate programs may require a bachelor's degree for admission, they are 
+        considered subbaccalaureate undergraduate programs, and students in these programs are undergraduate students.
+        """
+        comments = None
+        query = f"""
+        SELECT IPEDS_RACE.THEIR_DESC AS RACE,
+        IPEDS_RACE.N,
+        TARGET_STUDENTS.ID,
+        TARGET_STUDENTS.STATUS
+        FROM ({self.ipeds_races()}) AS IPEDS_RACE
+        LEFT JOIN (
+        SELECT STUDENTS.ID,
+        RACE,
+        CASE WHEN STU_PROGRAM.STATUS = 'Non-Degree-Seeking' THEN 'Non-degree/non-certificate-seeking'
+        ELSE STU_APPL.STATUS END AS STATUS
+        FROM (
+        {self.enrolledStudents(level = "UG", load = "PT", gender = "F")}
+        ) AS STUDENTS
+        JOIN (
+        {self.race_status()}
+        ) AS STU_RACE ON STUDENTS.ID = STU_RACE.ID
+        JOIN (
+        {self.appl_status()}
+        ) AS STU_APPL ON STUDENTS.ID = STU_APPL.ID
+        JOIN (
+        {self.deg_status()}
+        ) AS STU_PROGRAM ON STUDENTS.ID = STU_PROGRAM.ID
+        ) AS TARGET_STUDENTS ON IPEDS_RACE.OUR_DESC = TARGET_STUDENTS.RACE
+        """
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               {self.status_str}
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR STATUS IN ({self.status_str})) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "12-month Enrollment",
+                  "section": "Unduplicated Count",
+                  "page": "Part-time UG Students",
+                  "name": "Part-time UG Students (Women)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCount_GR_Men(self):
+        prompt = """
+        12-month Unduplicated Count by Race/Ethnicity and Sex - Full-time and Part-time Graduate Students
+        July 1, 2024 – June 30, 2025
+        Reporting Reminders:
+        The 12-month unduplicated count must be equal or greater than the corresponding prior year fall enrollment.
+        Report Hispanic/Latino individuals of any race as Hispanic/Latino
+        Report race for non-Hispanic/Latino individuals only
+        Report all postbaccalaureate degree and certificate students as graduate students, including any doctor's - 
+        professional practice students (formerly first-professional)
+        """
+        comments = None
+        query = f"""
+        SELECT IPEDS_RACE.THEIR_DESC AS RACE,
+        IPEDS_RACE.N,
+        TARGET_STUDENTS.ID,
+        CASE WHEN TARGET_STUDENTS.LOAD IN ('F', 'O') THEN 'FT' ELSE 'PT' END AS LOAD
+        FROM ({self.ipeds_races()}) AS IPEDS_RACE
+        LEFT JOIN (
+        SELECT STUDENTS.ID,
+        RACE,
+        LOAD
+        FROM (
+        {self.enrolledStudents(level = "GR", load = None, gender = "M")}
+        ) AS STUDENTS
+        JOIN (
+        {self.race_status()}
+        ) AS STU_RACE ON STUDENTS.ID = STU_RACE.ID
+        ) AS TARGET_STUDENTS ON IPEDS_RACE.OUR_DESC = TARGET_STUDENTS.RACE
+        """
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [FT] AS 'Total full-time',
+               [PT] AS 'Total part-time'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR LOAD IN ([FT], [PT])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "12-month Enrollment",
+                  "section": "Unduplicated Count",
+                  "page": "Graduate Students",
+                  "name": "Graduate (Men)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCount_GR_Women(self):
+        prompt = """
+        12-month Unduplicated Count by Race/Ethnicity and Sex - Full-time and Part-time Graduate Students
+        July 1, 2024 – June 30, 2025
+        Reporting Reminders:
+        The 12-month unduplicated count must be equal or greater than the corresponding prior year fall enrollment.
+        Report Hispanic/Latino individuals of any race as Hispanic/Latino
+        Report race for non-Hispanic/Latino individuals only
+        Report all postbaccalaureate degree and certificate students as graduate students, including any doctor's - 
+        professional practice students (formerly first-professional)
+        """
+        comments = None
+        query = f"""
+        SELECT IPEDS_RACE.THEIR_DESC AS RACE,
+        IPEDS_RACE.N,
+        TARGET_STUDENTS.ID,
+        CASE WHEN TARGET_STUDENTS.LOAD IN ('F', 'O') THEN 'FT' ELSE 'PT' END AS LOAD
+        FROM ({self.ipeds_races()}) AS IPEDS_RACE
+        LEFT JOIN (
+        SELECT STUDENTS.ID,
+        RACE,
+        LOAD
+        FROM (
+        {self.enrolledStudents(level = "GR", load = None, gender = "F")}
+        ) AS STUDENTS
+        JOIN (
+        {self.race_status()}
+        ) AS STU_RACE ON STUDENTS.ID = STU_RACE.ID
+        ) AS TARGET_STUDENTS ON IPEDS_RACE.OUR_DESC = TARGET_STUDENTS.RACE
+        """
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [FT] AS 'Total full-time',
+               [PT] AS 'Total part-time'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR LOAD IN ([FT], [PT])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "12-month Enrollment",
+                  "section": "Unduplicated Count",
+                  "page": "Graduate Students",
+                  "name": "Graduate (Women)",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCount_SexUnknown(self):
+        prompt = """
+        12-month Unduplicated Count by Sex Unknown
+        Reporting Reminders:
+        The purpose of this supplemental section is to determine whether institutions are able to report the number of 
+        students for whom sex is unknown. Note that these students must still be allocated into the 'Male' and 'Female' 
+        categories in all other sections of the survey component.
+        """
+        comments = None
+        start = '2024-07-01'
+        query = f"""
+        SELECT ID,
+               LEVEL,
+               LOAD,
+               GENDER
+        FROM (
+        SELECT DISTINCT STC_PERSON_ID     AS ID,
+                  STC_ACAD_LEVEL          AS LEVEL,
+                  STTR_STUDENT_LOAD       AS LOAD,
+                  PERSON.GENDER,
+                  ROW_NUMBER() OVER (PARTITION BY STC_PERSON_ID ORDER BY TERM_START_DATE) AS LL_RANK
+        FROM STUDENT_ACAD_CRED AS STC
+        LEFT JOIN STC_STATUSES AS STATUS ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND POS = 1
+        LEFT JOIN STUDENT_COURSE_SEC AS SEC ON STC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+        LEFT JOIN STUDENT_TERMS_VIEW STV ON STC.STC_PERSON_ID = STV.STTR_STUDENT AND STC.STC_TERM = STV.STTR_TERM
+        LEFT JOIN TERMS ON STC.STC_TERM = TERMS_ID
+        LEFT JOIN PERSON ON STC_PERSON_ID = PERSON.ID
+        WHERE STATUS.STC_STATUS IN ('N', 'A')
+        AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
+        AND (
+              TERMS_ID LIKE '%FA'
+              OR TERMS_ID LIKE '%SP'
+              OR TERMS_ID LIKE '%SU'
+          )
+        AND TERM_START_DATE < DATEADD(YEAR, 1, '{start}')
+        AND TERM_END_DATE >= '{start}'
+        AND STC.STC_CRED > 0
+        ) AS X
+        WHERE LL_RANK = 1
+        AND GENDER IS NULL
+        """
+        agg = lambda query: f"""
+        SELECT  'Sex Unknown' AS 'Grand Total',
+                [UG] AS 'Undergraduate students',
+                [GR] AS 'Graduate students'
+        FROM (SELECT ID, LEVEL FROM ({query}) AS X) AS X
+        PIVOT (COUNT(ID) FOR LEVEL IN ([UG], [GR])) AS X
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "12-month Enrollment",
+                  "section": "Unduplicated Count",
+                  "page": "Sex Unknown",
+                  "name": "Sex Unknown",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCount_DEStatus(self):
+        prompt = """
+        12-month Unduplicated Count - Distance Education Status
+        """
+        comments = None
+        query = f"""
+        SELECT STUDENTS.ID,
+                CASE WHEN LEVEL = 'GR' THEN 'Graduate Students'
+                ELSE STU_PROGRAM.STATUS END AS DEGREE_STATUS,
+                STU_DIST.STATUS AS DE_STATUS
+        FROM (
+        {self.enrolledStudents()}
+        ) AS STUDENTS
+        JOIN (
+        {self.deg_status()}
+        ) AS STU_PROGRAM ON STUDENTS.ID = STU_PROGRAM.ID
+        JOIN (
+        {self.dist_status()}
+        ) AS STU_DIST ON STUDENTS.ID = STU_DIST.ID
+        """
+        agg = lambda query: f"""
+        SELECT DE_STATUS,
+            [Degree-Seeking],
+            [Non-Degree-Seeking],
+            [Graduate Students]
+        FROM (
+        {query}
+        ) AS X
+        PIVOT (COUNT(ID) FOR DEGREE_STATUS IN (
+                            [Degree-Seeking],
+                            [Non-Degree-Seeking],
+                            [Graduate Students]
+        )) AS X
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "12-month Enrollment",
+                  "section": "Unduplicated Count",
+                  "page": "Distance Education Status",
+                  "name": "Distance Education Status",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCreditHourActivity(self):
+        prompt = """
+        12-month Instructional Activity
+        July 1, 2024 - June 30, 2025
+        Instructional Activity Reporting Reminder:
+        Instructional activity is used to calculate an IPEDS FTE based on the institution’s reported calendar system.
+        Graduate credit hour activity should not include any doctor’s – professional practice activity, the total of 
+        those students’ FTE is entered separately instead.
+        FTE Reporting Reminder:
+        Institutions need not report their own calculations of undergraduate or graduate FTE unless IPEDS FTE 
+        calculations would be misleading for comparison purposes among all IPEDS reporting institutions.
+        """
+        comments = None
+        start = '2024-07-01'
+        query = f"""
+        SELECT DISTINCT STC_PERSON_ID AS ID,
+                SCS_COURSE_SECTION,
+                STC_CRED,
+                STC_ACAD_LEVEL
+        FROM STUDENT_ACAD_CRED AS STC
+        LEFT JOIN STC_STATUSES AS STATUS ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND POS = 1
+        LEFT JOIN STUDENT_COURSE_SEC AS SEC ON STC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+        LEFT JOIN TERMS ON STC.STC_TERM = TERMS_ID
+        WHERE STATUS.STC_STATUS IN ('N', 'A')
+        AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
+        AND (
+              TERMS_ID LIKE '%FA'
+              OR TERMS_ID LIKE '%SP'
+              OR TERMS_ID LIKE '%SU'
+          )
+        AND TERM_START_DATE < DATEADD(YEAR, 1, '{start}')
+        AND TERM_END_DATE >= '{start}'
+        AND STC.STC_CRED > 0
+        """
+        agg = lambda query: f"""
+        SELECT STC_ACAD_LEVEL,
+                SUM(STC_CRED) AS '2024-25 total activity'
+        FROM ({query}) AS X GROUP BY STC_ACAD_LEVEL
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "12-month Enrollment",
+                  "section": "Instructional Activity",
+                  "page": "Instructional Activity",
+                  "name": "Instructional Activity",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+    def getCount_HighSchool(self):
+        prompt = """
+        12-month Unduplicated Count of Dual Enrolled Students
+        July 1, 2024 – June 30, 2025
+        Reporting Reminders:
+        The number of high school students enrolled in college courses for credit was reported in Part A as part of the 
+        non-degree/non-certificate-seeking unduplicated enrollment.
+        The number of high school students enrolled in college courses for credit reported in Part C will have some 
+        duplication with the non-degree/non-certificate-seeking enrollment students reported in Part A.
+        The number of high school students enrolled in college courses for credit reported in Part C should be less than
+         the number of non-degree/non-certificate-seeking students reported in Part A unless all these students at your 
+         institution are high school students enrolled in college courses for credit.
+        Report Hispanic/Latino individuals of any race as Hispanic/Latino
+        Report race for non-Hispanic/Latino individuals only
+        """
+        comments = None
+        query = f"""
+        SELECT IPEDS_RACE.THEIR_DESC AS RACE,
+        IPEDS_RACE.N,
+        TARGET_STUDENTS.ID,
+        TARGET_STUDENTS.GENDER
+        FROM ({self.ipeds_races()}) AS IPEDS_RACE
+        LEFT JOIN (
+        SELECT STUDENTS.ID,
+        RACE,
+        STUDENTS.GENDER,
+        STU_TYPE.TYPE
+        FROM (
+        {self.enrolledStudents()}
+        ) AS STUDENTS
+        JOIN (
+        {self.race_status()}
+        ) AS STU_RACE ON STUDENTS.ID = STU_RACE.ID
+        JOIN (
+        {self.stu_type()}
+        ) AS STU_TYPE ON STUDENTS.ID = STU_TYPE.ID
+        WHERE STU_TYPE.TYPE = 'ACE'
+        ) AS TARGET_STUDENTS ON IPEDS_RACE.OUR_DESC = TARGET_STUDENTS.RACE
+        """
+        self.print_table(query)
+        agg = lambda query: f"""
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               [M] AS 'Male',
+               [F] AS 'Female'
+        FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------------------------
+        {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(ID) FOR GENDER IN ([M], [F])) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+        ORDER BY N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME
+        """
+        params = {"prompt": prompt,
+                  "query": query,
+                  "comments": comments,
+                  "survey": "12-month Enrollment",
+                  "section": "Dual Enrolled Students",
+                  "page": "Dual Enrolled Students",
+                  "name": "Dual Enrolled Students",
+                  "func_dict": {"Agg": agg, "Names": names},
+                  }
+        self.save(**params)
+
+
 
 
 
