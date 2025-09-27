@@ -5278,12 +5278,14 @@ class IPEDS_Fall (IPEDS):
         SELECT ID,
                 LEVEL,
                 LOAD,
-                GENDER
+                GENDER,
+                TERM
         FROM (
         SELECT DISTINCT STC_PERSON_ID     AS ID,
                   STC_ACAD_LEVEL          AS LEVEL,
-                  STTR_STUDENT_LOAD       AS LOAD,
+                  CASE WHEN STTR_STUDENT_LOAD IN ('F', 'O') THEN 'FT' ELSE 'PT' END AS LOAD,
                   COALESCE(PERSON.GENDER, ASSIGNED_GENDER.GENDER) AS GENDER,
+                  STC_TERM AS TERM,
                   ROW_NUMBER() OVER (PARTITION BY STC_PERSON_ID ORDER BY TERM_START_DATE) AS LL_RANK
         FROM STUDENT_ACAD_CRED AS STC
         LEFT JOIN STC_STATUSES AS STATUS ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND POS = 1
@@ -5294,13 +5296,18 @@ class IPEDS_Fall (IPEDS):
         LEFT JOIN ({self.df_query(self.gender_assignment_enrollment)}) AS ASSIGNED_GENDER ON STC_PERSON_ID = ASSIGNED_GENDER.ID
         WHERE STATUS.STC_STATUS IN ('N', 'A')
         AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
-        AND TERM_START_DATE < '2025-07-01'
-        AND TERM_END_DATE >= '{start}'
+        AND (
+          TERMS_ID LIKE '%FA'
+          OR TERMS_ID LIKE '%SP'
+          OR TERMS_ID LIKE '%SU'
+          )
+        AND TERM_START_DATE < DATEADD(YEAR, 1, '{start}')
+        AND TERM_START_DATE >= '{start}'
         AND STC.STC_CRED > 0
         ) AS X
         WHERE LL_RANK = 1
         AND {f"LEVEL = '{level}'" if level is not None else "LEVEL = LEVEL"}
-        AND {"LOAD IN ('F', 'O')" if load == "FT" else "LOAD NOT IN ('F', 'O')" if load == "PT" else "LOAD = LOAD"}
+        AND {f"LOAD = '{load}'" if load is not None else "LOAD = LOAD"}
         AND {f"GENDER = '{gender}'" if gender is not None else "GENDER = GENDER"}
         """
         return query
@@ -5331,7 +5338,7 @@ class IPEDS_Fall (IPEDS):
               OR TERMS_ID LIKE '%SU'
           )
         AND TERM_START_DATE < DATEADD(YEAR, 1, '{start}')
-        AND TERM_END_DATE >= '{start}'
+        AND TERM_START_DATE >= '{start}'
         AND STC.STC_CRED > 0
         ) AS X
         GROUP BY ID
@@ -5342,13 +5349,14 @@ class IPEDS_Fall (IPEDS):
     def appl_status(self, start = '2024-07-01'):
         query = f"""
         SELECT ID,
-               CASE WHEN TERM_END_DATE < '{start}' THEN 'Continuing/Returning'
+               CASE WHEN TERM_START_DATE < '{start}' THEN 'Continuing/Returning'
                WHEN APPL_ADMIT_STATUS IN ('TR', 'PB') THEN 'Transfer-in'
                WHEN APPL_ADMIT_STATUS = 'FY' OR APPL_ADMIT_STATUS IS NULL THEN 'First-time'
                END AS STATUS
         FROM (
         SELECT APPL_APPLICANT AS ID,
                 APPL_ADMIT_STATUS,
+                TERM_START_DATE,
                 TERM_END_DATE,
                ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS APPL_RANK
         FROM APPLICATIONS
@@ -5438,7 +5446,6 @@ class IPEDS_Fall (IPEDS):
         ) AS STU_PROGRAM ON STUDENTS.ID = STU_PROGRAM.ID
         ) AS TARGET_STUDENTS ON IPEDS_RACE.OUR_DESC = TARGET_STUDENTS.RACE
         """
-
         agg = lambda query: f"""
         --(Begin 2)-----------------------------------------------------------------------------------------------------
         SELECT RACE,
@@ -5682,7 +5689,7 @@ class IPEDS_Fall (IPEDS):
         SELECT IPEDS_RACE.THEIR_DESC AS RACE,
         IPEDS_RACE.N,
         TARGET_STUDENTS.ID,
-        CASE WHEN TARGET_STUDENTS.LOAD IN ('F', 'O') THEN 'FT' ELSE 'PT' END AS LOAD
+        TARGET_STUDENTS.LOAD
         FROM ({self.ipeds_races()}) AS IPEDS_RACE
         LEFT JOIN (
         SELECT STUDENTS.ID,
@@ -5742,7 +5749,7 @@ class IPEDS_Fall (IPEDS):
         SELECT IPEDS_RACE.THEIR_DESC AS RACE,
         IPEDS_RACE.N,
         TARGET_STUDENTS.ID,
-        CASE WHEN TARGET_STUDENTS.LOAD IN ('F', 'O') THEN 'FT' ELSE 'PT' END AS LOAD
+        TARGET_STUDENTS.LOAD
         FROM ({self.ipeds_races()}) AS IPEDS_RACE
         LEFT JOIN (
         SELECT STUDENTS.ID,
@@ -5821,7 +5828,7 @@ class IPEDS_Fall (IPEDS):
               OR TERMS_ID LIKE '%SU'
           )
         AND TERM_START_DATE < DATEADD(YEAR, 1, '{start}')
-        AND TERM_END_DATE >= '{start}'
+        AND TERM_START_DATE >= '{start}'
         AND STC.STC_CRED > 0
         ) AS X
         WHERE LL_RANK = 1
@@ -5916,7 +5923,7 @@ class IPEDS_Fall (IPEDS):
         start = '2024-07-01'
         query = f"""
         SELECT DISTINCT STC_PERSON_ID AS ID,
-                SCS_COURSE_SECTION,
+                STC.STUDENT_ACAD_CRED_ID,
                 STC_CRED,
                 STC_ACAD_LEVEL
         FROM STUDENT_ACAD_CRED AS STC
@@ -5931,9 +5938,18 @@ class IPEDS_Fall (IPEDS):
               OR TERMS_ID LIKE '%SU'
           )
         AND TERM_START_DATE < DATEADD(YEAR, 1, '{start}')
-        AND TERM_END_DATE >= '{start}'
+        AND TERM_START_DATE >= '{start}'
         AND STC.STC_CRED > 0
+        AND STC_ACAD_LEVEL = 'GR'
         """
+        person_agg = lambda query: f"""
+        SELECT ID,
+            SUM(STC_CRED) AS TOTAL
+        FROM ({query}) AS X GROUP BY ID
+        ORDER BY TOTAL DESC
+        """
+        self.print_table(query)
+        self.print_table(person_agg(query))
         agg = lambda query: f"""
         SELECT STC_ACAD_LEVEL,
                 SUM(STC_CRED) AS '2024-25 total activity'

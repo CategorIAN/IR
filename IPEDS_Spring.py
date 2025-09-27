@@ -19,7 +19,7 @@ class IPEDS_Spring(IPEDS):
         FROM (
         SELECT DISTINCT STC_PERSON_ID     AS ID,
                   STC_ACAD_LEVEL          AS LEVEL,
-                  STTR_STUDENT_LOAD       AS LOAD,
+                  CASE WHEN STTR_STUDENT_LOAD IN ('F', 'O') THEN 'FT' ELSE 'PT' END AS LOAD,
                   COALESCE(PERSON.GENDER, ASSIGNED_GENDER.GENDER) AS GENDER
         FROM STUDENT_ACAD_CRED AS STC
         LEFT JOIN STC_STATUSES AS STATUS ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND POS = 1
@@ -34,7 +34,7 @@ class IPEDS_Spring(IPEDS):
         AND STC.STC_CRED > 0
         ) AS X
         WHERE  {f"LEVEL = '{level}'" if level is not None else "LEVEL = LEVEL"}
-        AND {"LOAD IN ('F', 'O')" if load == "FT" else "LOAD NOT IN ('F', 'O')" if load == "PT" else "LOAD = LOAD"}
+        AND {f"LOAD = '{load}'" if load is not None else "LOAD = LOAD"}
         AND {f"GENDER = '{gender}'" if gender is not None else "GENDER = GENDER"}
         """
         return query
