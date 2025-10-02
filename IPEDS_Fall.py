@@ -5278,8 +5278,7 @@ class IPEDS_Fall (IPEDS):
         SELECT ID,
                 LEVEL,
                 LOAD,
-                GENDER,
-                TERM
+                GENDER
         FROM (
         SELECT DISTINCT STC_PERSON_ID     AS ID,
                   STC_ACAD_LEVEL          AS LEVEL,
@@ -5435,13 +5434,13 @@ class IPEDS_Fall (IPEDS):
         FROM (
         {self.enrolledStudents(level = "UG", load = "FT", gender = "M")}
         ) AS STUDENTS
-        JOIN (
+        LEFT JOIN (
         {self.race_status()}
         ) AS STU_RACE ON STUDENTS.ID = STU_RACE.ID
-        JOIN (
+        LEFT JOIN (
         {self.appl_status()}
         ) AS STU_APPL ON STUDENTS.ID = STU_APPL.ID
-        JOIN (
+        LEFT JOIN (
         {self.deg_status()}
         ) AS STU_PROGRAM ON STUDENTS.ID = STU_PROGRAM.ID
         ) AS TARGET_STUDENTS ON IPEDS_RACE.OUR_DESC = TARGET_STUDENTS.RACE

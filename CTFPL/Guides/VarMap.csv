@@ -1,0 +1,59 @@
+﻿Name,Table,Variable
+Board Charges,Icyyyy,BOARDAMT
+Percentage of Undergraduates with Registered Disabilities,Icyyyy,DISAB
+Enrollment (Gender Unknown),ADMyyyy,ENRLUN
+Enrollment (Men),ADMyyyy,ENRLM
+Enrollment (Women),ADMyyyy,ENRLW
+FTE Enrollment,DRVEF12yyyy,FTE12MN
+FTE Undergraduates,EFIAyyyy,FTEUG
+FTFTUG Count,DRVEFyyyy,EFUG1SFT
+FTUG Count,DRVEFyyyy,EFUG1ST
+Gender Ratio (Women),DRVEFyyyy,PCTENRW
+Number Receiving GI Bill Benefits,SFAVxxxx,PO9_N
+Graduate Enrollment,DRVEFyyyy,EFGRAD
+Graduation Rate (4 Years),GR200_zz,BAGR100
+Graduation Rate (6 Years),GR200_zz,BAGR150
+"Graduation Rate (6 Years, Men)",DRVGRyyyy,GBA6RTM
+Graduation Rate for Pell Recipients (6 Years),DRVGRyyyy,PGBA6RT
+"Graduation Rate (6 Years, Women)",DRVGRyyyy,GBA6RTW
+Graduation Rate (8 Years),GR200_zz,BAGR200
+Graduation Rate (Men),DRVGRyyyy,GRRTM
+Graduation Rate (Women),DRVGRyyyy,GRRTW
+Incoming Freshman Size,DRVEFyyyy,EFUG1ST
+Incoming Transfer Size,DRVEFyyyy,EFUGTRN
+Number Receiving Military Tuition Assistance,SFAVxxxx,DOD_N
+Net Price,SFAxxxx_P2,NPGRN2
+Pell Percentage,SFAxxxx_P1,UPGRNTP
+Percentage of Pell,SFAxxxx_P1,PGRNT_P
+Percentage of White,DRVEFyyyy,PctEnrWh
+Race Percentage (American Indian or Alaska Native),DRVEFyyyy,PctEnrAN
+Race Percentage (Asian),DRVEFyyyy,PCTENRAS
+Race Percentage (Black or African American),DRVEFyyyy,PctEnrBK
+Race Percentage (Hispanic or Latino),DRVEFyyyy,PctEnrHS
+Race Percentage (Native Hawaiian or Other Pacific Islander),DRVEFyyyy,PCTENRNH
+Race Percentage (Race-ethnicity unknown),DRVEFyyyy,PctEnrUn
+Race Percentage (Two or More Races),DRVEFyyyy,PCTENR2M
+Race Percentage (US Nonresident),DRVEFyyyy,PctEnrNr
+Race Percentage (White),DRVEFyyyy,PctEnrWh
+Required Fees (In-State),ICyyyy_AY,FEE2
+Retention Rate,EFyyyyD,RET_PCF
+Room Charges,ICyyyy,ROOMAMT
+Total Price (In-State),DRVICyyyy,CINSON
+Total Price (Out-of-State),DRVICyyyy,COTSON
+Tuition (In-State),ICyyyy_AY,TUITION2
+Tuition (Out-Of-State),ICyyyy_AY,TUITION3
+Undergraduate Enrollment,DRVEFyyyy,EFUG
+Undergraduate Size,DRVEFyyyy,EFUG
+School,HDyyyy,INSTNM
+Endowment Asset Value,Fxxxx_F2,F2H02
+12-Month FTE Enrollment,DRVEF12yyyy,FTE12MN
+Core Expenses (FASB),DRVFyyyy,F2COREXP
+Core Expenses (GASB),DRVFyyyy,F1COREXP
+Instruction Expenses Per FTE (FASB),DRVFyyyy,F2INSTFT
+Instruction Expenses Per FTE (GASB),DRVFyyyy,F1INSTFT
+Academic Support Expenses Per FTE (FASB),DRVFyyyy,F2ACSPFT
+Academic Support Expenses Per FTE (GASB),DRVFyyyy,F1ACSPFT
+Institutional Support Expenses Per FTE (FASB),DRVFyyyy,F2INSUFT
+Institutional Support Expenses Per FTE (GASB),DRVFyyyy,F1INSUFT
+Student Services Expenses Per FTE (FASB),DRVFyyyy,F2STSVFT
+Student Services Expenses Per FTE (GASB),DRVFyyyy,F1STSVFT
