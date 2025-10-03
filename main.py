@@ -6,7 +6,7 @@ from CTFPL import CTFPL
 def f(i):
     X = Reports()
     if i == 1:
-        X.getMSWNewStudentPercentChange()
+        X.getUnduplicatedHeadcount()
 
 def g(i):
     X = CTFPL()
@@ -16,14 +16,14 @@ def g(i):
         for metric in X.metrics:
             X.value_df(metric)
     if i == 3:
-        X.getSTD_DF()
+        X.makeSTDCorrelation(0, 5)
+        X.makeSTDCorrelation(0, 1)
+        X.makeSTDCorrelation(0, 0.1)
+        X.makeSTDCorrelation(0, 0.04)
     if i == 4:
-        X.getSchools()
-    if i == 5:
-        X.get_data()
-    if i == 6:
-        print(X.number_in_range(std_threshold = 0.03))
+        X.getTop50Schools()
+
 
 
 if __name__ == '__main__':
-    g(6)
+    f(1)

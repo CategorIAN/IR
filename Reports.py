@@ -2806,8 +2806,6 @@ ORDER BY ORDER_1.N, ORDER_2.N --Gave it an ordering
         self.save_query_results(query, db="ODS", func_dict=None)(report, name)
 
 
-
-
     '''
     ID: Unknown
     Name: 2025-06-13-MSW Program Review
@@ -5594,6 +5592,3961 @@ ORDER BY ORDER_1.N, ORDER_2.N --Gave it an ordering
         report = "2025-06-13-MSW Program Review"
         name = "New Student Percent Change"
         self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+
+    '''
+    ID: Unknown
+    Name: 2025-06-19-Consumer Reports
+    Person: Annette Farley
+    Start Date: 2025-06-19
+    End Date: 2025-06-19
+    Description:
+        I needed to get data for consumer reports.
+    '''
+    def getAthleticAidRecipientsByRaceAndGender(self):
+        query = f"""
+                 SELECT DISTINCT SA_STUDENT_ID,
+                         PERSON.GENDER,
+                         RACE.IPEDS_RACE_ETHNIC_DESC AS RACE,
+                         CASE
+                             WHEN (AW_DESCRIPTION LIKE '%Basketball%' OR
+                                   AW_DESCRIPTION LIKE '%BB%') THEN 'Basketball'
+                             WHEN AW_DESCRIPTION LIKE '%Cross Country%' THEN 'Cross Country'
+                             WHEN AW_DESCRIPTION LIKE '%Football%' THEN 'Football'
+                             WHEN AW_DESCRIPTION LIKE '%Golf%' THEN 'Golf'
+                             WHEN AW_DESCRIPTION LIKE '%Soccer%' THEN 'Soccer'
+                             WHEN AW_DESCRIPTION LIKE '%Softball%' THEN 'Softball'
+                             WHEN AW_DESCRIPTION LIKE '%Track%' THEN 'Track and Field'
+                             WHEN AW_DESCRIPTION LIKE '%Volleyball%' THEN 'Volleyball'
+                             WHEN AW_DESCRIPTION LIKE '%Cheer%' THEN 'Cheerleading'
+                             WHEN AW_DESCRIPTION LIKE '%Dance%' THEN 'Dance'
+                             END                     AS SPORT
+         FROM F24_AWARD_LIST AS AL
+                  JOIN AWARDS ON AL.SA_AWARD = AWARDS.AW_ID
+                  JOIN AWARD_CATEGORIES AS AC ON AWARDS.AW_CATEGORY = AC.AC_ID
+                  JOIN PERSON ON AL.SA_STUDENT_ID = PERSON.ID
+                  LEFT JOIN Z01_ALL_RACE_ETHNIC_W_FLAGS AS RACE ON PERSON.ID = RACE.ID
+         WHERE SA_ACTION = 'A'
+           AND AC_DESCRIPTION = 'Athletic Grants'
+        """
+        agg = lambda query: f"""
+        --(Begin 2)------------------------------------------------------------------------------------------------------------
+        SELECT GENDER,
+               RACE,
+               [Basketball],
+               [Cross Country],
+               [Football],
+               [Golf],
+               [Soccer],
+               [Softball],
+               [Track and Field],
+               [Volleyball],
+               [Cheerleading],
+               [Dance],
+               --------
+               ([Basketball] +
+               [Cross Country] +
+               [Football] +
+               [Golf] +
+               [Soccer] +
+               [Softball] +
+               [Track and Field] +
+               [Volleyball] +
+               [Cheerleading] +
+               [Dance]) AS GRAND_TOTAL
+        FROM (
+        --(Begin 1)------------------------------------------------------------------------------------------------------------
+                {query}
+        --(End 1)--------------------------------------------------------------------------------------------------------------
+             ) AS X
+        PIVOT (COUNT(SA_STUDENT_ID) FOR SPORT IN (
+               [Basketball],
+               [Cross Country],
+               [Football],
+               [Golf],
+               [Soccer],
+               [Softball],
+               [Track and Field],
+               [Volleyball],
+               [Cheerleading],
+               [Dance]
+                )) AS X
+        --(End 2)--------------------------------------------------------------------------------------------------------------
+        ORDER BY GENDER, RACE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.SA_STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Athletic Aid Recipients By Race and Gender"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getGraduationRateOfAthleticAidRecipientsByRaceAndGender(self):
+        query = f"""
+        --(Begin C1)------------------------------------------------------------------------------------------------------------
+                     SELECT DISTINCT AW_TERM                     AS COHORT,
+                                     SA_STUDENT_ID               AS ID,
+                                     CASE
+                                         WHEN PERSON.GENDER = 'F' THEN 'Female'
+                                         WHEN GENDER = 'M'
+                                             THEN 'Male' END     AS GENDER,
+                                     RACE.IPEDS_RACE_ETHNIC_DESC AS RACE,
+                                     CASE
+                                         WHEN (AW_DESCRIPTION LIKE '%Basketball%' OR
+                                               AW_DESCRIPTION LIKE '%BB%') THEN 'Basketball'
+                                         WHEN AW_DESCRIPTION LIKE '%Cross Country%' THEN 'Cross Country'
+                                         WHEN AW_DESCRIPTION LIKE '%Football%' THEN 'Football'
+                                         WHEN AW_DESCRIPTION LIKE '%Golf%' THEN 'Golf'
+                                         WHEN AW_DESCRIPTION LIKE '%Soccer%' THEN 'Soccer'
+                                         WHEN AW_DESCRIPTION LIKE '%Softball%' THEN 'Softball'
+                                         WHEN AW_DESCRIPTION LIKE '%Track%' THEN 'Track and Field'
+                                         WHEN AW_DESCRIPTION LIKE '%Volleyball%' THEN 'Volleyball'
+                                         WHEN AW_DESCRIPTION LIKE '%Cheer%' THEN 'Cheerleading'
+                                         WHEN AW_DESCRIPTION LIKE '%Dance%' THEN 'Dance'
+                                         END                     AS SPORT,
+                                     CASE
+                                         WHEN EXISTS (SELECT 1
+                                                      FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                                                      WHERE STUDENT_ID = SA_STUDENT_ID
+                                                        AND STP_CURRENT_STATUS = 'Graduated'
+                                                        AND STP_END_DATE >= FM.TERM_START_DATE
+                                                        AND STP_END_DATE < DATEADD(YEAR, 6, FM.TERM_START_DATE))
+                                             THEN 1
+                                         ELSE 0 END              AS SIX_YEAR_GRADUATED
+                     FROM (
+        --(Begin A2)--------------------------------------------------------------------------------
+                              SELECT AW_TERM, SA_AWARD, SA_STUDENT_ID, AW_DESCRIPTION
+                              FROM (
+        --(Begin A1)--------------------------------------------------------------------------------
+                                       SELECT '2015FA' AS AW_TERM, *
+                                       FROM F15_AWARD_LIST
+                                       UNION
+                                       SELECT '2016FA' AS AW_TERM, *
+                                       FROM F16_AWARD_LIST
+                                       UNION
+                                       SELECT '2017FA' AS AW_TERM, *
+                                       FROM F17_AWARD_LIST
+                                       UNION
+                                       SELECT '2018FA' AS AW_TERM, *
+                                       FROM F18_AWARD_LIST
+        --(End A1)---------------------------------------------------------------------------------
+                                   ) AS X
+                                       JOIN AWARDS ON X.SA_AWARD = AWARDS.AW_ID
+                                       JOIN AWARD_CATEGORIES AS AC ON AWARDS.AW_CATEGORY = AC.AC_ID
+                              WHERE SA_ACTION = 'A'
+                                AND AC_DESCRIPTION = 'Athletic Grants'
+        --(End A2)----------------------------------------------------------------------------------
+                          ) AS AL
+                              JOIN PERSON ON AL.SA_STUDENT_ID = PERSON.ID
+                              JOIN Z01_ALL_RACE_ETHNIC_W_FLAGS AS RACE ON PERSON.ID = RACE.ID
+                              JOIN (
+        --(Begin B2)-------------------------------------------------------------------------------
+                         SELECT ID, TERM, TERM_START_DATE
+                         FROM (
+        --(Begin B1)-------------------------------------------------------------------------------
+                                  SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                                  APPL_START_TERM                                                          AS TERM,
+                                                  TERM_START_DATE,
+                                                  ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+                                  FROM APPLICATIONS AS AP
+                                           JOIN STUDENT_ACAD_CRED AS AC
+                                                ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND
+                                                   AP.APPL_START_TERM = AC.STC_TERM
+                                           JOIN STC_STATUSES AS STAT
+                                                ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                                           JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                                  WHERE APPL_DATE IS NOT NULL
+        --     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                                    AND STC_STATUS IN ('A', 'N')
+                                    AND STC_CRED_TYPE IN ('INST')
+        --(End B1)----------------------------------------------------------------------------------
+                              ) AS X
+                         WHERE TERM_ORDER = 1
+        --(End B2)----------------------------------------------------------------------------------
+                     ) AS FM ON PERSON.ID = FM.ID AND AW_TERM = FM.TERM
+        --(End C1)-------------------------------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --(Begin C3)------------------------------------------------------------------------------------------------------------
+        SELECT COHORTS.COHORT,
+               GENDERS.GENDER,
+               RACES.RACE,
+               SPORTS.SPORT,
+               NON_COMPLETER,
+               COMPLETER,
+               TOTAL,
+               GRADUATION_RATE
+        FROM (VALUES ('2015FA'), ('2016FA'), ('2017FA'), ('2018FA')) AS COHORTS(COHORT)
+        CROSS JOIN
+            (VALUES ('Female'), ('Male')) AS GENDERS(GENDER)
+        CROSS JOIN
+            (VALUES ('White'),
+                    ('Unknown'),
+                    ('Two or More Races'),
+                    ('Non-Resident Alien'),
+                    ('Hispanic/Latino'),
+                    ('Black or African American'),
+                    ('Asian')) AS RACES(RACE)
+        CROSS JOIN
+            (VALUES ('Basketball'),
+                    ('Cross Country'),
+                    ('Football'),
+                    ('Golf'),
+                    ('Soccer'),
+                    ('Softball'),
+                    ('Track and Field'),
+                    ('Volleyball')) AS SPORTS(SPORT)
+        LEFT JOIN (
+        --(Begin C2)------------------------------------------------------------------------------------------------------------
+            SELECT COHORT,
+                   GENDER,
+                   RACE,
+                   SPORT,
+                   SUM(CASE WHEN SIX_YEAR_GRADUATED = 1 THEN 0 ELSE 1 END) AS NON_COMPLETER,
+                   SUM(SIX_YEAR_GRADUATED)                                 AS COMPLETER,
+                   COUNT(*)                                                AS TOTAL,
+                   AVG(1.0 * SIX_YEAR_GRADUATED)                           AS GRADUATION_RATE
+            FROM (
+        --(Begin C1)------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End C1)-------------------------------------------------------------------------------------------------------------
+                 ) AS X
+            GROUP BY COHORT, GENDER, RACE, SPORT
+        --(End C2)-------------------------------------------------------------------------------------------------------------
+        ) AS X
+        ON COHORTS.COHORT = X.COHORT
+        AND GENDERS.GENDER = X.GENDER
+        AND RACES.RACE = X.RACE
+        AND SPORTS.SPORT = X.SPORT
+        --(End C2)-------------------------------------------------------------------------------------------------------------
+        ORDER BY SPORT, COHORT, GENDER, RACE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Graduation Rate of Athletic Aid Recipients by Race and Gender"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getGraduationRateOfAthleticAidRecipientsByRaceAndGender_Basketball(self):
+        query = f"""
+        --(Begin C1)------------------------------------------------------------------------------------------------------------
+                     SELECT DISTINCT AW_TERM                     AS COHORT,
+                                     SA_STUDENT_ID               AS ID,
+                                     CASE
+                                         WHEN PERSON.GENDER = 'F' THEN 'Female'
+                                         WHEN GENDER = 'M'
+                                             THEN 'Male' END     AS GENDER,
+                                     RACE.IPEDS_RACE_ETHNIC_DESC AS RACE,
+                                     CASE
+                                         WHEN (AW_DESCRIPTION LIKE '%Basketball%' OR
+                                               AW_DESCRIPTION LIKE '%BB%') THEN 'Basketball'
+                                         WHEN AW_DESCRIPTION LIKE '%Cross Country%' THEN 'Cross Country'
+                                         WHEN AW_DESCRIPTION LIKE '%Football%' THEN 'Football'
+                                         WHEN AW_DESCRIPTION LIKE '%Golf%' THEN 'Golf'
+                                         WHEN AW_DESCRIPTION LIKE '%Soccer%' THEN 'Soccer'
+                                         WHEN AW_DESCRIPTION LIKE '%Softball%' THEN 'Softball'
+                                         WHEN AW_DESCRIPTION LIKE '%Track%' THEN 'Track and Field'
+                                         WHEN AW_DESCRIPTION LIKE '%Volleyball%' THEN 'Volleyball'
+                                         WHEN AW_DESCRIPTION LIKE '%Cheer%' THEN 'Cheerleading'
+                                         WHEN AW_DESCRIPTION LIKE '%Dance%' THEN 'Dance'
+                                         END                     AS SPORT,
+                                     CASE
+                                         WHEN EXISTS (SELECT 1
+                                                      FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                                                      WHERE STUDENT_ID = SA_STUDENT_ID
+                                                        AND STP_CURRENT_STATUS = 'Graduated'
+                                                        AND STP_END_DATE >= FM.TERM_START_DATE
+                                                        AND STP_END_DATE < DATEADD(YEAR, 6, FM.TERM_START_DATE))
+                                             THEN 1
+                                         ELSE 0 END              AS SIX_YEAR_GRADUATED
+                     FROM (
+        --(Begin A2)--------------------------------------------------------------------------------
+                              SELECT AW_TERM, SA_AWARD, SA_STUDENT_ID, AW_DESCRIPTION
+                              FROM (
+        --(Begin A1)--------------------------------------------------------------------------------
+                                       SELECT '2015FA' AS AW_TERM, *
+                                       FROM F15_AWARD_LIST
+                                       UNION
+                                       SELECT '2016FA' AS AW_TERM, *
+                                       FROM F16_AWARD_LIST
+                                       UNION
+                                       SELECT '2017FA' AS AW_TERM, *
+                                       FROM F17_AWARD_LIST
+                                       UNION
+                                       SELECT '2018FA' AS AW_TERM, *
+                                       FROM F18_AWARD_LIST
+        --(End A1)---------------------------------------------------------------------------------
+                                   ) AS X
+                                       JOIN AWARDS ON X.SA_AWARD = AWARDS.AW_ID
+                                       JOIN AWARD_CATEGORIES AS AC ON AWARDS.AW_CATEGORY = AC.AC_ID
+                              WHERE SA_ACTION = 'A'
+                                AND AC_DESCRIPTION = 'Athletic Grants'
+        --(End A2)----------------------------------------------------------------------------------
+                          ) AS AL
+                              JOIN PERSON ON AL.SA_STUDENT_ID = PERSON.ID
+                              JOIN Z01_ALL_RACE_ETHNIC_W_FLAGS AS RACE ON PERSON.ID = RACE.ID
+                              JOIN (
+        --(Begin B2)-------------------------------------------------------------------------------
+                         SELECT ID, TERM, TERM_START_DATE
+                         FROM (
+        --(Begin B1)-------------------------------------------------------------------------------
+                                  SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                                  APPL_START_TERM                                                          AS TERM,
+                                                  TERM_START_DATE,
+                                                  ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+                                  FROM APPLICATIONS AS AP
+                                           JOIN STUDENT_ACAD_CRED AS AC
+                                                ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND
+                                                   AP.APPL_START_TERM = AC.STC_TERM
+                                           JOIN STC_STATUSES AS STAT
+                                                ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                                           JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                                  WHERE APPL_DATE IS NOT NULL
+        --     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                                    AND STC_STATUS IN ('A', 'N')
+                                    AND STC_CRED_TYPE IN ('INST')
+        --(End B1)----------------------------------------------------------------------------------
+                              ) AS X
+                         WHERE TERM_ORDER = 1
+        --(End B2)----------------------------------------------------------------------------------
+                     ) AS FM ON PERSON.ID = FM.ID AND AW_TERM = FM.TERM
+        --(End C1)-------------------------------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --(Begin C3)------------------------------------------------------------------------------------------------------------
+        SELECT COHORTS.COHORT,
+               GENDERS.GENDER,
+               RACES.RACE,
+               NON_COMPLETER,
+               COMPLETER,
+               TOTAL,
+               GRADUATION_RATE
+        FROM (VALUES ('2015FA'), ('2016FA'), ('2017FA'), ('2018FA')) AS COHORTS(COHORT)
+        CROSS JOIN
+            (VALUES ('Female'), ('Male')) AS GENDERS(GENDER)
+        CROSS JOIN
+            (VALUES ('White'),
+                    ('Unknown'),
+                    ('Two or More Races'),
+                    ('Non-Resident Alien'),
+                    ('Hispanic/Latino'),
+                    ('Black or African American'),
+                    ('Asian')) AS RACES(RACE)
+        CROSS JOIN
+            (VALUES ('Basketball')
+                    ) AS SPORTS(SPORT)
+        LEFT JOIN (
+        --(Begin C2)------------------------------------------------------------------------------------------------------------
+            SELECT COHORT,
+                   GENDER,
+                   RACE,
+                   SPORT,
+                   SUM(CASE WHEN SIX_YEAR_GRADUATED = 1 THEN 0 ELSE 1 END) AS NON_COMPLETER,
+                   SUM(SIX_YEAR_GRADUATED)                                 AS COMPLETER,
+                   COUNT(*)                                                AS TOTAL,
+                   AVG(1.0 * SIX_YEAR_GRADUATED)                           AS GRADUATION_RATE
+            FROM (
+        --(Begin C1)------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End C1)-------------------------------------------------------------------------------------------------------------
+                 ) AS X
+            GROUP BY COHORT, GENDER, RACE, SPORT
+        --(End C2)-------------------------------------------------------------------------------------------------------------
+        ) AS X
+        ON COHORTS.COHORT = X.COHORT
+        AND GENDERS.GENDER = X.GENDER
+        AND RACES.RACE = X.RACE
+        AND SPORTS.SPORT = X.SPORT
+        --(End C2)-------------------------------------------------------------------------------------------------------------
+        ORDER BY COHORT, GENDER, RACE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Graduation Rate of Athletic Aid Recipients by Race and Gender (Basketball)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getGraduationRateOfFederalAidRecipientsByIncomingMajor(self):
+        query = f"""
+        --(Begin C1)------------------------------------------------------------------------------------------------------------
+                                   SELECT AW_TERM,
+                                          SA_STUDENT_ID                                               AS ID,
+                                          TERM_START_DATE,
+                                          STP_PROGRAM_TITLE                                           AS PROGRAM,
+                                          ROW_NUMBER() OVER (PARTITION BY ID ORDER BY STP_START_DATE) AS PROGRAM_ORDER
+                                   FROM (
+        --(Begin A2)--------------------------------------------------------------------------------
+                                            SELECT AW_TERM, SA_AWARD, SA_STUDENT_ID, AW_DESCRIPTION
+                                            FROM (
+        --(Begin A1)--------------------------------------------------------------------------------
+                                                     SELECT '2018FA' AS AW_TERM, *
+                                                     FROM F18_AWARD_LIST
+        --(End A1)----------------------------------------------------------------------------------
+                                                 ) AS X
+                                                     JOIN AWARDS ON X.SA_AWARD = AWARDS.AW_ID
+                                            WHERE SA_ACTION = 'A'
+                                              AND AW_TYPE = 'F'
+        --(End A2)----------------------------------------------------------------------------------
+                                        ) AS AL
+                                            JOIN (
+        --(Begin B2)--------------------------------------------------------------------------------
+                                       SELECT ID, TERM, TERM_START_DATE, TERM_END_DATE
+                                       FROM (
+        --(Begin B1)-------------------------------------------------------------------------------
+                                                SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                                                APPL_START_TERM                                                          AS TERM,
+                                                                TERM_START_DATE,
+                                                                TERM_END_DATE,
+                                                                ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+                                                FROM APPLICATIONS AS AP
+                                                         JOIN STUDENT_ACAD_CRED AS AC
+                                                              ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND
+                                                                 AP.APPL_START_TERM = AC.STC_TERM
+                                                         JOIN STC_STATUSES AS STAT
+                                                              ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                                                         JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                                                         JOIN ACAD_PROGRAMS AS PROG ON AP.APPL_ACAD_PROGRAM = PROG.ACAD_PROGRAMS_ID
+                                                WHERE APPL_DATE IS NOT NULL
+        --     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                                                  AND STC_STATUS IN ('A', 'N')
+                                                  AND STC_CRED_TYPE IN ('INST')
+        --(End B1)---------------------------------------------------------------------------------
+                                            ) AS X
+                                       WHERE TERM_ORDER = 1
+        --(End B2)----------------------------------------------------------------------------------
+                                   ) AS FM ON SA_STUDENT_ID = FM.ID AND AW_TERM = FM.TERM
+                                            JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV ON FM.ID = SAPV.STUDENT_ID
+                                   WHERE SAPV.STP_START_DATE <= FM.TERM_END_DATE
+                                     AND SAPV.STP_START_DATE >= FM.TERM_START_DATE
+        --(End C1)--------------------------------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --(Begin C4)------------------------------------------------------------------------------------------------------------
+        SELECT INCOMING_FIRST_MAJOR,
+               CASE WHEN COMPLETER < 5 THEN '<5' ELSE CAST(COMPLETER AS VARCHAR) END AS COMPLETER,
+               CASE WHEN NON_COMPLETER < 5 THEN '<5' ELSE CAST(NON_COMPLETER AS VARCHAR) END AS NON_COMPLETER,
+               CASE WHEN GRAND_TOTAL < 5 THEN '<5' ELSE CAST(GRAND_TOTAL AS VARCHAR) END AS GRAND_TOTAL,
+               GRADUATION_RATES
+        FROM (
+        --(Begin C3)------------------------------------------------------------------------------------------------------------
+                 SELECT PROGRAM                                                 AS INCOMING_FIRST_MAJOR,
+                        SUM(SIX_YEAR_GRADUATED)                                 AS COMPLETER,
+                        SUM(CASE WHEN SIX_YEAR_GRADUATED = 1 THEN 0 ELSE 1 END) AS NON_COMPLETER,
+                        COUNT(*)                                                AS GRAND_TOTAL,
+                        FORMAT(AVG(1.0 * SIX_YEAR_GRADUATED), 'P')              AS GRADUATION_RATES
+                 FROM (
+        --(Begin C2)------------------------------------------------------------------------------------------------------------
+                          SELECT AW_TERM,
+                                 ID,
+                                 PROGRAM,
+                                 CASE
+                                     WHEN EXISTS (SELECT 1
+                                                  FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                                                  WHERE STUDENT_ID = ID
+                                                    AND STP_CURRENT_STATUS = 'Graduated'
+                                                    AND STP_END_DATE >= TERM_START_DATE
+                                                    AND STP_END_DATE < DATEADD(YEAR, 6, TERM_START_DATE)) THEN 1
+                                     ELSE 0 END AS SIX_YEAR_GRADUATED
+                          FROM (
+        --(Begin C1)------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End C1)--------------------------------------------------------------------------------------------------------------
+                               ) AS X
+                          WHERE PROGRAM_ORDER = 1
+        --(End C2)--------------------------------------------------------------------------------------------------------------
+                      ) AS X
+                 GROUP BY PROGRAM
+        --(End C3)--------------------------------------------------------------------------------------------------------------
+             ) AS X
+        --(End C4)--------------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Graduation Rate of Federal Aid Recipients by Incoming Major"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getGraduationRateOfFederalAidRecipientsByPellAndDSL(self):
+        query = f"""
+        --(Begin C1)------------------------------------------------------------------------------------------------------------
+         SELECT DISTINCT AW_TERM,
+                         SA_STUDENT_ID  AS ID,
+                         FEDERAL_AID,
+                         CASE
+                             WHEN EXISTS (SELECT 1
+                                          FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                                          WHERE STUDENT_ID = SA_STUDENT_ID
+                                            AND STP_CURRENT_STATUS = 'Graduated'
+                                            AND STP_END_DATE >= TERM_START_DATE
+                                            AND STP_END_DATE < DATEADD(YEAR, 6, TERM_START_DATE)) THEN 1
+                             ELSE 0 END AS SIX_YEAR_GRADUATED
+                 FROM (
+        --(Begin A4)--------------------------------------------------------------------------------
+                          SELECT AW_TERM,
+                                 SA_STUDENT_ID,
+                                 CASE
+                                     WHEN PELL = 1 THEN 'Recipients of a Pell Grant (within entering a year)'
+                                     WHEN DSL = 1 THEN 'Recipients of a Direct Subsidized Loan (within entering year) ' +
+                                                       'that did not receive a Pell Grant'
+                                     ELSE 'Did not receive either a Pell Grant or Direct Subsidized ' +
+                                          'Loan (within entering year)' END AS FEDERAL_AID
+                          FROM (
+        --(Begin A3)--------------------------------------------------------------------------------
+                                   SELECT AW_TERM,
+                                          SA_STUDENT_ID,
+                                          MAX(CASE WHEN AW_DESCRIPTION = 'Federal Pell Grant' THEN 1 ELSE 0 END)              AS PELL,
+                                          MAX(CASE
+                                                  WHEN AW_DESCRIPTION = 'Stafford Loan Subsidized Direct' THEN 1
+                                                  ELSE 0 END)                                                                 AS DSL
+                                   FROM (
+        --(Begin A2)--------------------------------------------------------------------------------
+                                            SELECT AW_TERM, SA_STUDENT_ID, AW_DESCRIPTION
+                                            FROM (
+        --(Begin A1)--------------------------------------------------------------------------------
+                                                     SELECT '2018FA' AS AW_TERM, *
+                                                     FROM F18_AWARD_LIST
+        --(End A1)----------------------------------------------------------------------------------
+                                                 ) AS X
+                                                     JOIN AWARDS ON X.SA_AWARD = AWARDS.AW_ID
+                                            WHERE SA_ACTION = 'A'
+                                              AND AW_TYPE = 'F'
+        --(End A2)----------------------------------------------------------------------------------
+                                        ) AS X
+                                   GROUP BY AW_TERM, SA_STUDENT_ID
+        --(End A3)----------------------------------------------------------------------------------
+                               ) AS X
+        --(End A4)----------------------------------------------------------------------------------
+                      ) AS AL
+                          JOIN (
+        --(Begin B2)--------------------------------------------------------------------------------
+                     SELECT ID, TERM, TERM_START_DATE
+                     FROM (
+        --(Begin B1)-------------------------------------------------------------------------------
+                              SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                              APPL_START_TERM                                                          AS TERM,
+                                              TERM_START_DATE,
+                                              ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+                              FROM APPLICATIONS AS AP
+                                       JOIN STUDENT_ACAD_CRED AS AC
+                                            ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                                       JOIN STC_STATUSES AS STAT
+                                            ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                                       JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                              WHERE APPL_DATE IS NOT NULL
+        --     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                                AND STC_STATUS IN ('A', 'N')
+                                AND STC_CRED_TYPE IN ('INST')
+        --(End B1)---------------------------------------------------------------------------------
+                          ) AS X
+                     WHERE TERM_ORDER = 1
+        --(End B2)----------------------------------------------------------------------------------
+                 ) AS FM ON AL.SA_STUDENT_ID = FM.ID AND AW_TERM = FM.TERM
+        --(End C1)--------------------------------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --(Begin C2)------------------------------------------------------------------------------------------------------------
+        SELECT FEDERAL_AID,
+               SUM(SIX_YEAR_GRADUATED) AS COMPLETER,
+               SUM(CASE WHEN SIX_YEAR_GRADUATED = 1 THEN 0 ELSE 1 END) AS NON_COMPLETER,
+               COUNT(*) AS GRAND_TOTAL,
+               FORMAT(AVG(1.0 * SIX_YEAR_GRADUATED), 'P') AS GRADUATION_RATES
+        FROM (
+        --(Begin C1)------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End C1)--------------------------------------------------------------------------------------------------------------
+             ) AS X
+        JOIN (VALUES
+                  ('Recipients of a Pell Grant (within entering a year)', 1),
+                  ('Recipients of a Direct Subsidized Loan (within entering year) ' +
+                                                       'that did not receive a Pell Grant', 2),
+                  ('Did not receive either a Pell Grant or Direct Subsidized ' +
+                                          'Loan (within entering year)', 3)
+                  ) AS AID_ORDER(X, Y) ON X.FEDERAL_AID = X
+        GROUP BY FEDERAL_AID, AID_ORDER.Y
+        ORDER BY AID_ORDER.Y
+        --(End C2)--------------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Graduation Rate of Federal Aid Recipients by Pell Status and DSL Status"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getGraduationRateOfFederalAidRecipientsByRaceAndGender(self):
+        query = f"""
+        --(Begin C1)------------------------------------------------------------------------------------------------------------
+                  SELECT DISTINCT AW_TERM,
+                                  SA_STUDENT_ID                                                                 AS ID,
+                                  CASE
+                                      WHEN PERSON.GENDER = 'F' THEN 'Female'
+                                      WHEN GENDER = 'M'
+                                          THEN 'Male' END                                                       AS GENDER,
+                                  RACE.IPEDS_RACE_ETHNIC_DESC                                                   AS RACE,
+                                  CASE
+                                      WHEN EXISTS (SELECT 1
+                                                   FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                                                   WHERE STUDENT_ID = SA_STUDENT_ID
+                                                     AND STP_CURRENT_STATUS = 'Graduated'
+                                                     AND STP_END_DATE >= TERM_START_DATE
+                                                     AND STP_END_DATE < DATEADD(YEAR, 6, TERM_START_DATE)) THEN 1
+                                      ELSE 0 END                                                                AS SIX_YEAR_GRADUATED
+                  FROM (
+        --(Begin A2)--------------------------------------------------------------------------------
+                                   SELECT AW_TERM, SA_AWARD, SA_STUDENT_ID, AW_DESCRIPTION
+                                   FROM (
+        --(Begin A1)--------------------------------------------------------------------------------
+                                            SELECT '2018FA' AS AW_TERM, *
+                                            FROM F18_AWARD_LIST
+        --(End A1)----------------------------------------------------------------------------------
+                                        ) AS X
+                                            JOIN AWARDS ON X.SA_AWARD = AWARDS.AW_ID
+                                   WHERE SA_ACTION = 'A'
+                                     AND AW_TYPE = 'F'
+        --(End A2)----------------------------------------------------------------------------------
+                               ) AS AL
+                                   JOIN PERSON ON AL.SA_STUDENT_ID = PERSON.ID
+                                   JOIN Z01_ALL_RACE_ETHNIC_W_FLAGS AS RACE ON PERSON.ID = RACE.ID
+                                   JOIN (
+        --(Begin B2)--------------------------------------------------------------------------------
+                              SELECT ID, TERM, TERM_START_DATE
+                              FROM (
+        --(Begin B1)-------------------------------------------------------------------------------
+                                       SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                                       APPL_START_TERM                                                          AS TERM,
+                                                       TERM_START_DATE,
+                                                       ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+                                       FROM APPLICATIONS AS AP
+                                                JOIN STUDENT_ACAD_CRED AS AC
+                                                     ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND
+                                                        AP.APPL_START_TERM = AC.STC_TERM
+                                                JOIN STC_STATUSES AS STAT
+                                                     ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                                                JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                                       WHERE APPL_DATE IS NOT NULL
+        --     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                                         AND STC_STATUS IN ('A', 'N')
+                                         AND STC_CRED_TYPE IN ('INST')
+        --(End B1)---------------------------------------------------------------------------------
+                                   ) AS X
+                              WHERE TERM_ORDER = 1
+        --(End B2)----------------------------------------------------------------------------------
+                          ) AS FM ON PERSON.ID = FM.ID AND AW_TERM = FM.TERM
+        --(End C1)--------------------------------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --(Begin C3)------------------------------------------------------------------------------------------------------------
+        SELECT GENDER,
+               RACE,
+               CASE WHEN COMPLETER < 5 THEN '<5' ELSE CAST(COMPLETER AS VARCHAR) END AS COMPLETER,
+               CASE WHEN NON_COMPLETER < 5 THEN '<5' ELSE CAST(NON_COMPLETER AS VARCHAR) END AS NON_COMPLETER,
+               CASE WHEN GRAND_TOTAL < 5 THEN '<5' ELSE CAST(GRAND_TOTAL AS VARCHAR) END AS GRAND_TOTAL,
+               GRADUATION_RATES
+        FROM (
+        --(Begin C2)------------------------------------------------------------------------------------------------------------
+                 SELECT GENDER,
+                        RACE,
+                        SUM(SIX_YEAR_GRADUATED)                                 AS COMPLETER,
+                        SUM(CASE WHEN SIX_YEAR_GRADUATED = 1 THEN 0 ELSE 1 END) AS NON_COMPLETER,
+                        COUNT(*)                                                AS GRAND_TOTAL,
+                        FORMAT(AVG(1.0 * SIX_YEAR_GRADUATED), 'P')              AS GRADUATION_RATES
+                 FROM (
+        --(Begin C1)------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End C1)--------------------------------------------------------------------------------------------------------------
+                      ) AS X
+                 GROUP BY GENDER, RACE
+        --(End C2)--------------------------------------------------------------------------------------------------------------
+             ) AS X
+        --(End C3)--------------------------------------------------------------------------------------------------------------
+        ORDER BY GENDER, RACE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Graduation Rate of Federal Aid Recipients by Race and Gender"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getOverallRetentionRate_2021FA_TO_2024FA(self):
+        query = f"""
+                 SELECT COHORT.ID,
+                CASE
+                    WHEN EXISTS (SELECT 1
+                                 FROM STUDENT_ENROLLMENT_VIEW AS SEV
+                                 WHERE STUDENT_ID = COHORT.ID
+                                   AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                   AND COALESCE(ENROLL_SCS_PASS_AUDIT, '') != 'A'
+                                   AND ENROLL_TERM = '2024FA') THEN 1
+                    ELSE 0 END AS RETURNED
+         FROM (
+---------------------------------------------------COHORT---------------------------------------------------------------
+                  SELECT ID,
+                         TERM
+                  FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                        APPL_START_TERM                                                          AS TERM,
+                                        TERM_START_DATE,
+                                        ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+                        FROM APPLICATIONS AS AP
+                                 JOIN STUDENT_ACAD_CRED AS AC
+                                      ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                                 JOIN STC_STATUSES AS STAT
+                                      ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                                 JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                        WHERE APPL_DATE IS NOT NULL
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                          AND STC_STATUS IN ('A', 'N')
+                          AND STC_CRED_TYPE IN ('INST')
+                          ----------FFUG------------------
+                        AND APPL_STUDENT_TYPE = 'UG'
+                        AND APPL_STUDENT_LOAD_INTENT = 'F'
+                        AND APPL_ADMIT_STATUS = 'FY'
+                 ) AS X
+                  WHERE TERM_ORDER = 1
+------------------------------------------------------------------------------------------------------------------------
+              ) AS COHORT
+------------------------------------------------------------------------------------------------------------------------
+         WHERE TERM = '2021FA'
+        """
+        agg = lambda query: f"""
+        --(Begin 2)-------------------------------------------------------------------------------------------------------------
+        SELECT FORMAT(AVG(1.0 * RETURNED), 'P') AS RATE
+        FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End 1)---------------------------------------------------------------------------------------------------------------
+             ) AS X
+        --(End 2)---------------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Overall Retention Rate (2021FA to 2024FA)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getOverallRetentionRate_2022FA_TO_2024FA(self):
+        query = f"""
+         SELECT COHORT.ID,
+                CASE
+                    WHEN EXISTS (SELECT 1
+                                 FROM STUDENT_ENROLLMENT_VIEW AS SEV
+                                 WHERE STUDENT_ID = COHORT.ID
+                                   AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                   AND COALESCE(ENROLL_SCS_PASS_AUDIT, '') != 'A'
+                                   AND ENROLL_TERM = '2024FA') THEN 1
+                    ELSE 0 END AS RETURNED
+         FROM (
+---------------------------------------------------COHORT---------------------------------------------------------------
+                  SELECT ID,
+                         TERM
+                  FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                        APPL_START_TERM                                                          AS TERM,
+                                        TERM_START_DATE,
+                                        ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+                        FROM APPLICATIONS AS AP
+                                 JOIN STUDENT_ACAD_CRED AS AC
+                                      ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                                 JOIN STC_STATUSES AS STAT
+                                      ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                                 JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                        WHERE APPL_DATE IS NOT NULL
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                          AND STC_STATUS IN ('A', 'N')
+                          AND STC_CRED_TYPE IN ('INST')
+                          ----------FFUG------------------
+                        AND APPL_STUDENT_TYPE = 'UG'
+                        AND APPL_STUDENT_LOAD_INTENT = 'F'
+                        AND APPL_ADMIT_STATUS = 'FY'
+                 ) AS X
+                  WHERE TERM_ORDER = 1
+------------------------------------------------------------------------------------------------------------------------
+              ) AS COHORT
+------------------------------------------------------------------------------------------------------------------------
+         WHERE TERM = '2022FA'
+        """
+        agg = lambda query: f"""
+        --(Begin 2)-------------------------------------------------------------------------------------------------------------
+SELECT FORMAT(AVG(1.0 * RETURNED), 'P') AS RATE
+FROM (
+--(Begin 1)-------------------------------------------------------------------------------------------------------------
+        {query}
+--(End 1)---------------------------------------------------------------------------------------------------------------
+     ) AS X
+--(End 2)---------------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Overall Retention Rate (2022FA to 2024FA)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getOverallRetentionRate_2023FA_TO_2024FA(self):
+        query = f"""
+                 SELECT COHORT.ID,
+                CASE
+                    WHEN EXISTS (SELECT 1
+                                 FROM STUDENT_ENROLLMENT_VIEW AS SEV
+                                 WHERE STUDENT_ID = COHORT.ID
+                                   AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                   AND COALESCE(ENROLL_SCS_PASS_AUDIT, '') != 'A'
+                                   AND ENROLL_TERM = '2024FA') THEN 1
+                    ELSE 0 END AS RETURNED
+         FROM (
+---------------------------------------------------COHORT---------------------------------------------------------------
+                  SELECT ID,
+                         TERM
+                  FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                        APPL_START_TERM                                                          AS TERM,
+                                        TERM_START_DATE,
+                                        ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+                        FROM APPLICATIONS AS AP
+                                 JOIN STUDENT_ACAD_CRED AS AC
+                                      ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                                 JOIN STC_STATUSES AS STAT
+                                      ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                                 JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                        WHERE APPL_DATE IS NOT NULL
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                          AND STC_STATUS IN ('A', 'N')
+                          AND STC_CRED_TYPE IN ('INST')
+                          ----------FFUG------------------
+                        AND APPL_STUDENT_TYPE = 'UG'
+                        AND APPL_STUDENT_LOAD_INTENT = 'F'
+                        AND APPL_ADMIT_STATUS = 'FY'
+                 ) AS X
+                  WHERE TERM_ORDER = 1
+------------------------------------------------------------------------------------------------------------------------
+              ) AS COHORT
+------------------------------------------------------------------------------------------------------------------------
+         WHERE TERM = '2023FA'
+        """
+        agg = lambda query: f"""
+        --(Begin 2)-------------------------------------------------------------------------------------------------------------
+SELECT FORMAT(AVG(1.0 * RETURNED), 'P') AS RATE
+FROM (
+--(Begin 1)-------------------------------------------------------------------------------------------------------------
+        {query}
+--(End 1)---------------------------------------------------------------------------------------------------------------
+     ) AS X
+--(End 2)---------------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Overall Retention Rate (2023FA to 2024FA)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getOverallRetentionRate_2024FA_TO_2025SP(self):
+        query = f"""
+                 SELECT COHORT.ID,
+                CASE
+                    WHEN EXISTS (SELECT 1
+                                 FROM STUDENT_ENROLLMENT_VIEW AS SEV
+                                 WHERE STUDENT_ID = COHORT.ID
+                                   AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                   AND COALESCE(ENROLL_SCS_PASS_AUDIT, '') != 'A'
+                                   AND ENROLL_TERM = '2025SP') THEN 1
+                    ELSE 0 END AS RETURNED
+         FROM (
+---------------------------------------------------COHORT---------------------------------------------------------------
+                  SELECT ID,
+                         TERM
+                  FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                        APPL_START_TERM                                                          AS TERM,
+                                        TERM_START_DATE,
+                                        ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+                        FROM APPLICATIONS AS AP
+                                 JOIN STUDENT_ACAD_CRED AS AC
+                                      ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                                 JOIN STC_STATUSES AS STAT
+                                      ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                                 JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                        WHERE APPL_DATE IS NOT NULL
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                          AND STC_STATUS IN ('A', 'N')
+                          AND STC_CRED_TYPE IN ('INST')
+                          ----------FFUG------------------
+                        AND APPL_STUDENT_TYPE = 'UG'
+                        AND APPL_STUDENT_LOAD_INTENT = 'F'
+                        AND APPL_ADMIT_STATUS = 'FY'
+                 ) AS X
+                  WHERE TERM_ORDER = 1
+------------------------------------------------------------------------------------------------------------------------
+              ) AS COHORT
+------------------------------------------------------------------------------------------------------------------------
+         WHERE TERM = '2024FA'
+        """
+        agg = lambda query: f"""
+        --(Begin 2)-------------------------------------------------------------------------------------------------------------
+SELECT FORMAT(AVG(1.0 * RETURNED), 'P') AS RATE
+FROM (
+--(Begin 1)-------------------------------------------------------------------------------------------------------------
+        {query}
+--(End 1)---------------------------------------------------------------------------------------------------------------
+     ) AS X
+--(End 2)---------------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Overall Retention Rate (2024FA to 2025SP)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getPersistenceRateOfCarrollCollege(self):
+        query = f"""
+        SELECT COHORT.ID,
+             COHORT.TERM,
+             CASE
+                 WHEN EXISTS (SELECT 1
+                              FROM STUDENT_ENROLLMENT_VIEW
+                              WHERE STUDENT_ID = COHORT.ID
+                                AND ENROLL_TERM = NEXT_TERM.Y
+                                AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                 ELSE 0 END AS PERSISTED
+      FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                            APPL_START_TERM                                                          AS TERM,
+                            TERM_START_DATE,
+                            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+            FROM APPLICATIONS AS AP
+                     JOIN STUDENT_ACAD_CRED AS AC
+                          ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                     JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                     JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                    WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+              AND STC_STATUS IN ('A', 'N')
+              AND STC_CRED_TYPE IN ('INST')) AS COHORT
+               JOIN (VALUES ('2021FA', '2022SP'),
+                            ('2022FA', '2023SP'),
+                            ('2023FA', '2024SP')) AS NEXT_TERM(X, Y) ON TERM = X
+      WHERE TERM_ORDER = 1
+        """
+        agg = lambda query: f"""
+        --(Begin 2)---------------------------------------------------------------------------------
+SELECT TERM,
+       AVG(1.0 * PERSISTED) AS PERSISTENCE_RATE
+    FROM (
+--(Begin 1)---------------------------------------------------------------------------------
+        {query}
+--(End 1)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Persistence Rate of Carroll College"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getPersistenceRateOfCarrollCollege_Disaggregated(self):
+        query = f"""
+SELECT TERM,
+       CATEGORY,
+       SUM(CASE WHEN PERSISTED = 1 THEN 0 ELSE 1 END) AS NOT_PERSISTED,
+       SUM(PERSISTED) AS PERSISTED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * PERSISTED) AS RATE
+--(Begin 1)---------------------------------------------------------------------------------
+FROM (SELECT DISTINCT COHORT.ID,
+             COHORT.TERM,
+             CASE WHEN (STUDENT_AGE >= 17 AND STUDENT_AGE <= 19) THEN '17-19'
+                  WHEN (STUDENT_AGE >= 20) THEN '20 and Over' END AS CATEGORY,
+             CASE
+                 WHEN EXISTS (SELECT 1
+                              FROM STUDENT_ENROLLMENT_VIEW
+                              WHERE STUDENT_ID = COHORT.ID
+                                AND ENROLL_TERM = NEXT_TERM.Y
+                                AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                 ELSE 0 END AS PERSISTED
+      FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                            APPL_START_TERM                                                          AS TERM,
+                            TERM_START_DATE,
+                            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+            FROM APPLICATIONS AS AP
+                     JOIN STUDENT_ACAD_CRED AS AC
+                          ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                     JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                     JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                    WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+              AND STC_STATUS IN ('A', 'N')
+              AND STC_CRED_TYPE IN ('INST')) AS COHORT
+               JOIN (VALUES
+                            ('2023FA', '2024SP')) AS NEXT_TERM(X, Y) ON TERM = X
+                JOIN STUDENT_ENROLLMENT_VIEW ON COHORT.ID = STUDENT_ID
+      WHERE TERM_ORDER = 1
+--(End 1)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM, CATEGORY
+------------------------------------------------------------------------------------------------------------------------
+UNION
+------------------------------------------------------------------------------------------------------------------------
+SELECT TERM,
+        CATEGORY,
+       SUM(CASE WHEN PERSISTED = 1 THEN 0 ELSE 1 END) AS NOT_PERSISTED,
+       SUM(PERSISTED) AS PERSISTED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * PERSISTED) AS RATE
+--(Begin 1)---------------------------------------------------------------------------------
+FROM (SELECT DISTINCT COHORT.ID,
+             COHORT.TERM,
+             CASE WHEN GENDER = 'F' THEN 'Female' WHEN GENDER = 'M' THEN 'Male' END AS CATEGORY,
+             CASE
+                 WHEN EXISTS (SELECT 1
+                              FROM STUDENT_ENROLLMENT_VIEW
+                              WHERE STUDENT_ID = COHORT.ID
+                                AND ENROLL_TERM = NEXT_TERM.Y
+                                AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                 ELSE 0 END AS PERSISTED
+      FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                            APPL_START_TERM                                                          AS TERM,
+                            TERM_START_DATE,
+                            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+            FROM APPLICATIONS AS AP
+                     JOIN STUDENT_ACAD_CRED AS AC
+                          ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                     JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                     JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                    WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+              AND STC_STATUS IN ('A', 'N')
+              AND STC_CRED_TYPE IN ('INST')) AS COHORT
+               JOIN (VALUES
+                            ('2023FA', '2024SP')) AS NEXT_TERM(X, Y) ON TERM = X
+                JOIN PERSON ON COHORT.ID = PERSON.ID
+      WHERE TERM_ORDER = 1
+      AND GENDER IS NOT NULL
+--(End 1)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM, CATEGORY
+------------------------------------------------------------------------------------------------------------------------
+UNION
+------------------------------------------------------------------------------------------------------------------------
+--(Begin 2)---------------------------------------------------------------------------------
+SELECT TERM,
+       'Pell' AS CATEGORY,
+       SUM(CASE WHEN PERSISTED = 1 THEN 0 ELSE 1 END) AS NOT_PERSISTED,
+       SUM(PERSISTED) AS PERSISTED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * PERSISTED) AS RATE
+--(Begin 1)---------------------------------------------------------------------------------
+FROM (SELECT COHORT.ID,
+             COHORT.TERM,
+             CASE
+                 WHEN EXISTS (SELECT 1
+                              FROM STUDENT_ENROLLMENT_VIEW
+                              WHERE STUDENT_ID = COHORT.ID
+                                AND ENROLL_TERM = NEXT_TERM.Y
+                                AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                 ELSE 0 END AS PERSISTED
+      FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                            APPL_START_TERM                                                          AS TERM,
+                            TERM_START_DATE,
+                            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+            FROM APPLICATIONS AS AP
+                     JOIN STUDENT_ACAD_CRED AS AC
+                          ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                     JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                     JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                    WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+              AND STC_STATUS IN ('A', 'N')
+              AND STC_CRED_TYPE IN ('INST')) AS COHORT
+               JOIN (VALUES
+                            ('2023FA', '2024SP')) AS NEXT_TERM(X, Y) ON TERM = X
+      WHERE TERM_ORDER = 1
+      AND EXISTS (
+          SELECT 1
+          FROM (
+              SELECT SA_STUDENT_ID, AW_TERM
+                FROM (
+                      SELECT '2023FA' AS AW_TERM, *
+                      FROM F23_AWARD_LIST) AS X
+                WHERE SA_AWARD = 'FPELL'
+                AND SA_ACTION = 'A'
+               ) AS X
+          WHERE COHORT.ID = SA_STUDENT_ID AND COHORT.TERM = AW_TERM
+      )
+--(End 1)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM
+--(End 2)------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+UNION
+------------------------------------------------------------------------------------------------------------------------
+SELECT TERM,
+       CATEGORY,
+       SUM(CASE WHEN PERSISTED = 1 THEN 0 ELSE 1 END) AS NOT_PERSISTED,
+       SUM(PERSISTED) AS PERSISTED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * PERSISTED) AS RATE
+--(Begin 1)---------------------------------------------------------------------------------
+FROM (SELECT DISTINCT COHORT.ID,
+             COHORT.TERM,
+             RACE.IPEDS_RACE_ETHNIC_DESC AS CATEGORY,
+             CASE
+                 WHEN EXISTS (SELECT 1
+                              FROM STUDENT_ENROLLMENT_VIEW
+                              WHERE STUDENT_ID = COHORT.ID
+                                AND ENROLL_TERM = NEXT_TERM.Y
+                                AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                 ELSE 0 END AS PERSISTED
+      FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                            APPL_START_TERM                                                          AS TERM,
+                            TERM_START_DATE,
+                            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+            FROM APPLICATIONS AS AP
+                     JOIN STUDENT_ACAD_CRED AS AC
+                          ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                     JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                     JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                    WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+              AND STC_STATUS IN ('A', 'N')
+              AND STC_CRED_TYPE IN ('INST')) AS COHORT
+               JOIN (VALUES
+                            ('2023FA', '2024SP')) AS NEXT_TERM(X, Y) ON TERM = X
+                JOIN Z01_ALL_RACE_ETHNIC_W_FLAGS AS RACE ON RACE.ID = COHORT.ID
+      WHERE TERM_ORDER = 1
+--(End 1)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM, CATEGORY
+------------------------------------------------------------------------------------------------------------------------
+UNION
+------------------------------------------------------------------------------------------------------------------------
+SELECT TERM,
+       CATEGORY,
+       SUM(CASE WHEN PERSISTED = 1 THEN 0 ELSE 1 END) AS NOT_PERSISTED,
+       SUM(PERSISTED) AS PERSISTED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * PERSISTED) AS RATE
+--(Begin 1)---------------------------------------------------------------------------------
+FROM (SELECT DISTINCT COHORT.ID,
+             COHORT.TERM,
+             CASE WHEN STATE = 'MT' THEN 'In State' ELSE 'Out of State' END AS CATEGORY,
+             CASE
+                 WHEN EXISTS (SELECT 1
+                              FROM STUDENT_ENROLLMENT_VIEW
+                              WHERE STUDENT_ID = COHORT.ID
+                                AND ENROLL_TERM = NEXT_TERM.Y
+                                AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                 ELSE 0 END AS PERSISTED
+      FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                            APPL_START_TERM                                                          AS TERM,
+                            TERM_START_DATE,
+                            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+            FROM APPLICATIONS AS AP
+                     JOIN STUDENT_ACAD_CRED AS AC
+                          ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                     JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                     JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                    WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+              AND STC_STATUS IN ('A', 'N')
+              AND STC_CRED_TYPE IN ('INST')) AS COHORT
+               JOIN (VALUES
+                            ('2023FA', '2024SP')) AS NEXT_TERM(X, Y) ON TERM = X
+                JOIN (
+                    SELECT ID,
+                           STATE
+                    FROM (SELECT ID,
+                                 PAV.STATE,
+                                 ROW_NUMBER() OVER (PARTITION BY ID ORDER BY ADDRESS_ADD_DATE) AS RANK
+                          FROM PERSON_ADDRESSES_VIEW AS PAV
+                                   JOIN ADDRESS ON PAV.ADDRESS_ID = ADDRESS.ADDRESS_ID
+                          WHERE ADDRESS_TYPE = 'H') AS X
+                    WHERE RANK = 1
+                ) AS STUDENT_STATE ON COHORT.ID = STUDENT_STATE.ID
+      WHERE TERM_ORDER = 1
+--(End 1)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM, CATEGORY
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Persistence Rate of Carroll College (Disaggregated)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict=None)(report, name)
+
+    def getPersistenceRateOfCarrollCollege_Disaggregated_Age(self):
+        query = f"""
+        SELECT DISTINCT COHORT.ID,
+             COHORT.TERM,
+             CASE WHEN (STUDENT_AGE >= 17 AND STUDENT_AGE <= 19) THEN '17-19'
+                  WHEN (STUDENT_AGE >= 20) THEN '20 and Over' END AS CATEGORY,
+             CASE
+                 WHEN EXISTS (SELECT 1
+                              FROM STUDENT_ENROLLMENT_VIEW
+                              WHERE STUDENT_ID = COHORT.ID
+                                AND ENROLL_TERM = NEXT_TERM.Y
+                                AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                 ELSE 0 END AS PERSISTED
+      FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                            APPL_START_TERM                                                          AS TERM,
+                            TERM_START_DATE,
+                            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+            FROM APPLICATIONS AS AP
+                     JOIN STUDENT_ACAD_CRED AS AC
+                          ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                     JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                     JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                    WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+              AND STC_STATUS IN ('A', 'N')
+              AND STC_CRED_TYPE IN ('INST')) AS COHORT
+               JOIN (VALUES
+                            ('2023FA', '2024SP')) AS NEXT_TERM(X, Y) ON TERM = X
+                JOIN STUDENT_ENROLLMENT_VIEW ON COHORT.ID = STUDENT_ID
+      WHERE TERM_ORDER = 1
+        """
+        agg = lambda query: f"""
+        SELECT TERM,
+       CATEGORY,
+       SUM(CASE WHEN PERSISTED = 1 THEN 0 ELSE 1 END) AS NOT_PERSISTED,
+       SUM(PERSISTED) AS PERSISTED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * PERSISTED) AS RATE
+--(Begin 1)---------------------------------------------------------------------------------
+FROM ({query}
+--(End 1)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM, CATEGORY
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Persistence Rate of Carroll College (Disaggregated-Age)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getPersistenceRateOfCarrollCollege_Disaggregated_Gender(self):
+        query = f"""
+        SELECT DISTINCT COHORT.ID,
+             COHORT.TERM,
+             COALESCE(GENDER, 'Unknown') AS CATEGORY,
+             CASE
+                 WHEN EXISTS (SELECT 1
+                              FROM STUDENT_ENROLLMENT_VIEW
+                              WHERE STUDENT_ID = COHORT.ID
+                                AND ENROLL_TERM = NEXT_TERM.Y
+                                AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                 ELSE 0 END AS PERSISTED
+      FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                            APPL_START_TERM                                                          AS TERM,
+                            TERM_START_DATE,
+                            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+            FROM APPLICATIONS AS AP
+                     JOIN STUDENT_ACAD_CRED AS AC
+                          ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                     JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                     JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                    WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+              AND STC_STATUS IN ('A', 'N')
+              AND STC_CRED_TYPE IN ('INST')) AS COHORT
+               JOIN (VALUES
+                            ('2023FA', '2024SP')) AS NEXT_TERM(X, Y) ON TERM = X
+                JOIN PERSON ON COHORT.ID = PERSON.ID
+      WHERE TERM_ORDER = 1
+        """
+        agg = lambda query: f"""
+        SELECT TERM,
+        CATEGORY,
+       SUM(CASE WHEN PERSISTED = 1 THEN 0 ELSE 1 END) AS NOT_PERSISTED,
+       SUM(PERSISTED) AS PERSISTED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * PERSISTED) AS RATE
+        --(Begin 1)---------------------------------------------------------------------------------
+        FROM ({query}
+        --(End 1)------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, CATEGORY
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Persistence Rate of Carroll College (Disaggregated-Gender)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getPersistenceRateOfCarrollCollege_Disaggregated_Pell(self):
+        query = f"""
+        SELECT COHORT.ID,
+             COHORT.TERM,
+             CASE
+                 WHEN EXISTS (SELECT 1
+                              FROM STUDENT_ENROLLMENT_VIEW
+                              WHERE STUDENT_ID = COHORT.ID
+                                AND ENROLL_TERM = NEXT_TERM.Y
+                                AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                 ELSE 0 END AS PERSISTED
+      FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                            APPL_START_TERM                                                          AS TERM,
+                            TERM_START_DATE,
+                            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+            FROM APPLICATIONS AS AP
+                     JOIN STUDENT_ACAD_CRED AS AC
+                          ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                     JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                     JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                    WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+              AND STC_STATUS IN ('A', 'N')
+              AND STC_CRED_TYPE IN ('INST')) AS COHORT
+               JOIN (VALUES
+                            ('2023FA', '2024SP')) AS NEXT_TERM(X, Y) ON TERM = X
+      WHERE TERM_ORDER = 1
+      AND EXISTS (
+          SELECT 1
+          FROM (
+              SELECT SA_STUDENT_ID, AW_TERM
+                FROM (
+                      SELECT '2023FA' AS AW_TERM, *
+                      FROM F23_AWARD_LIST) AS X
+                WHERE SA_AWARD = 'FPELL'
+                AND SA_ACTION = 'A'
+               ) AS X
+          WHERE COHORT.ID = SA_STUDENT_ID AND COHORT.TERM = AW_TERM
+      )
+        """
+        agg = lambda query: f"""
+        --(Begin 2)---------------------------------------------------------------------------------
+SELECT TERM,
+       'Pell' AS CATEGORY,
+       SUM(CASE WHEN PERSISTED = 1 THEN 0 ELSE 1 END) AS NOT_PERSISTED,
+       SUM(PERSISTED) AS PERSISTED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * PERSISTED) AS RATE
+--(Begin 1)---------------------------------------------------------------------------------
+FROM ({query}
+--(End 1)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM
+--(End 2)------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Persistence Rate of Carroll College (Disaggregated-Pell)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getPersistenceRateOfCarrollCollege_Disaggregated_Race(self):
+        query = f"""
+        SELECT DISTINCT COHORT.ID,
+             COHORT.TERM,
+             RACE.IPEDS_RACE_ETHNIC_DESC AS CATEGORY,
+             CASE
+                 WHEN EXISTS (SELECT 1
+                              FROM STUDENT_ENROLLMENT_VIEW
+                              WHERE STUDENT_ID = COHORT.ID
+                                AND ENROLL_TERM = NEXT_TERM.Y
+                                AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                 ELSE 0 END AS PERSISTED
+      FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                            APPL_START_TERM                                                          AS TERM,
+                            TERM_START_DATE,
+                            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+            FROM APPLICATIONS AS AP
+                     JOIN STUDENT_ACAD_CRED AS AC
+                          ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                     JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                     JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                    WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+              AND STC_STATUS IN ('A', 'N')
+              AND STC_CRED_TYPE IN ('INST')) AS COHORT
+               JOIN (VALUES
+                            ('2023FA', '2024SP')) AS NEXT_TERM(X, Y) ON TERM = X
+                JOIN Z01_ALL_RACE_ETHNIC_W_FLAGS AS RACE ON RACE.ID = COHORT.ID
+      WHERE TERM_ORDER = 1
+        """
+        agg = lambda query: f"""
+        SELECT TERM,
+       CATEGORY,
+       SUM(CASE WHEN PERSISTED = 1 THEN 0 ELSE 1 END) AS NOT_PERSISTED,
+       SUM(PERSISTED) AS PERSISTED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * PERSISTED) AS RATE
+        --(Begin 1)---------------------------------------------------------------------------------
+        FROM ({query}
+        --(End 1)------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, CATEGORY
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Persistence Rate of Carroll College (Disaggregated-Race)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getPersistenceRateOfCarrollCollege_Disaggregated_ResidencyStatus(self):
+        query = f"""
+        SELECT DISTINCT COHORT.ID,
+                     COHORT.TERM,
+                     CASE WHEN STATE = 'MT' THEN 'In State' ELSE 'Out of State' END AS CATEGORY,
+                     CASE
+                         WHEN EXISTS (SELECT 1
+                                      FROM STUDENT_ENROLLMENT_VIEW
+                                      WHERE STUDENT_ID = COHORT.ID
+                                        AND ENROLL_TERM = NEXT_TERM.Y
+                                        AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                        AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                         ELSE 0 END AS PERSISTED
+              FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                    APPL_START_TERM                                                          AS TERM,
+                                    TERM_START_DATE,
+                                    ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+                    FROM APPLICATIONS AS AP
+                             JOIN STUDENT_ACAD_CRED AS AC
+                                  ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                             JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                             JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                            WHERE APPL_DATE IS NOT NULL
+                            AND APPL_ACAD_PROGRAM != 'NDEG'
+        --     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                      AND STC_STATUS IN ('A', 'N')
+                      AND STC_CRED_TYPE IN ('INST')) AS COHORT
+                       JOIN (VALUES
+                                    ('2023FA', '2024SP')) AS NEXT_TERM(X, Y) ON TERM = X
+                        JOIN (
+                            SELECT ID,
+                                   STATE
+                            FROM (SELECT ID,
+                                         PAV.STATE,
+                                         ROW_NUMBER() OVER (PARTITION BY ID ORDER BY ADDRESS_ADD_DATE) AS RANK
+                                  FROM PERSON_ADDRESSES_VIEW AS PAV
+                                           JOIN ADDRESS ON PAV.ADDRESS_ID = ADDRESS.ADDRESS_ID
+                                  WHERE ADDRESS_TYPE = 'H') AS X
+                            WHERE RANK = 1
+                        ) AS STUDENT_STATE ON COHORT.ID = STUDENT_STATE.ID
+              WHERE TERM_ORDER = 1
+                """
+        agg = lambda query: f"""
+                SELECT TERM,
+               CATEGORY,
+               SUM(CASE WHEN PERSISTED = 1 THEN 0 ELSE 1 END) AS NOT_PERSISTED,
+               SUM(PERSISTED) AS PERSISTED,
+               COUNT(*) AS TOTAL,
+               AVG(1.0 * PERSISTED) AS RATE
+               FROM (
+        --(Begin 1)---------------------------------------------------------------------------------
+        {query}
+        --(End 1)------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, CATEGORY
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Persistence Rate of Carroll College (Disaggregated-Residency Status)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getRetentionRateOfCarrollCollege_Disaggregated(self):
+        query = f"""
+        SELECT TERM,
+       CATEGORY,
+       SUM(CASE WHEN RETAINED = 1 THEN 0 ELSE 1 END) AS NOT_RETAINED,
+       SUM(RETAINED) AS RETAINED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * RETAINED) AS RATE
+--(Begin 1)---------------------------------------------------------------------------------
+FROM (SELECT DISTINCT COHORT.ID,
+             COHORT.TERM,
+             CASE WHEN (STUDENT_AGE >= 17 AND STUDENT_AGE <= 19) THEN '17-19'
+                  WHEN (STUDENT_AGE >= 20) THEN '20 and Over' END AS CATEGORY,
+             CASE
+                 WHEN EXISTS (SELECT 1
+                              FROM STUDENT_ENROLLMENT_VIEW
+                              WHERE STUDENT_ID = COHORT.ID
+                                AND ENROLL_TERM = NEXT_TERM.Y
+                                AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                 ELSE 0 END AS RETAINED
+      FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                            APPL_START_TERM                                                          AS TERM,
+                            TERM_START_DATE,
+                            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+            FROM APPLICATIONS AS AP
+                     JOIN STUDENT_ACAD_CRED AS AC
+                          ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                     JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                     JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                    WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+              AND STC_STATUS IN ('A', 'N')
+              AND STC_CRED_TYPE IN ('INST')) AS COHORT
+               JOIN (VALUES
+                            ('2023FA', '2024FA')) AS NEXT_TERM(X, Y) ON TERM = X
+                JOIN STUDENT_ENROLLMENT_VIEW ON COHORT.ID = STUDENT_ID
+      WHERE TERM_ORDER = 1
+--(End 1)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM, CATEGORY
+------------------------------------------------------------------------------------------------------------------------
+UNION
+------------------------------------------------------------------------------------------------------------------------
+SELECT TERM,
+        CATEGORY,
+       SUM(CASE WHEN RETAINED = 1 THEN 0 ELSE 1 END) AS NOT_RETAINED,
+       SUM(RETAINED) AS RETAINED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * RETAINED) AS RATE
+--(Begin 1)---------------------------------------------------------------------------------
+FROM (SELECT DISTINCT COHORT.ID,
+             COHORT.TERM,
+             CASE WHEN GENDER = 'F' THEN 'Female' WHEN GENDER = 'M' THEN 'Male' END AS CATEGORY,
+             CASE
+                 WHEN EXISTS (SELECT 1
+                              FROM STUDENT_ENROLLMENT_VIEW
+                              WHERE STUDENT_ID = COHORT.ID
+                                AND ENROLL_TERM = NEXT_TERM.Y
+                                AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                 ELSE 0 END AS RETAINED
+      FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                            APPL_START_TERM                                                          AS TERM,
+                            TERM_START_DATE,
+                            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+            FROM APPLICATIONS AS AP
+                     JOIN STUDENT_ACAD_CRED AS AC
+                          ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                     JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                     JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                    WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+              AND STC_STATUS IN ('A', 'N')
+              AND STC_CRED_TYPE IN ('INST')) AS COHORT
+               JOIN (VALUES
+                            ('2023FA', '2024FA')) AS NEXT_TERM(X, Y) ON TERM = X
+                JOIN PERSON ON COHORT.ID = PERSON.ID
+      WHERE TERM_ORDER = 1
+      AND GENDER IS NOT NULL
+--(End 1)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM, CATEGORY
+------------------------------------------------------------------------------------------------------------------------
+UNION
+------------------------------------------------------------------------------------------------------------------------
+--(Begin 2)---------------------------------------------------------------------------------
+SELECT TERM,
+       'Pell' AS CATEGORY,
+       SUM(CASE WHEN RETAINED = 1 THEN 0 ELSE 1 END) AS NOT_RETAINED,
+       SUM(RETAINED) AS RETAINED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * RETAINED) AS RATE
+--(Begin 1)---------------------------------------------------------------------------------
+FROM (SELECT COHORT.ID,
+             COHORT.TERM,
+             CASE
+                 WHEN EXISTS (SELECT 1
+                              FROM STUDENT_ENROLLMENT_VIEW
+                              WHERE STUDENT_ID = COHORT.ID
+                                AND ENROLL_TERM = NEXT_TERM.Y
+                                AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                 ELSE 0 END AS RETAINED
+      FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                            APPL_START_TERM                                                          AS TERM,
+                            TERM_START_DATE,
+                            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+            FROM APPLICATIONS AS AP
+                     JOIN STUDENT_ACAD_CRED AS AC
+                          ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                     JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                     JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                    WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+              AND STC_STATUS IN ('A', 'N')
+              AND STC_CRED_TYPE IN ('INST')) AS COHORT
+               JOIN (VALUES
+                            ('2023FA', '2024FA')) AS NEXT_TERM(X, Y) ON TERM = X
+      WHERE TERM_ORDER = 1
+      AND EXISTS (
+          SELECT 1
+          FROM (
+              SELECT SA_STUDENT_ID, AW_TERM
+                FROM (
+                      SELECT '2023FA' AS AW_TERM, *
+                      FROM F23_AWARD_LIST) AS X
+                WHERE SA_AWARD = 'FPELL'
+                AND SA_ACTION = 'A'
+               ) AS X
+          WHERE COHORT.ID = SA_STUDENT_ID AND COHORT.TERM = AW_TERM
+      )
+--(End 1)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM
+--(End 2)------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+UNION
+------------------------------------------------------------------------------------------------------------------------
+SELECT TERM,
+       CATEGORY,
+       SUM(CASE WHEN RETAINED = 1 THEN 0 ELSE 1 END) AS NOT_RETAINED,
+       SUM(RETAINED) AS RETAINED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * RETAINED) AS RATE
+--(Begin 1)---------------------------------------------------------------------------------
+FROM (SELECT DISTINCT COHORT.ID,
+             COHORT.TERM,
+             RACE.IPEDS_RACE_ETHNIC_DESC AS CATEGORY,
+             CASE
+                 WHEN EXISTS (SELECT 1
+                              FROM STUDENT_ENROLLMENT_VIEW
+                              WHERE STUDENT_ID = COHORT.ID
+                                AND ENROLL_TERM = NEXT_TERM.Y
+                                AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                 ELSE 0 END AS RETAINED
+      FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                            APPL_START_TERM                                                          AS TERM,
+                            TERM_START_DATE,
+                            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+            FROM APPLICATIONS AS AP
+                     JOIN STUDENT_ACAD_CRED AS AC
+                          ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                     JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                     JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                    WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+              AND STC_STATUS IN ('A', 'N')
+              AND STC_CRED_TYPE IN ('INST')) AS COHORT
+               JOIN (VALUES
+                            ('2023FA', '2024FA')) AS NEXT_TERM(X, Y) ON TERM = X
+                JOIN Z01_ALL_RACE_ETHNIC_W_FLAGS AS RACE ON RACE.ID = COHORT.ID
+      WHERE TERM_ORDER = 1
+--(End 1)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM, CATEGORY
+------------------------------------------------------------------------------------------------------------------------
+UNION
+------------------------------------------------------------------------------------------------------------------------
+SELECT TERM,
+       CATEGORY,
+       SUM(CASE WHEN RETAINED = 1 THEN 0 ELSE 1 END) AS NOT_RETAINED,
+       SUM(RETAINED) AS RETAINED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * RETAINED) AS RATE
+--(Begin 1)---------------------------------------------------------------------------------
+FROM (SELECT DISTINCT COHORT.ID,
+             COHORT.TERM,
+             CASE WHEN STATE = 'MT' THEN 'In State' ELSE 'Out of State' END AS CATEGORY,
+             CASE
+                 WHEN EXISTS (SELECT 1
+                              FROM STUDENT_ENROLLMENT_VIEW
+                              WHERE STUDENT_ID = COHORT.ID
+                                AND ENROLL_TERM = NEXT_TERM.Y
+                                AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                 ELSE 0 END AS RETAINED
+      FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                            APPL_START_TERM                                                          AS TERM,
+                            TERM_START_DATE,
+                            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+            FROM APPLICATIONS AS AP
+                     JOIN STUDENT_ACAD_CRED AS AC
+                          ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                     JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                     JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                    WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+              AND STC_STATUS IN ('A', 'N')
+              AND STC_CRED_TYPE IN ('INST')) AS COHORT
+               JOIN (VALUES
+                            ('2023FA', '2024FA')) AS NEXT_TERM(X, Y) ON TERM = X
+                JOIN (
+                    SELECT ID,
+                           STATE
+                    FROM (SELECT ID,
+                                 PAV.STATE,
+                                 ROW_NUMBER() OVER (PARTITION BY ID ORDER BY ADDRESS_ADD_DATE) AS RANK
+                          FROM PERSON_ADDRESSES_VIEW AS PAV
+                                   JOIN ADDRESS ON PAV.ADDRESS_ID = ADDRESS.ADDRESS_ID
+                          WHERE ADDRESS_TYPE = 'H') AS X
+                    WHERE RANK = 1
+                ) AS STUDENT_STATE ON COHORT.ID = STUDENT_STATE.ID
+      WHERE TERM_ORDER = 1
+--(End 1)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM, CATEGORY
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Retention Rate of Carroll College (Disaggregated)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict=None)(report, name)
+
+    def getRetentionRateOfCarrollCollege_Disaggregated_Age(self):
+        query = f"""
+        SELECT DISTINCT COHORT.ID,
+             COHORT.TERM,
+             CASE WHEN (STUDENT_AGE >= 17 AND STUDENT_AGE <= 19) THEN '17-19'
+                  WHEN (STUDENT_AGE >= 20) THEN '20 and Over' END AS CATEGORY,
+             CASE
+                 WHEN EXISTS (SELECT 1
+                              FROM STUDENT_ENROLLMENT_VIEW
+                              WHERE STUDENT_ID = COHORT.ID
+                                AND ENROLL_TERM = NEXT_TERM.Y
+                                AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                 ELSE 0 END AS RETAINED
+      FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                            APPL_START_TERM                                                          AS TERM,
+                            TERM_START_DATE,
+                            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+            FROM APPLICATIONS AS AP
+                     JOIN STUDENT_ACAD_CRED AS AC
+                          ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                     JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                     JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                    WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+              AND STC_STATUS IN ('A', 'N')
+              AND STC_CRED_TYPE IN ('INST')) AS COHORT
+               JOIN (VALUES
+                            ('2023FA', '2024FA')) AS NEXT_TERM(X, Y) ON TERM = X
+                JOIN STUDENT_ENROLLMENT_VIEW ON COHORT.ID = STUDENT_ID
+      WHERE TERM_ORDER = 1
+        """
+        agg = lambda query: f"""
+        SELECT TERM,
+       CATEGORY,
+       SUM(CASE WHEN RETAINED = 1 THEN 0 ELSE 1 END) AS NOT_RETAINED,
+       SUM(RETAINED) AS RETAINED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * RETAINED) AS RATE
+--(Begin 1)---------------------------------------------------------------------------------
+FROM ({query}
+--(End 1)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM, CATEGORY
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Retention Rate of Carroll College (Disaggregated-Age)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getRetentionRateOfCarrollCollege_Disaggregated_Gender(self):
+        query = f"""
+        SELECT DISTINCT COHORT.ID,
+             COHORT.TERM,
+             CASE WHEN GENDER = 'F' THEN 'Female' WHEN GENDER = 'M' THEN 'Male' END AS CATEGORY,
+             CASE
+                 WHEN EXISTS (SELECT 1
+                              FROM STUDENT_ENROLLMENT_VIEW
+                              WHERE STUDENT_ID = COHORT.ID
+                                AND ENROLL_TERM = NEXT_TERM.Y
+                                AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                 ELSE 0 END AS RETAINED
+      FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                            APPL_START_TERM                                                          AS TERM,
+                            TERM_START_DATE,
+                            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+            FROM APPLICATIONS AS AP
+                     JOIN STUDENT_ACAD_CRED AS AC
+                          ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                     JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                     JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                    WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+              AND STC_STATUS IN ('A', 'N')
+              AND STC_CRED_TYPE IN ('INST')) AS COHORT
+               JOIN (VALUES
+                            ('2023FA', '2024FA')) AS NEXT_TERM(X, Y) ON TERM = X
+                JOIN PERSON ON COHORT.ID = PERSON.ID
+      WHERE TERM_ORDER = 1
+      AND GENDER IS NOT NULL
+        """
+        agg = lambda query: f"""
+        SELECT TERM,
+        CATEGORY,
+       SUM(CASE WHEN RETAINED = 1 THEN 0 ELSE 1 END) AS NOT_RETAINED,
+       SUM(RETAINED) AS RETAINED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * RETAINED) AS RATE
+--(Begin 1)---------------------------------------------------------------------------------
+FROM ({query}
+--(End 1)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM, CATEGORY
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Retention Rate of Carroll College (Disaggregated-Gender)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getRetentionRateOfCarrollCollege_Disaggregated_Pell(self):
+        query = f"""
+        SELECT COHORT.ID,
+             COHORT.TERM,
+             CASE
+                 WHEN EXISTS (SELECT 1
+                              FROM STUDENT_ENROLLMENT_VIEW
+                              WHERE STUDENT_ID = COHORT.ID
+                                AND ENROLL_TERM = NEXT_TERM.Y
+                                AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                 ELSE 0 END AS RETAINED
+      FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                            APPL_START_TERM                                                          AS TERM,
+                            TERM_START_DATE,
+                            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+            FROM APPLICATIONS AS AP
+                     JOIN STUDENT_ACAD_CRED AS AC
+                          ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                     JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                     JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                    WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+              AND STC_STATUS IN ('A', 'N')
+              AND STC_CRED_TYPE IN ('INST')) AS COHORT
+               JOIN (VALUES
+                            ('2023FA', '2024FA')) AS NEXT_TERM(X, Y) ON TERM = X
+      WHERE TERM_ORDER = 1
+      AND EXISTS (
+          SELECT 1
+          FROM (
+              SELECT SA_STUDENT_ID, AW_TERM
+                FROM (
+                      SELECT '2023FA' AS AW_TERM, *
+                      FROM F23_AWARD_LIST) AS X
+                WHERE SA_AWARD = 'FPELL'
+                AND SA_ACTION = 'A'
+               ) AS X
+          WHERE COHORT.ID = SA_STUDENT_ID AND COHORT.TERM = AW_TERM
+      )
+        """
+        agg = lambda query: f"""
+        --(Begin 2)---------------------------------------------------------------------------------
+SELECT TERM,
+       'Pell' AS CATEGORY,
+       SUM(CASE WHEN RETAINED = 1 THEN 0 ELSE 1 END) AS NOT_RETAINED,
+       SUM(RETAINED) AS RETAINED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * RETAINED) AS RATE
+       FROM (
+--(Begin 1)---------------------------------------------------------------------------------
+        {query}
+--(End 1)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM
+--(End 2)------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Retention Rate of Carroll College (Disaggregated-Pell)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getRetentionRateOfCarrollCollege_Disaggregated_Race(self):
+        query = f"""
+        SELECT DISTINCT COHORT.ID,
+             COHORT.TERM,
+             RACE.IPEDS_RACE_ETHNIC_DESC AS CATEGORY,
+             CASE
+                 WHEN EXISTS (SELECT 1
+                              FROM STUDENT_ENROLLMENT_VIEW
+                              WHERE STUDENT_ID = COHORT.ID
+                                AND ENROLL_TERM = NEXT_TERM.Y
+                                AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                 ELSE 0 END AS RETAINED
+      FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                            APPL_START_TERM                                                          AS TERM,
+                            TERM_START_DATE,
+                            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+            FROM APPLICATIONS AS AP
+                     JOIN STUDENT_ACAD_CRED AS AC
+                          ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                     JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                     JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                    WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+              AND STC_STATUS IN ('A', 'N')
+              AND STC_CRED_TYPE IN ('INST')) AS COHORT
+               JOIN (VALUES
+                            ('2023FA', '2024FA')) AS NEXT_TERM(X, Y) ON TERM = X
+                JOIN Z01_ALL_RACE_ETHNIC_W_FLAGS AS RACE ON RACE.ID = COHORT.ID
+      WHERE TERM_ORDER = 1
+        """
+        agg = lambda query: f"""
+        SELECT TERM,
+       CATEGORY,
+       SUM(CASE WHEN RETAINED = 1 THEN 0 ELSE 1 END) AS NOT_RETAINED,
+       SUM(RETAINED) AS RETAINED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * RETAINED) AS RATE
+--(Begin 1)---------------------------------------------------------------------------------
+FROM ({query}
+--(End 1)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM, CATEGORY
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Retention Rate of Carroll College (Disaggregated-Race)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getRetentionRateOfCarrollCollege_Disaggregated_ResidencyStatus(self):
+        query = f"""
+        SELECT DISTINCT COHORT.ID,
+             COHORT.TERM,
+             CASE WHEN STATE = 'MT' THEN 'In State' ELSE 'Out of State' END AS CATEGORY,
+             CASE
+                 WHEN EXISTS (SELECT 1
+                              FROM STUDENT_ENROLLMENT_VIEW
+                              WHERE STUDENT_ID = COHORT.ID
+                                AND ENROLL_TERM = NEXT_TERM.Y
+                                AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                                AND (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)) THEN 1
+                 ELSE 0 END AS RETAINED
+      FROM (SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                            APPL_START_TERM                                                          AS TERM,
+                            TERM_START_DATE,
+                            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+            FROM APPLICATIONS AS AP
+                     JOIN STUDENT_ACAD_CRED AS AC
+                          ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                     JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                     JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                    WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+              AND STC_STATUS IN ('A', 'N')
+              AND STC_CRED_TYPE IN ('INST')) AS COHORT
+               JOIN (VALUES
+                            ('2023FA', '2024FA')) AS NEXT_TERM(X, Y) ON TERM = X
+                JOIN (
+                    SELECT ID,
+                           STATE
+                    FROM (SELECT ID,
+                                 PAV.STATE,
+                                 ROW_NUMBER() OVER (PARTITION BY ID ORDER BY ADDRESS_ADD_DATE) AS RANK
+                          FROM PERSON_ADDRESSES_VIEW AS PAV
+                                   JOIN ADDRESS ON PAV.ADDRESS_ID = ADDRESS.ADDRESS_ID
+                          WHERE ADDRESS_TYPE = 'H') AS X
+                    WHERE RANK = 1
+                ) AS STUDENT_STATE ON COHORT.ID = STUDENT_STATE.ID
+      WHERE TERM_ORDER = 1
+        """
+        agg = lambda query: f"""
+        SELECT TERM,
+       CATEGORY,
+       SUM(CASE WHEN RETAINED = 1 THEN 0 ELSE 1 END) AS NOT_RETAINED,
+       SUM(RETAINED) AS RETAINED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * RETAINED) AS RATE
+--(Begin 1)---------------------------------------------------------------------------------
+FROM ({query}
+--(End 1)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM, CATEGORY
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Retention Rate of Carroll College (Disaggregated-Residency Status)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getTotalPellRecipients(self):
+        query = f"""
+        SELECT COUNT(DISTINCT SA_STUDENT_ID) AS PELL_RECIPIENTS
+        FROM F24_AWARD_LIST
+        WHERE SA_ACTION = 'A'
+        AND SA_AWARD = 'FPELL'
+        """
+        report = "2025-06-19-Consumer Reports"
+        name = "Total Pell Recipients"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict=None)(report, name)
+
+
+    '''
+    ID: Unknown
+    Name: 2025-06-25-Faculty
+    Person: Rebecca Schwartz
+    Start Date: 2025-06-25
+    End Date: 2025-06-25
+    Description:
+        I needed to get the faculty by last academic year grouped by load. 
+    '''
+    def getFaculty(self):
+        query = f"""
+        SELECT DISTINCT PERSTAT_HRP_ID AS ID,
+                FIRST_NAME,
+                LAST_NAME,
+       CASE WHEN PERSTAT_STATUS = 'FT' THEN 'Full-Time' ELSE 'Part-Time' END AS STATUS
+        FROM PERSTAT
+        JOIN POSITION ON PERSTAT_PRIMARY_POS_ID = POSITION_ID
+        JOIN PERSON ON PERSTAT_HRP_ID = PERSON.ID
+        WHERE POS_CLASS = 'FAC'
+        AND (COALESCE(POS_RANK, '') != 'A'
+            OR EXISTS (
+                SELECT 1
+                FROM FACULTY_SECTIONS_DETAILS_VIEW AS FS
+                JOIN COURSE_SECTIONS AS CS ON FS.COURSE_SECTION_ID = CS.COURSE_SECTIONS_ID
+                WHERE CS_TERM IN ('2024SU', '2024FA', '2025SP')
+                AND SEC_BILLING_CRED > 0
+                AND FACULTY_ID = PERSTAT_HRP_ID
+            ))
+        AND PERSTAT_START_DATE <= (
+            SELECT TOP 1 TERM_END_DATE
+            FROM TERMS
+            WHERE TERMS_ID = '2025SP'
+            )
+        AND (PERSTAT_END_DATE >= (
+            SELECT TOP 1 TERM_START_DATE
+            FROM TERMS
+            WHERE TERMS_ID = '2024SU'
+            ) OR PERSTAT_END_DATE IS NULL)
+        """
+        report = "2025-06-25-Faculty"
+        name = "Faculty"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict=None)(report, name)
+
+    '''
+    ID: Unknown
+    Name: 2025-06-25-Student Residencies
+    Person: Rebecca Schwartz
+    Start Date: 2025-06-25
+    End Date: 2025-06-25
+    Description:
+        I needed to calculate student residencies.
+    '''
+    def getCampusResidencyPercentage(self):
+        query = f"""
+        --(Begin 3)-----------------------------------------------------------------------------------
+                  SELECT DISTINCT STUDENT_ID,
+                                  CASE WHEN ADDRESS_TYPE = 'CA' THEN 1 ELSE 0 END AS CAMPUS_STATUS
+                  FROM STUDENT_ENROLLMENT_VIEW AS SEV
+                           JOIN (
+        --(Begin 2)-----------------------------------------------------------------------------------
+                              SELECT ID,
+                                     ADDRESS_TYPE
+                              FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------
+                                       SELECT PAV.ID,
+                                              ADDRESS_TYPE,
+                                              ROW_NUMBER() OVER (PARTITION BY PAV.ID
+                                                  ORDER BY CASE WHEN ADDRESS_TYPE = 'CA' THEN 0 ELSE 1 END) AS ADDRESS_RANK
+                                       FROM PERSON_ADDRESSES_VIEW AS PAV
+                                       JOIN ADDRESS ON PAV.ADDRESS_ID = ADDRESS.ADDRESS_ID
+        --(End 1)-------------------------------------------------------------------------------------
+                                   ) AS X
+                              WHERE ADDRESS_RANK = 1
+        --(End 2)-------------------------------------------------------------------------------------
+                          ) AS STUDENT_STATE ON SEV.STUDENT_ID = STUDENT_STATE.ID
+                          WHERE ENROLL_CREDIT_TYPE = 'Institutional'
+                            AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                            AND COALESCE(ENROLL_SCS_PASS_AUDIT, '') != 'A'
+                            AND ENROLL_TERM IN ('2024FA', '2025SP', '2024SU')
+        --(End 3)-------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --(Begin 4)-----------------------------------------------------------------------------------
+         SELECT FORMAT(AVG(1.0 * CAMPUS_STATUS), 'P') AS CAMPUS_RESIDENCY_RATE
+         FROM (
+        --(Begin 3)-----------------------------------------------------------------------------------
+        {query}
+        --(End 3)-------------------------------------------------------------------------------------
+                      ) AS X
+        --(End 4)-------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-25-Student Residencies"
+        name = "Campus Residency Percentage"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getStudentResidencyCount(self):
+        query = f"""
+        --(Begin 3)-----------------------------------------------------------------------------------
+                  SELECT DISTINCT STUDENT_ID,
+                                  CASE WHEN STATE = 'MT' THEN 'In-State' ELSE 'Out of State' END AS RESIDENCY_STATUS
+                  FROM STUDENT_ENROLLMENT_VIEW AS SEV
+                           JOIN (
+        --(Begin 2)-----------------------------------------------------------------------------------
+        
+                              SELECT ID,
+                                     STATE
+                              FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------
+                                       SELECT PAV.ID,
+                                              PAV.STATE,
+                                              ROW_NUMBER() OVER (PARTITION BY PAV.ID ORDER BY ADDRESS_ADD_DATE) AS ADDRESS_RANK
+                                       FROM PERSON_ADDRESSES_VIEW AS PAV
+                                       JOIN ADDRESS ON PAV.ADDRESS_ID = ADDRESS.ADDRESS_ID
+                                       WHERE ADDRESS_TYPE = 'H'
+        --(End 1)-------------------------------------------------------------------------------------
+                                   ) AS X
+                              WHERE ADDRESS_RANK = 1
+        --(End 2)-------------------------------------------------------------------------------------
+                          ) AS STUDENT_STATE ON SEV.STUDENT_ID = STUDENT_STATE.ID
+                          WHERE ENROLL_CREDIT_TYPE = 'Institutional'
+                            AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                            AND COALESCE(ENROLL_SCS_PASS_AUDIT, '') != 'A'
+                            AND ENROLL_TERM IN ('2024FA', '2025SP', '2024SU')
+        --(End 3)-------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --(Begin 4)-----------------------------------------------------------------------------------
+         SELECT COUNT(*) AS TOTAL
+         FROM (
+        --(Begin 3)-----------------------------------------------------------------------------------
+                {query}
+        --(End 3)-------------------------------------------------------------------------------------
+                      ) AS X
+        --(End 4)-------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-25-Student Residencies"
+        name = "Campus Residency Count"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getCountryCount(self):
+        query = f"""
+        --(Begin 2)-----------------------------------------------------------------------------------
+                      SELECT ID,
+                             COUNTRY
+                      FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------
+                                       SELECT PAV.ID,
+                                              PAV.COUNTRY,
+                                              ROW_NUMBER() OVER (PARTITION BY PAV.ID ORDER BY ADDRESS_ADD_DATE) AS ADDRESS_RANK
+                                       FROM PERSON_ADDRESSES_VIEW AS PAV
+                                       JOIN ADDRESS ON PAV.ADDRESS_ID = ADDRESS.ADDRESS_ID
+                                       WHERE ADDRESS_TYPE = 'H'
+        --(End 1)-------------------------------------------------------------------------------------
+                                   ) AS X
+                              WHERE ADDRESS_RANK = 1
+        --(End 2)-------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --(Begin 4)-----------------------------------------------------------------------------------
+         SELECT COUNT(*) AS TOTAL_COUNTRIES
+         FROM (
+        --(Begin 3)-----------------------------------------------------------------------------------
+                          SELECT DISTINCT COUNTRY,
+                                          COUNTRIES.CTRY_DESC
+                          FROM STUDENT_ENROLLMENT_VIEW AS SEV
+                                   JOIN (
+        --(Begin 2)-----------------------------------------------------------------------------------
+            {query}
+        --(End 2)-------------------------------------------------------------------------------------
+                          ) AS STUDENT_COUNTRY ON SEV.STUDENT_ID = STUDENT_COUNTRY.ID
+                          JOIN COUNTRIES ON STUDENT_COUNTRY.COUNTRY = COUNTRIES_ID
+                          WHERE ENROLL_CREDIT_TYPE = 'Institutional'
+                            AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                            AND COALESCE(ENROLL_SCS_PASS_AUDIT, '') != 'A'
+                            AND ENROLL_TERM IN ('2024FA', '2025SP', '2024SU')
+        --(End 3)-------------------------------------------------------------------------------------
+                      ) AS X
+        --(End 4)-------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-25-Student Residencies"
+        name = "Country Count"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getStudentResidencyPercent(self):
+        query = f"""
+        --(Begin 3)-----------------------------------------------------------------------------------
+                  SELECT DISTINCT STUDENT_ID,
+                                  CASE WHEN STATE = 'MT' THEN 'In-State' ELSE 'Out of State' END AS RESIDENCY_STATUS
+                  FROM STUDENT_ENROLLMENT_VIEW AS SEV
+                           JOIN (
+        --(Begin 2)-----------------------------------------------------------------------------------
+        
+                              SELECT ID,
+                                     STATE
+                              FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------
+                                       SELECT PAV.ID,
+                                              PAV.STATE,
+                                              ROW_NUMBER() OVER (PARTITION BY PAV.ID ORDER BY ADDRESS_ADD_DATE) AS ADDRESS_RANK
+                                       FROM PERSON_ADDRESSES_VIEW AS PAV
+                                       JOIN ADDRESS ON PAV.ADDRESS_ID = ADDRESS.ADDRESS_ID
+                                       WHERE ADDRESS_TYPE = 'H'
+        --(End 1)-------------------------------------------------------------------------------------
+                                   ) AS X
+                              WHERE ADDRESS_RANK = 1
+        --(End 2)-------------------------------------------------------------------------------------
+                          ) AS STUDENT_STATE ON SEV.STUDENT_ID = STUDENT_STATE.ID
+                          WHERE ENROLL_CREDIT_TYPE = 'Institutional'
+                            AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                            AND COALESCE(ENROLL_SCS_PASS_AUDIT, '') != 'A'
+                            AND ENROLL_TERM IN ('2024FA', '2025SP', '2024SU')
+        --(End 3)-------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --(Begin 4)-----------------------------------------------------------------------------------
+         SELECT RESIDENCY_STATUS,
+                FORMAT(CAST(COUNT(*) AS FLOAT) /  SUM(COUNT(*)) OVER (), 'P')  AS STATUS_PERCENT
+         FROM (
+        --(Begin 3)-----------------------------------------------------------------------------------
+            {query}
+        --(End 3)-------------------------------------------------------------------------------------
+                      ) AS X
+                 GROUP BY RESIDENCY_STATUS
+        --(End 4)-------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-25-Student Residencies"
+        name = "Student Residency Percent"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getStateCount(self):
+        query = f"""
+        --(Begin 2)-----------------------------------------------------------------------------------
+
+                      SELECT ID,
+                             STATE
+                      FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------
+                                       SELECT PAV.ID,
+                                              PAV.STATE,
+                                              ROW_NUMBER() OVER (PARTITION BY PAV.ID ORDER BY ADDRESS_ADD_DATE) AS ADDRESS_RANK
+                                       FROM PERSON_ADDRESSES_VIEW AS PAV
+                                       JOIN ADDRESS ON PAV.ADDRESS_ID = ADDRESS.ADDRESS_ID
+                                       WHERE ADDRESS_TYPE = 'H'
+        --(End 1)-------------------------------------------------------------------------------------
+                                   ) AS X
+                              WHERE ADDRESS_RANK = 1
+        --(End 2)-------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --(Begin 4)-----------------------------------------------------------------------------------
+         SELECT COUNT(*) AS TOTAL_STATES
+         FROM (
+        --(Begin 3)-----------------------------------------------------------------------------------
+                          SELECT DISTINCT STATE
+                          FROM STUDENT_ENROLLMENT_VIEW AS SEV
+                                   JOIN (
+        --(Begin 2)-----------------------------------------------------------------------------------
+                {query}
+        --(End 2)-------------------------------------------------------------------------------------
+                          ) AS STUDENT_STATE ON SEV.STUDENT_ID = STUDENT_STATE.ID
+                          JOIN STATES ON STUDENT_STATE.STATE = STATES.STATES_ID
+                          WHERE ENROLL_CREDIT_TYPE = 'Institutional'
+                            AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                            AND COALESCE(ENROLL_SCS_PASS_AUDIT, '') != 'A'
+                            AND ENROLL_TERM IN ('2024FA', '2025SP', '2024SU')
+                            AND STATES.ST_USER1 = 1
+        --(End 3)-------------------------------------------------------------------------------------
+                      ) AS X
+        --(End 4)-------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-25-Student Residencies"
+        name = "State Count"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getTopOtherStates(self):
+        query = f"""
+        --(Begin 3)-----------------------------------------------------------------------------------
+                  SELECT DISTINCT STUDENT_ID,
+                                  STATE
+                  FROM STUDENT_ENROLLMENT_VIEW AS SEV
+                           JOIN (
+        --(Begin 2)-----------------------------------------------------------------------------------
+        
+                              SELECT ID,
+                                     STATE
+                              FROM (
+        --(Begin 1)-----------------------------------------------------------------------------------
+                                       SELECT PAV.ID,
+                                              PAV.STATE,
+                                              ROW_NUMBER() OVER (PARTITION BY PAV.ID ORDER BY ADDRESS_ADD_DATE) AS ADDRESS_RANK
+                                       FROM PERSON_ADDRESSES_VIEW AS PAV
+                                       JOIN ADDRESS ON PAV.ADDRESS_ID = ADDRESS.ADDRESS_ID
+                                       WHERE ADDRESS_TYPE = 'H'
+        --(End 1)-------------------------------------------------------------------------------------
+                                   ) AS X
+                              WHERE ADDRESS_RANK = 1
+        --(End 2)-------------------------------------------------------------------------------------
+                          ) AS STUDENT_STATE ON SEV.STUDENT_ID = STUDENT_STATE.ID
+                          WHERE ENROLL_CREDIT_TYPE = 'Institutional'
+                            AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                            AND COALESCE(ENROLL_SCS_PASS_AUDIT, '') != 'A'
+                            AND ENROLL_TERM IN ('2024FA', '2025SP', '2024SU')
+                          AND STATE IS NOT NULL
+                          AND STATE != 'MT'
+        --(End 3)-------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --(Begin 4)-----------------------------------------------------------------------------------
+                 SELECT TOP 4 STATE,
+                        COUNT(*) AS STATE_COUNT
+                 FROM (
+        --(Begin 3)-----------------------------------------------------------------------------------
+            {query}
+        --(End 3)-------------------------------------------------------------------------------------
+                      ) AS X
+                 GROUP BY STATE
+        --(End 4)-------------------------------------------------------------------------------------
+        ORDER BY STATE_COUNT DESC
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-25-Student Residencies"
+        name = "Top Other States"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    '''
+    ID: Unknown
+    Name: 2025-06-30-NWCCU Carroll
+    Person: Amy Honchell
+    Start Date: 2025-06-30
+    End Date: 2025-06-30
+    Description:
+        I needed to generate data for NWCCU accreditation.
+    '''
+
+    def getGraduationRate_4Year_ByAge(self):
+        query = f"""
+        --(Begin 2)---------------------------------------------------------------------------------
+         SELECT DISTINCT COHORT.ID,
+                COHORT.TERM,
+                 CASE WHEN (STUDENT_AGE >= (17 + DATEDIFF(YEAR, 2017, 2024)) AND STUDENT_AGE <= + DATEDIFF(YEAR, 2017, 2024)) THEN '17-19'
+                  WHEN (STUDENT_AGE >= 20) THEN '20 and Over' END AS CATEGORY,
+                CASE
+                    WHEN EXISTS (SELECT 1
+                                 FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                                 WHERE STUDENT_ID = COHORT.ID
+                                   AND STP_CURRENT_STATUS = 'Graduated'
+                                   AND STP_END_DATE >= COHORT.TERM_START_DATE
+                                   AND STP_END_DATE < DATEADD(YEAR, 4, COHORT.TERM_START_DATE)) THEN 1
+                    ELSE 0 END AS FOUR_YEAR_GRADUATED
+         FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------
+                          SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                          APPL_START_TERM                                                          AS TERM,
+                                          TERM_START_DATE,
+                                          ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+        -------------------------------------------------------------------------------------------------------------------
+                          FROM APPLICATIONS AS AP
+                                   JOIN STUDENT_ACAD_CRED AS AC
+                                        ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                                   JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                                   JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                          WHERE APPL_DATE IS NOT NULL
+                            AND APPL_ACAD_PROGRAM != 'NDEG'
+        --     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                            AND STC_STATUS IN ('A', 'N')
+                            AND STC_CRED_TYPE IN ('INST')
+        --(End 1)---------------------------------------------------------------------------------------------------------
+                      ) AS COHORT
+                          JOIN (VALUES
+                                       ('2017FA')) AS MY_TERMS(X) ON COHORT.TERM = X
+                            JOIN STUDENT_ENROLLMENT_VIEW ON COHORT.ID = STUDENT_ID
+                 WHERE TERM_ORDER = 1
+        --(End 2)------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        --(Begin 3)---------------------------------------------------------------------------------
+        SELECT TERM,
+               CATEGORY,
+               SUM(CASE WHEN FOUR_YEAR_GRADUATED = 1 THEN 0 ELSE 1 END) AS NOT_FOUR_YEAR_GRADUATED,
+               SUM(FOUR_YEAR_GRADUATED) AS PERSISTED,
+               COUNT(*) AS TOTAL,
+               AVG(1.0 * FOUR_YEAR_GRADUATED) AS RATE
+        FROM (
+        --(Begin 2)---------------------------------------------------------------------------------
+            {query}
+        --(End 2)------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, CATEGORY
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-30-NWCCU Carroll"
+        name = "Graduation Rate (Four Year) (Disaggregated-Age)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getGraduationRate_4Year_ByGender(self):
+        query = f"""
+        --(Begin 2)---------------------------------------------------------------------------------
+         SELECT DISTINCT COHORT.ID,
+                COHORT.TERM,
+                 CASE WHEN GENDER = 'M' THEN 'Male' WHEN GENDER = 'F' THEN 'Female' END AS CATEGORY,
+                CASE
+                    WHEN EXISTS (SELECT 1
+                                 FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                                 WHERE STUDENT_ID = COHORT.ID
+                                   AND STP_CURRENT_STATUS = 'Graduated'
+                                   AND STP_END_DATE >= COHORT.TERM_START_DATE
+                                   AND STP_END_DATE < DATEADD(YEAR, 4, COHORT.TERM_START_DATE)) THEN 1
+                    ELSE 0 END AS FOUR_YEAR_GRADUATED
+         FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------
+                          SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                          APPL_START_TERM                                                          AS TERM,
+                                          TERM_START_DATE,
+                                          ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+        -------------------------------------------------------------------------------------------------------------------
+                          FROM APPLICATIONS AS AP
+                                   JOIN STUDENT_ACAD_CRED AS AC
+                                        ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                                   JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                                   JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                          WHERE APPL_DATE IS NOT NULL
+                            AND APPL_ACAD_PROGRAM != 'NDEG'
+        --     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                            AND STC_STATUS IN ('A', 'N')
+                            AND STC_CRED_TYPE IN ('INST')
+        --(End 1)---------------------------------------------------------------------------------------------------------
+                      ) AS COHORT
+                          JOIN (VALUES
+                                       ('2017FA')) AS MY_TERMS(X) ON COHORT.TERM = X
+                            JOIN PERSON ON COHORT.ID = PERSON.ID
+                 WHERE TERM_ORDER = 1
+                AND GENDER IS NOT NULL
+        --(End 2)------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--(Begin 3)---------------------------------------------------------------------------------
+SELECT TERM,
+       CATEGORY,
+       SUM(CASE WHEN FOUR_YEAR_GRADUATED = 1 THEN 0 ELSE 1 END) AS NOT_FOUR_YEAR_GRADUATED,
+       SUM(FOUR_YEAR_GRADUATED) AS PERSISTED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * FOUR_YEAR_GRADUATED) AS RATE
+        FROM (
+        --(Begin 2)---------------------------------------------------------------------------------
+            {query}
+        --(End 2)------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, CATEGORY
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-30-NWCCU Carroll"
+        name = "Graduation Rate (Four Year) (Disaggregated-Gender)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getGraduationRate_4Year_Pell(self):
+        query = f"""
+        --(Begin 2)---------------------------------------------------------------------------------
+         SELECT DISTINCT COHORT.ID,
+                COHORT.TERM,
+                CASE
+                    WHEN EXISTS (SELECT 1
+                                 FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                                 WHERE STUDENT_ID = COHORT.ID
+                                   AND STP_CURRENT_STATUS = 'Graduated'
+                                   AND STP_END_DATE >= COHORT.TERM_START_DATE
+                                   AND STP_END_DATE < DATEADD(YEAR, 4, COHORT.TERM_START_DATE)) THEN 1
+                    ELSE 0 END AS FOUR_YEAR_GRADUATED
+         FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------
+                          SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                          APPL_START_TERM                                                          AS TERM,
+                                          TERM_START_DATE,
+                                          ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+        -------------------------------------------------------------------------------------------------------------------
+                          FROM APPLICATIONS AS AP
+                                   JOIN STUDENT_ACAD_CRED AS AC
+                                        ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                                   JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                                   JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                          WHERE APPL_DATE IS NOT NULL
+                            AND APPL_ACAD_PROGRAM != 'NDEG'
+        --     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                            AND STC_STATUS IN ('A', 'N')
+                            AND STC_CRED_TYPE IN ('INST')
+        --(End 1)---------------------------------------------------------------------------------------------------------
+                      ) AS COHORT
+                          JOIN (VALUES
+                                       ('2017FA')) AS MY_TERMS(X) ON COHORT.TERM = X
+                 WHERE TERM_ORDER = 1
+                      AND EXISTS (
+                  SELECT 1
+                  FROM (
+                      SELECT SA_STUDENT_ID, AW_TERM
+                        FROM (
+                              SELECT '2017FA' AS AW_TERM, *
+                              FROM F17_AWARD_LIST) AS X
+                        WHERE SA_AWARD = 'FPELL'
+                        AND SA_ACTION = 'A'
+                       ) AS X
+                  WHERE COHORT.ID = SA_STUDENT_ID AND COHORT.TERM = AW_TERM
+              )
+        --(End 2)------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        --(Begin 3)---------------------------------------------------------------------------------
+        SELECT TERM,
+               'Pell' AS CATEGORY,
+               SUM(CASE WHEN FOUR_YEAR_GRADUATED = 1 THEN 0 ELSE 1 END) AS NOT_FOUR_YEAR_GRADUATED,
+               SUM(FOUR_YEAR_GRADUATED) AS PERSISTED,
+               COUNT(*) AS TOTAL,
+               AVG(1.0 * FOUR_YEAR_GRADUATED) AS RATE
+        FROM (
+--(Begin 2)---------------------------------------------------------------------------------
+            {query}
+        --(End 2)------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-30-NWCCU Carroll"
+        name = "Graduation Rate (Four Year) (Disaggregated-Pell)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getGraduationRate_4Year_Race(self):
+        query = f"""
+        --(Begin 2)---------------------------------------------------------------------------------
+         SELECT DISTINCT COHORT.ID,
+                COHORT.TERM,
+                 RACE.IPEDS_RACE_ETHNIC_DESC  AS CATEGORY,
+                CASE
+                    WHEN EXISTS (SELECT 1
+                                 FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                                 WHERE STUDENT_ID = COHORT.ID
+                                   AND STP_CURRENT_STATUS = 'Graduated'
+                                   AND STP_END_DATE >= COHORT.TERM_START_DATE
+                                   AND STP_END_DATE < DATEADD(YEAR, 4, COHORT.TERM_START_DATE)) THEN 1
+                    ELSE 0 END AS FOUR_YEAR_GRADUATED
+         FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------
+                          SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                          APPL_START_TERM                                                          AS TERM,
+                                          TERM_START_DATE,
+                                          ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+        -------------------------------------------------------------------------------------------------------------------
+                          FROM APPLICATIONS AS AP
+                                   JOIN STUDENT_ACAD_CRED AS AC
+                                        ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                                   JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                                   JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                          WHERE APPL_DATE IS NOT NULL
+                            AND APPL_ACAD_PROGRAM != 'NDEG'
+        --     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                            AND STC_STATUS IN ('A', 'N')
+                            AND STC_CRED_TYPE IN ('INST')
+        --(End 1)---------------------------------------------------------------------------------------------------------
+                      ) AS COHORT
+                          JOIN (VALUES
+                                       ('2017FA')) AS MY_TERMS(X) ON COHORT.TERM = X
+                            JOIN Z01_ALL_RACE_ETHNIC_W_FLAGS AS RACE ON COHORT.ID = RACE.ID
+                 WHERE TERM_ORDER = 1
+        --(End 2)------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        --(Begin 3)---------------------------------------------------------------------------------
+        SELECT TERM,
+               CATEGORY,
+               SUM(CASE WHEN FOUR_YEAR_GRADUATED = 1 THEN 0 ELSE 1 END) AS NOT_FOUR_YEAR_GRADUATED,
+               SUM(FOUR_YEAR_GRADUATED) AS PERSISTED,
+               COUNT(*) AS TOTAL,
+               AVG(1.0 * FOUR_YEAR_GRADUATED) AS RATE
+        FROM (
+        --(Begin 2)---------------------------------------------------------------------------------
+            {query}
+        --(End 2)------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, CATEGORY
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-30-NWCCU Carroll"
+        name = "Graduation Rate (Four Year) (Disaggregated-Race)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getGraduationRate_4Year_ResidencyStatus(self):
+        query = f"""
+        --(Begin 2)---------------------------------------------------------------------------------
+         SELECT DISTINCT COHORT.ID,
+                COHORT.TERM,
+                CASE WHEN STATE = 'MT' THEN 'In State' ELSE 'Out of State' END AS CATEGORY,
+                CASE
+                    WHEN EXISTS (SELECT 1
+                                 FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                                 WHERE STUDENT_ID = COHORT.ID
+                                   AND STP_CURRENT_STATUS = 'Graduated'
+                                   AND STP_END_DATE >= COHORT.TERM_START_DATE
+                                   AND STP_END_DATE < DATEADD(YEAR, 4, COHORT.TERM_START_DATE)) THEN 1
+                    ELSE 0 END AS FOUR_YEAR_GRADUATED
+         FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------
+                          SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                          APPL_START_TERM                                                          AS TERM,
+                                          TERM_START_DATE,
+                                          ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+        -------------------------------------------------------------------------------------------------------------------
+                          FROM APPLICATIONS AS AP
+                                   JOIN STUDENT_ACAD_CRED AS AC
+                                        ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                                   JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                                   JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                          WHERE APPL_DATE IS NOT NULL
+                            AND APPL_ACAD_PROGRAM != 'NDEG'
+        --     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                            AND STC_STATUS IN ('A', 'N')
+                            AND STC_CRED_TYPE IN ('INST')
+        --(End 1)---------------------------------------------------------------------------------------------------------
+                      ) AS COHORT
+                          JOIN (VALUES
+                                       ('2017FA')) AS MY_TERMS(X) ON COHORT.TERM = X
+                     JOIN (
+                            SELECT ID,
+                                   STATE
+                            FROM (SELECT ID,
+                                         PAV.STATE,
+                                         ROW_NUMBER() OVER (PARTITION BY ID ORDER BY ADDRESS_ADD_DATE) AS RANK
+                                  FROM PERSON_ADDRESSES_VIEW AS PAV
+                                           JOIN ADDRESS ON PAV.ADDRESS_ID = ADDRESS.ADDRESS_ID
+                                  WHERE ADDRESS_TYPE = 'H') AS X
+                            WHERE RANK = 1
+                        ) AS STUDENT_STATE ON COHORT.ID = STUDENT_STATE.ID
+                 WHERE TERM_ORDER = 1
+        --(End 2)------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--(Begin 3)---------------------------------------------------------------------------------
+SELECT TERM,
+       CATEGORY,
+       SUM(CASE WHEN FOUR_YEAR_GRADUATED = 1 THEN 0 ELSE 1 END) AS NOT_FOUR_YEAR_GRADUATED,
+       SUM(FOUR_YEAR_GRADUATED) AS PERSISTED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * FOUR_YEAR_GRADUATED) AS RATE
+FROM (
+--(Begin 2)---------------------------------------------------------------------------------
+            {query}
+--(End 2)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM, CATEGORY
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-30-NWCCU Carroll"
+        name = "Graduation Rate (Four Year) (Disaggregated-Residency Status)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getGraduationRate_6Year(self):
+        query = f"""
+        --(Begin 2)---------------------------------------------------------------------------------
+         SELECT COHORT.ID,
+                COHORT.TERM,
+                CASE
+                    WHEN EXISTS (SELECT 1
+                                 FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                                 WHERE STUDENT_ID = COHORT.ID
+                                   AND STP_CURRENT_STATUS = 'Graduated'
+                                   AND STP_END_DATE >= COHORT.TERM_START_DATE
+                                   AND STP_END_DATE < DATEADD(YEAR, 6, COHORT.TERM_START_DATE)) THEN 1
+                    ELSE 0 END AS SIX_YEAR_GRADUATED
+         FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------
+                          SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                          APPL_START_TERM                                                          AS TERM,
+                                          TERM_START_DATE,
+                                          ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+        -------------------------------------------------------------------------------------------------------------------
+                          FROM APPLICATIONS AS AP
+                                   JOIN STUDENT_ACAD_CRED AS AC
+                                        ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                                   JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                                   JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                          WHERE APPL_DATE IS NOT NULL
+                            AND APPL_ACAD_PROGRAM != 'NDEG'
+        --     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                            AND STC_STATUS IN ('A', 'N')
+                            AND STC_CRED_TYPE IN ('INST')
+        --(End 1)---------------------------------------------------------------------------------------------------------
+                      ) AS COHORT
+                          JOIN (VALUES
+                                       ('2015FA'),
+                                       ('2016FA'),
+                                       ('2017FA')) AS MY_TERMS(X) ON COHORT.TERM = X
+                 WHERE TERM_ORDER = 1
+        --(End 2)------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --(Begin 3)---------------------------------------------------------------------------------
+        SELECT TERM,
+               AVG(1.0 * SIX_YEAR_GRADUATED) AS SIX_YEAR_GRADUATION_RATE
+        FROM (
+        --(Begin 2)---------------------------------------------------------------------------------
+                {query}
+        --(End 2)------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-30-NWCCU Carroll"
+        name = "Graduation Rate (Six Year)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getGraduationRate_6Year_ByAge(self):
+        query = f"""
+        --(Begin 2)---------------------------------------------------------------------------------
+         SELECT DISTINCT COHORT.ID,
+                COHORT.TERM,
+                 CASE WHEN (DATEDIFF(YEAR, PERSON.BIRTH_DATE, TERM_START_DATE) >= 17)
+                    AND (DATEDIFF(YEAR, PERSON.BIRTH_DATE, TERM_START_DATE) <= 19) THEN '17-19'
+                  WHEN (DATEDIFF(YEAR, PERSON.BIRTH_DATE, TERM_START_DATE) >= 20) THEN '20 and Over' END AS CATEGORY,
+                CASE
+                    WHEN EXISTS (SELECT 1
+                                 FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                                 WHERE STUDENT_ID = COHORT.ID
+                                   AND STP_CURRENT_STATUS = 'Graduated'
+                                   AND STP_END_DATE >= COHORT.TERM_START_DATE
+                                   AND STP_END_DATE < DATEADD(YEAR, 6, COHORT.TERM_START_DATE)) THEN 1
+                    ELSE 0 END AS SIX_YEAR_GRADUATED
+         FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------
+                          SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                          APPL_START_TERM                                                          AS TERM,
+                                          TERM_START_DATE,
+                                          ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+        -------------------------------------------------------------------------------------------------------------------
+                          FROM APPLICATIONS AS AP
+                                   JOIN STUDENT_ACAD_CRED AS AC
+                                        ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                                   JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                                   JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                          WHERE APPL_DATE IS NOT NULL
+                            AND APPL_ACAD_PROGRAM != 'NDEG'
+        --     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                            AND STC_STATUS IN ('A', 'N')
+                            AND STC_CRED_TYPE IN ('INST')
+        --(End 1)---------------------------------------------------------------------------------------------------------
+                      ) AS COHORT
+                          JOIN (VALUES ('2017FA')) AS MY_TERMS(X) ON COHORT.TERM = X
+                          JOIN PERSON ON COHORT.ID = PERSON.ID
+                          WHERE TERM_ORDER = 1
+        --(End 2)------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --(Begin 3)---------------------------------------------------------------------------------
+        SELECT TERM,
+               CATEGORY,
+               SUM(CASE WHEN SIX_YEAR_GRADUATED = 1 THEN 0 ELSE 1 END) AS NOT_SIX_YEAR_GRADUATED,
+               SUM(SIX_YEAR_GRADUATED) AS GRADUATED,
+               COUNT(*) AS TOTAL,
+               AVG(1.0 * SIX_YEAR_GRADUATED) AS RATE
+        FROM (
+        --(Begin 2)---------------------------------------------------------------------------------
+        {query}
+        --(End 2)------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, CATEGORY
+        --(End 3)------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-30-NWCCU Carroll"
+        name = "Graduation Rate (Six Year) (Disaggregated-Age)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getGraduationRate_6Year_ByGender(self):
+        query = f"""
+        --(Begin 2)---------------------------------------------------------------------------------
+         SELECT DISTINCT COHORT.ID,
+                COHORT.TERM,
+                 CASE WHEN GENDER = 'M' THEN 'Male' WHEN GENDER = 'F' THEN 'Female' END AS CATEGORY,
+                CASE
+                    WHEN EXISTS (SELECT 1
+                                 FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                                 WHERE STUDENT_ID = COHORT.ID
+                                   AND STP_CURRENT_STATUS = 'Graduated'
+                                   AND STP_END_DATE >= COHORT.TERM_START_DATE
+                                   AND STP_END_DATE < DATEADD(YEAR, 6, COHORT.TERM_START_DATE)) THEN 1
+                    ELSE 0 END AS SIX_YEAR_GRADUATED
+         FROM (
+--(Begin 1)-------------------------------------------------------------------------------------------------------
+                  SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                  APPL_START_TERM                                                          AS TERM,
+                                  TERM_START_DATE,
+                                  ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+-------------------------------------------------------------------------------------------------------------------
+                  FROM APPLICATIONS AS AP
+                           JOIN STUDENT_ACAD_CRED AS AC
+                                ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                           JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                           JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                  WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                    AND STC_STATUS IN ('A', 'N')
+                    AND STC_CRED_TYPE IN ('INST')
+--(End 1)---------------------------------------------------------------------------------------------------------
+              ) AS COHORT
+                  JOIN (VALUES
+                               ('2017FA')) AS MY_TERMS(X) ON COHORT.TERM = X
+                    JOIN PERSON ON COHORT.ID = PERSON.ID
+         WHERE TERM_ORDER = 1
+        AND GENDER IS NOT NULL
+--(End 2)------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --(Begin 3)---------------------------------------------------------------------------------
+SELECT TERM,
+       CATEGORY,
+       SUM(CASE WHEN SIX_YEAR_GRADUATED = 1 THEN 0 ELSE 1 END) AS NOT_SIX_YEAR_GRADUATED,
+       SUM(SIX_YEAR_GRADUATED) AS SIX_YEAR_GRADUATED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * SIX_YEAR_GRADUATED) AS RATE
+FROM (
+--(Begin 2)---------------------------------------------------------------------------------
+        {query}
+--(End 2)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM, CATEGORY
+--(End 3)------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-30-NWCCU Carroll"
+        name = "Graduation Rate (Six Year) (Disaggregated-Gender)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getGraduationRate_6Year_ByPell(self):
+        query = f"""
+        --(Begin 2)---------------------------------------------------------------------------------
+         SELECT DISTINCT COHORT.ID,
+                COHORT.TERM,
+                CASE
+                    WHEN EXISTS (SELECT 1
+                                 FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                                 WHERE STUDENT_ID = COHORT.ID
+                                   AND STP_CURRENT_STATUS = 'Graduated'
+                                   AND STP_END_DATE >= COHORT.TERM_START_DATE
+                                   AND STP_END_DATE < DATEADD(YEAR, 6, COHORT.TERM_START_DATE)) THEN 1
+                    ELSE 0 END AS SIX_YEAR_GRADUATED
+         FROM (
+--(Begin 1)-------------------------------------------------------------------------------------------------------
+                  SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                  APPL_START_TERM                                                          AS TERM,
+                                  TERM_START_DATE,
+                                  ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+-------------------------------------------------------------------------------------------------------------------
+                  FROM APPLICATIONS AS AP
+                           JOIN STUDENT_ACAD_CRED AS AC
+                                ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                           JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                           JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                  WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                    AND STC_STATUS IN ('A', 'N')
+                    AND STC_CRED_TYPE IN ('INST')
+--(End 1)---------------------------------------------------------------------------------------------------------
+              ) AS COHORT
+                  JOIN (VALUES
+                               ('2017FA')) AS MY_TERMS(X) ON COHORT.TERM = X
+         WHERE TERM_ORDER = 1
+              AND EXISTS (
+          SELECT 1
+          FROM (
+              SELECT SA_STUDENT_ID, AW_TERM
+                FROM (
+                      SELECT '2017FA' AS AW_TERM, *
+                      FROM F17_AWARD_LIST) AS X
+                WHERE SA_AWARD = 'FPELL'
+                AND SA_ACTION = 'A'
+               ) AS X
+          WHERE COHORT.ID = SA_STUDENT_ID AND COHORT.TERM = AW_TERM
+      )
+--(End 2)------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --(Begin 3)---------------------------------------------------------------------------------
+SELECT TERM,
+       'Pell' AS CATEGORY,
+       SUM(CASE WHEN SIX_YEAR_GRADUATED = 1 THEN 0 ELSE 1 END) AS NOT_SIX_YEAR_GRADUATED,
+       SUM(SIX_YEAR_GRADUATED) AS SIX_YEAR_GRADUATED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * SIX_YEAR_GRADUATED) AS RATE
+FROM (
+--(Begin 2)---------------------------------------------------------------------------------
+            {query}
+--(End 2)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM
+--(End 3)------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-30-NWCCU Carroll"
+        name = "Graduation Rate (Six Year) (Disaggregated-Pell)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getGraduationRate_6Year_ByRace(self):
+        query = f"""
+        --(Begin 2)---------------------------------------------------------------------------------
+         SELECT DISTINCT COHORT.ID,
+                COHORT.TERM,
+                 RACE.IPEDS_RACE_ETHNIC_DESC  AS CATEGORY,
+                CASE
+                    WHEN EXISTS (SELECT 1
+                                 FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                                 WHERE STUDENT_ID = COHORT.ID
+                                   AND STP_CURRENT_STATUS = 'Graduated'
+                                   AND STP_END_DATE >= COHORT.TERM_START_DATE
+                                   AND STP_END_DATE < DATEADD(YEAR, 6, COHORT.TERM_START_DATE)) THEN 1
+                    ELSE 0 END AS SIX_YEAR_GRADUATED
+         FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------
+                          SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                          APPL_START_TERM                                                          AS TERM,
+                                          TERM_START_DATE,
+                                          ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+        -------------------------------------------------------------------------------------------------------------------
+                          FROM APPLICATIONS AS AP
+                                   JOIN STUDENT_ACAD_CRED AS AC
+                                        ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                                   JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                                   JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                          WHERE APPL_DATE IS NOT NULL
+                            AND APPL_ACAD_PROGRAM != 'NDEG'
+        --     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                            AND STC_STATUS IN ('A', 'N')
+                            AND STC_CRED_TYPE IN ('INST')
+        --(End 1)---------------------------------------------------------------------------------------------------------
+                      ) AS COHORT
+                          JOIN (VALUES
+                                       ('2017FA')) AS MY_TERMS(X) ON COHORT.TERM = X
+                            JOIN Z01_ALL_RACE_ETHNIC_W_FLAGS AS RACE ON COHORT.ID = RACE.ID
+                 WHERE TERM_ORDER = 1
+        --(End 2)------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --(Begin 3)---------------------------------------------------------------------------------
+        SELECT TERM,
+               CATEGORY,
+               SUM(CASE WHEN SIX_YEAR_GRADUATED = 1 THEN 0 ELSE 1 END) AS NOT_SIX_YEAR_GRADUATED,
+               SUM(SIX_YEAR_GRADUATED) AS SIX_YEAR_GRADUATED,
+               COUNT(*) AS TOTAL,
+               AVG(1.0 * SIX_YEAR_GRADUATED) AS RATE
+        FROM (
+        --(Begin 2)---------------------------------------------------------------------------------
+            {query}
+        --(End 2)------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, CATEGORY
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-30-NWCCU Carroll"
+        name = "Graduation Rate (Six Year) (Disaggregated-Race)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getGraduationRate_6Year_ByResidencyStatus(self):
+        query = f"""
+        --(Begin 2)---------------------------------------------------------------------------------
+         SELECT DISTINCT COHORT.ID,
+                COHORT.TERM,
+                CASE WHEN STATE = 'MT' THEN 'In State' ELSE 'Out of State' END AS CATEGORY,
+                CASE
+                    WHEN EXISTS (SELECT 1
+                                 FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                                 WHERE STUDENT_ID = COHORT.ID
+                                   AND STP_CURRENT_STATUS = 'Graduated'
+                                   AND STP_END_DATE >= COHORT.TERM_START_DATE
+                                   AND STP_END_DATE < DATEADD(YEAR, 6, COHORT.TERM_START_DATE)) THEN 1
+                    ELSE 0 END AS SIX_YEAR_GRADUATED
+         FROM (
+--(Begin 1)-------------------------------------------------------------------------------------------------------
+                  SELECT DISTINCT APPL_APPLICANT                                                           AS ID,
+                                  APPL_START_TERM                                                          AS TERM,
+                                  TERM_START_DATE,
+                                  ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE) AS TERM_ORDER
+                  FROM APPLICATIONS AS AP
+                           JOIN STUDENT_ACAD_CRED AS AC
+                                ON AP.APPL_APPLICANT = AC.STC_PERSON_ID AND AP.APPL_START_TERM = AC.STC_TERM
+                           JOIN STC_STATUSES AS STAT ON AC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+                           JOIN TERMS ON APPL_START_TERM = TERMS_ID
+                  WHERE APPL_DATE IS NOT NULL
+                    AND APPL_ACAD_PROGRAM != 'NDEG'
+--     AND APPL_WITHDRAW_DATE IS NULL (Should not use)
+                    AND STC_STATUS IN ('A', 'N')
+                    AND STC_CRED_TYPE IN ('INST')
+--(End 1)---------------------------------------------------------------------------------------------------------
+              ) AS COHORT
+                  JOIN (VALUES
+                               ('2017FA')) AS MY_TERMS(X) ON COHORT.TERM = X
+             JOIN (
+                    SELECT ID,
+                           STATE
+                    FROM (SELECT ID,
+                                 PAV.STATE,
+                                 ROW_NUMBER() OVER (PARTITION BY ID ORDER BY ADDRESS_ADD_DATE) AS RANK
+                          FROM PERSON_ADDRESSES_VIEW AS PAV
+                                   JOIN ADDRESS ON PAV.ADDRESS_ID = ADDRESS.ADDRESS_ID
+                          WHERE ADDRESS_TYPE = 'H') AS X
+                    WHERE RANK = 1
+                ) AS STUDENT_STATE ON COHORT.ID = STUDENT_STATE.ID
+         WHERE TERM_ORDER = 1
+--(End 2)------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --(Begin 3)---------------------------------------------------------------------------------
+SELECT TERM,
+       CATEGORY,
+       SUM(CASE WHEN SIX_YEAR_GRADUATED = 1 THEN 0 ELSE 1 END) AS NOT_SIX_YEAR_GRADUATED,
+       SUM(SIX_YEAR_GRADUATED) AS SIX_YEAR_GRADUATED,
+       COUNT(*) AS TOTAL,
+       AVG(1.0 * SIX_YEAR_GRADUATED) AS RATE
+FROM (
+--(Begin 2)---------------------------------------------------------------------------------
+        {query}
+--(End 2)------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM, CATEGORY
+--(End 3)------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-06-30-NWCCU Carroll"
+        name = "Graduation Rate (Six Year) (Disaggregated-Residency Status)"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    '''
+    ID: Unknown
+    Name: 2025-07-07-MSW Faculty-Staff Program Review
+    Person: Rebecca Schwartz
+    Start Date: 2025-07-07
+    End Date: 2025-07-07
+    Description:
+        Need statistics for the MSW Faculty and Staff.
+    '''
+
+    def getFacultyStudentDemographicsByGender(self):
+        query = f"""
+                 SELECT DISTINCT PERSTAT.PERSTAT_HRP_ID,
+                         PERSON.LAST_NAME,
+                         PERSON.FIRST_NAME,
+                         SEV.STUDENT_ID,
+                         CASE
+                             WHEN SEV.STUDENT_GENDER = 'M' THEN 'Male'
+                             WHEN SEV.STUDENT_GENDER = 'F' THEN 'Female'
+                             ELSE 'Unknown' END AS STUDENT_GENDER
+         FROM TERMS
+                  CROSS JOIN PERSTAT
+                  JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
+                  JOIN POSITION ON PERSTAT.PERSTAT_PRIMARY_POS_ID = POSITION.POSITION_ID
+                 JOIN FACULTY_SECTIONS_DETAILS_VIEW AS FS
+                    ON PERSTAT.PERSTAT_HRP_ID = FS.FACULTY_ID AND TERMS.TERMS_ID = FS.CS_TERM
+                    JOIN COURSE_SECTIONS_DETAILS_VIEW AS CS
+                    ON FS.COURSE_SECTION_ID = CS.COURSE_SECTIONS_ID
+                JOIN STUDENT_ENROLLMENT_VIEW AS SEV
+                    ON CS.COURSE_SECTIONS_ID = SEV.SECTION_COURSE_SECTION_ID
+         WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+           AND TERMS.TERM_END_DATE < '2025-06-01'
+           AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+           AND PERSTAT_START_DATE <= TERMS.TERM_END_DATE
+           AND (PERSTAT_END_DATE >= TERMS.TERM_START_DATE OR PERSTAT_END_DATE IS NULL)
+           AND POSITION.POS_CLASS = 'FAC'
+         AND POSITION.POS_DEPT = 'SWK'
+         AND SEV.ENROLL_CURRENT_STATUS IN ('New', 'Add')
+         AND COALESCE(SEV.ENROLL_SCS_PASS_AUDIT, '') != 'A'
+        """
+        agg = lambda query: f"""
+        --(Begin 2)------------------------------------------------------------------------------------------------------------
+        SELECT PERSTAT_HRP_ID,
+               LAST_NAME,
+               FIRST_NAME,
+               STUDENT_GENDER,
+               COUNT(*) AS COUNT
+        FROM (
+        --(Begin 1)------------------------------------------------------------------------------------------------------------
+                 SELECT DISTINCT PERSTAT.PERSTAT_HRP_ID,
+                                 PERSON.LAST_NAME,
+                                 PERSON.FIRST_NAME,
+                                 SEV.STUDENT_ID,
+                                 CASE
+                                     WHEN SEV.STUDENT_GENDER = 'M' THEN 'Male'
+                                     WHEN SEV.STUDENT_GENDER = 'F' THEN 'Female'
+                                     ELSE 'Unknown' END AS STUDENT_GENDER
+                 FROM TERMS
+                          CROSS JOIN PERSTAT
+                          JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
+                          JOIN POSITION ON PERSTAT.PERSTAT_PRIMARY_POS_ID = POSITION.POSITION_ID
+                         JOIN FACULTY_SECTIONS_DETAILS_VIEW AS FS
+                            ON PERSTAT.PERSTAT_HRP_ID = FS.FACULTY_ID AND TERMS.TERMS_ID = FS.CS_TERM
+                            JOIN COURSE_SECTIONS_DETAILS_VIEW AS CS
+                            ON FS.COURSE_SECTION_ID = CS.COURSE_SECTIONS_ID
+                        JOIN STUDENT_ENROLLMENT_VIEW AS SEV
+                            ON CS.COURSE_SECTIONS_ID = SEV.SECTION_COURSE_SECTION_ID
+                 WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+                   AND TERMS.TERM_END_DATE < '2025-06-01'
+                   AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+                   AND PERSTAT_START_DATE <= TERMS.TERM_END_DATE
+                   AND (PERSTAT_END_DATE >= TERMS.TERM_START_DATE OR PERSTAT_END_DATE IS NULL)
+                   AND POSITION.POS_CLASS = 'FAC'
+                 AND POSITION.POS_DEPT = 'SWK'
+                 AND SEV.ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                 AND COALESCE(SEV.ENROLL_SCS_PASS_AUDIT, '') != 'A'
+        --(End 1)--------------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY PERSTAT_HRP_ID, LAST_NAME, FIRST_NAME, STUDENT_GENDER
+        --(End 2)--------------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT X.* FROM ({query}) AS X
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-07-07-MSW Faculty-Staff Program Review"
+        name = "Faculty Student Demographics By Gender"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getFacultyStudentDemographicByRace(self):
+        query = f"""
+                 SELECT DISTINCT PERSTAT.PERSTAT_HRP_ID,
+                         PERSON.LAST_NAME,
+                         PERSON.FIRST_NAME,
+                         SEV.STUDENT_ID,
+                         STUDENT_RACE.IPEDS_RACE_ETHNIC_DESC AS STUDENT_RACE
+         FROM TERMS
+                  CROSS JOIN PERSTAT
+                  JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
+                  JOIN POSITION ON PERSTAT.PERSTAT_PRIMARY_POS_ID = POSITION.POSITION_ID
+                  JOIN FACULTY_SECTIONS_DETAILS_VIEW AS FS
+                       ON PERSTAT.PERSTAT_HRP_ID = FS.FACULTY_ID AND TERMS.TERMS_ID = FS.CS_TERM
+                  JOIN COURSE_SECTIONS_DETAILS_VIEW AS CS
+                       ON FS.COURSE_SECTION_ID = CS.COURSE_SECTIONS_ID
+                  JOIN STUDENT_ENROLLMENT_VIEW AS SEV
+                       ON CS.COURSE_SECTIONS_ID = SEV.SECTION_COURSE_SECTION_ID
+                  JOIN Z01_ALL_RACE_ETHNIC_W_FLAGS AS STUDENT_RACE ON SEV.STUDENT_ID = STUDENT_RACE.ID
+         WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+           AND TERMS.TERM_END_DATE < '2025-06-01'
+           AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+           AND PERSTAT_START_DATE <= TERMS.TERM_END_DATE
+           AND (PERSTAT_END_DATE >= TERMS.TERM_START_DATE OR PERSTAT_END_DATE IS NULL)
+           AND POSITION.POS_CLASS = 'FAC'
+           AND POSITION.POS_DEPT = 'SWK'
+           AND SEV.ENROLL_CURRENT_STATUS IN ('New', 'Add')
+           AND COALESCE(SEV.ENROLL_SCS_PASS_AUDIT, '') != 'A'
+        """
+        agg = lambda query: f"""
+        --(Begin 2)------------------------------------------------------------------------------------------------------------
+SELECT PERSTAT_HRP_ID,
+       LAST_NAME,
+       FIRST_NAME,
+       STUDENT_RACE,
+       COUNT(*) AS COUNT
+FROM (
+--(Begin 1)------------------------------------------------------------------------------------------------------------
+        {query}
+--(End 1)--------------------------------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY PERSTAT_HRP_ID, LAST_NAME, FIRST_NAME, STUDENT_RACE
+--(End 2)--------------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT X.* FROM ({query}) AS X
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-07-07-MSW Faculty-Staff Program Review"
+        name = "Faculty Student Demographics By Race"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getAdjunctsAndCourseLoad_2(self):
+        query = f"""
+                          SELECT DISTINCT TERMS.TERMS_ID         AS TERM,
+                                  TERM_START_DATE,
+                                  PERSTAT.PERSTAT_HRP_ID AS ID,
+                                  PERSON.LAST_NAME,
+                                  PERSON.FIRST_NAME,
+                                  CS.COURSE_SECTIONS_ID,
+                                  CS_BILLING_CREDITS     AS CREDITS
+                  FROM TERMS
+                           CROSS JOIN PERSTAT
+                           JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
+                           JOIN POSITION ON PERSTAT.PERSTAT_PRIMARY_POS_ID = POSITION.POSITION_ID
+                           JOIN FACULTY_SECTIONS_DETAILS_VIEW AS FS
+                                ON PERSTAT.PERSTAT_HRP_ID = FS.FACULTY_ID AND TERMS.TERMS_ID = FS.CS_TERM
+                           JOIN COURSE_SECTIONS_DETAILS_VIEW AS CS
+                                ON FS.COURSE_SECTION_ID = CS.COURSE_SECTIONS_ID
+                  WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+                    AND TERMS.TERM_END_DATE < '2025-06-01'
+                    AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+                    AND PERSTAT_START_DATE <= TERMS.TERM_END_DATE
+                    AND (PERSTAT_END_DATE >= TERMS.TERM_START_DATE OR PERSTAT_END_DATE IS NULL)
+                    AND POSITION.POS_RANK = 'A'
+                    AND POSITION.POS_DEPT = 'SWK'
+                    AND CS_BILLING_CREDITS IS NOT NULL
+        """
+        agg = lambda query: f"""
+        --(Begin 2)------------------------------------------------------------------------------------------------------------
+         SELECT TERM,
+                ID,
+                LAST_NAME,
+                FIRST_NAME,
+                SUM(CREDITS) AS ADJUNCT_CREDIT_LOAD
+         FROM (
+        --(Begin 1)------------------------------------------------------------------------------------------------------------
+                {query}
+        --(End 1)--------------------------------------------------------------------------------------------------------------
+                      ) AS X
+                 GROUP BY TERM, ID, LAST_NAME, FIRST_NAME, TERM_START_DATE
+        --(End 2)--------------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT X.* FROM ({query}) AS X
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-07-07-MSW Faculty-Staff Program Review"
+        name = "Adjuncts and Course Load"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getAvgCreditLoad(self):
+        query = f"""
+                          SELECT DISTINCT TERMS.TERMS_ID                           AS TERM,
+                                  PERSTAT.PERSTAT_HRP_ID                   AS ID,
+                                  PERSON.LAST_NAME,
+                                  PERSON.FIRST_NAME,
+                                  CS.COURSE_SECTIONS_ID,
+                                  CS_BILLING_CREDITS AS CREDITS
+                  FROM TERMS
+                           CROSS JOIN PERSTAT
+                           JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
+                           JOIN POSITION ON PERSTAT.PERSTAT_PRIMARY_POS_ID = POSITION.POSITION_ID
+                           JOIN FACULTY_SECTIONS_DETAILS_VIEW AS FS
+                                ON PERSTAT.PERSTAT_HRP_ID = FS.FACULTY_ID AND TERMS.TERMS_ID = FS.CS_TERM
+                           JOIN COURSE_SECTIONS_DETAILS_VIEW AS CS
+                                ON FS.COURSE_SECTION_ID = CS.COURSE_SECTIONS_ID
+                  WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+                    AND TERMS.TERM_END_DATE < '2025-06-01'
+                    AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+                    AND PERSTAT_START_DATE <= TERMS.TERM_END_DATE
+                    AND (PERSTAT_END_DATE >= TERMS.TERM_START_DATE OR PERSTAT_END_DATE IS NULL)
+                    AND POSITION.POS_CLASS = 'FAC'
+                  AND POSITION.POS_DEPT = 'SWK'
+        """
+        agg = lambda query: f"""
+        --(Begin 3)------------------------------------------------------------------------------------------------------------
+        SELECT ID,
+               LAST_NAME,
+               FIRST_NAME,
+               AVG(FACULTY_CREDIT_LOAD) AS AVG_CREDIT_LOAD
+        FROM (
+        --(Begin 2)------------------------------------------------------------------------------------------------------------
+                 SELECT TERM,
+                        ID,
+                        LAST_NAME,
+                        FIRST_NAME,
+                        SUM(CREDITS) AS FACULTY_CREDIT_LOAD
+                 FROM (
+        --(Begin 1)------------------------------------------------------------------------------------------------------------
+                {query}
+        --(End 1)--------------------------------------------------------------------------------------------------------------
+                      ) AS X
+                 GROUP BY TERM, ID, LAST_NAME, FIRST_NAME
+        --(End 2)--------------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY ID, LAST_NAME, FIRST_NAME
+        --(End 3)--------------------------------------------------------------------------------------------------------------
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        names = lambda query: f"""
+        SELECT X.* FROM ({query}) AS X
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-07-07-MSW Faculty-Staff Program Review"
+        name = "Average Credit Load"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getAvgEnrollmentSize(self):
+        query = f"""
+                          SELECT DISTINCT TERMS.TERMS_ID                           AS TERM,
+                                  PERSTAT.PERSTAT_HRP_ID                   AS ID,
+                                  PERSON.LAST_NAME,
+                                  PERSON.FIRST_NAME,
+                                  CS.COURSE_SECTIONS_ID,
+                                  CS.CS_COUNT_ACTIVE_STUDENTS AS ENROLLMENT
+                  FROM TERMS
+                           CROSS JOIN PERSTAT
+                           JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
+                           JOIN POSITION ON PERSTAT.PERSTAT_PRIMARY_POS_ID = POSITION.POSITION_ID
+                           JOIN FACULTY_SECTIONS_DETAILS_VIEW AS FS
+                                ON PERSTAT.PERSTAT_HRP_ID = FS.FACULTY_ID AND TERMS.TERMS_ID = FS.CS_TERM
+                           JOIN COURSE_SECTIONS_DETAILS_VIEW AS CS
+                                ON FS.COURSE_SECTION_ID = CS.COURSE_SECTIONS_ID
+                  WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+                    AND TERMS.TERM_END_DATE < '2025-06-01'
+                    AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+                    AND PERSTAT_START_DATE <= TERMS.TERM_END_DATE
+                    AND (PERSTAT_END_DATE >= TERMS.TERM_START_DATE OR PERSTAT_END_DATE IS NULL)
+                    AND POSITION.POS_CLASS = 'FAC'
+                    AND POSITION.POS_DEPT = 'SWK'
+        """
+        agg = lambda query: f"""
+        --(Begin 3)------------------------------------------------------------------------------------------------------------
+        SELECT ID,
+               LAST_NAME,
+               FIRST_NAME,
+               AVG(FACULTY_ENROLLMENT) AS AVG_FACULTY_ENROLLMENT
+        FROM (
+        --(Begin 2)------------------------------------------------------------------------------------------------------------
+                 SELECT TERM,
+                        ID,
+                        LAST_NAME,
+                        FIRST_NAME,
+                        SUM(ENROLLMENT) AS FACULTY_ENROLLMENT
+                 FROM (
+        --(Begin 1)------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End 1)--------------------------------------------------------------------------------------------------------------
+                      ) AS X
+                 GROUP BY TERM, ID, LAST_NAME, FIRST_NAME
+        --(End 2)--------------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY ID, LAST_NAME, FIRST_NAME
+        --(End 3)--------------------------------------------------------------------------------------------------------------
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        names = lambda query: f"""
+        SELECT X.* FROM ({query}) AS X
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-07-07-MSW Faculty-Staff Program Review"
+        name = "Average Enrollment Size"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getStaffDemographicsByGender(self):
+        query = f"""
+                 SELECT DISTINCT PERSTAT.PERSTAT_HRP_ID AS ID,
+                         PERSON.LAST_NAME,
+                         PERSON.FIRST_NAME,
+                         CASE WHEN GENDER = 'M' THEN 'Male'
+                             WHEN GENDER = 'F' THEN 'Female'
+                             ELSE 'Unknown' END AS GENDER
+         FROM TERMS
+                  CROSS JOIN PERSTAT
+                  JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
+                  JOIN POSITION ON PERSTAT.PERSTAT_PRIMARY_POS_ID = POSITION.POSITION_ID
+         WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+           AND TERMS.TERM_END_DATE < '2025-06-01'
+           AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+           AND PERSTAT_START_DATE <= TERMS.TERM_END_DATE
+           AND (PERSTAT_END_DATE >= TERMS.TERM_START_DATE OR PERSTAT_END_DATE IS NULL)
+           AND (POSITION.POS_CLASS != 'FAC' OR POSITION.POS_CLASS IS NULL)
+           AND (POSITION.POS_RANK != 'A' OR POSITION.POS_RANK IS NULL)
+           AND (POSITION.POS_EEO_RANK != 'INS' OR POSITION.POS_EEO_RANK IS NULL)
+           AND PERSTAT.PERSTAT_STATUS != 'STU'
+           AND POSITION.POS_DEPT = 'SWK'
+        """
+        agg = lambda query: f"""
+        --(Begin 2)------------------------------------------------------------------------------------------------------------
+SELECT GENDER,
+       COUNT(*) AS COUNT
+FROM (
+--(Begin 1)------------------------------------------------------------------------------------------------------------
+         SELECT DISTINCT PERSTAT.PERSTAT_HRP_ID AS ID,
+                         PERSON.LAST_NAME,
+                         PERSON.FIRST_NAME,
+                         CASE WHEN GENDER = 'M' THEN 'Male'
+                             WHEN GENDER = 'F' THEN 'Female'
+                             ELSE 'Unknown' END AS GENDER
+         FROM TERMS
+                  CROSS JOIN PERSTAT
+                  JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
+                  JOIN POSITION ON PERSTAT.PERSTAT_PRIMARY_POS_ID = POSITION.POSITION_ID
+         WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+           AND TERMS.TERM_END_DATE < '2025-06-01'
+           AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+           AND PERSTAT_START_DATE <= TERMS.TERM_END_DATE
+           AND (PERSTAT_END_DATE >= TERMS.TERM_START_DATE OR PERSTAT_END_DATE IS NULL)
+           AND (POSITION.POS_CLASS != 'FAC' OR POSITION.POS_CLASS IS NULL)
+           AND (POSITION.POS_RANK != 'A' OR POSITION.POS_RANK IS NULL)
+           AND (POSITION.POS_EEO_RANK != 'INS' OR POSITION.POS_EEO_RANK IS NULL)
+           AND PERSTAT.PERSTAT_STATUS != 'STU'
+           AND POSITION.POS_DEPT = 'SWK'
+--(End 1)--------------------------------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY GENDER
+--(End 2)--------------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT X.* FROM ({query}) AS X
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-07-07-MSW Faculty-Staff Program Review"
+        name = "Staff Demographics By Gender"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getStaffDemographicsByRace(self):
+        query = f"""
+                 SELECT DISTINCT PERSTAT.PERSTAT_HRP_ID,
+                         PERSON.LAST_NAME,
+                         PERSON.FIRST_NAME,
+                         RACE.IPEDS_RACE_ETHNIC_DESC AS RACE
+         FROM TERMS
+                  CROSS JOIN PERSTAT
+                  JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
+                  JOIN POSITION ON PERSTAT.PERSTAT_PRIMARY_POS_ID = POSITION.POSITION_ID
+                  JOIN Z01_ALL_RACE_ETHNIC_W_FLAGS AS RACE ON PERSON.ID = RACE.ID
+         WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+           AND TERMS.TERM_END_DATE < '2025-06-01'
+           AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+           AND PERSTAT_START_DATE <= TERMS.TERM_END_DATE
+           AND (PERSTAT_END_DATE >= TERMS.TERM_START_DATE OR PERSTAT_END_DATE IS NULL)
+           AND (POSITION.POS_CLASS != 'FAC' OR POSITION.POS_CLASS IS NULL)
+           AND (POSITION.POS_RANK != 'A' OR POSITION.POS_RANK IS NULL)
+           AND (POSITION.POS_EEO_RANK != 'INS' OR POSITION.POS_EEO_RANK IS NULL)
+           AND PERSTAT.PERSTAT_STATUS != 'STU'
+           AND POSITION.POS_DEPT = 'SWK'
+        """
+        agg = lambda query: f"""
+        --(Begin 2)------------------------------------------------------------------------------------------------------------
+        SELECT RACE,
+               COUNT(*) AS COUNT
+        FROM (
+        --(Begin 1)------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End 1)--------------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY RACE
+        --(End 2)--------------------------------------------------------------------------------------------------------------
+        ORDER BY RACE
+        """
+        names = lambda query: f"""
+        SELECT X.* FROM ({query}) AS X
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-07-07-MSW Faculty-Staff Program Review"
+        name = "Staff Demographics By Race"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getStaffLoad_2(self):
+        query = f"""
+                 SELECT DISTINCT TERMS.TERMS_ID                                                  AS TERM,
+                         TERMS.TERM_START_DATE,
+                         PERSTAT.PERSTAT_HRP_ID,
+                         PERSON.LAST_NAME,
+                         PERSON.FIRST_NAME,
+                         CASE WHEN PERSTAT.PERSTAT_STATUS = 'FT' THEN 'FT' ELSE 'PT' END AS STATUS
+         FROM TERMS
+                  CROSS JOIN PERSTAT
+                  JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
+                  JOIN POSITION ON PERSTAT.PERSTAT_PRIMARY_POS_ID = POSITION.POSITION_ID
+         WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+           AND TERMS.TERM_END_DATE < '2025-06-01'
+           AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+           AND PERSTAT_START_DATE <= TERMS.TERM_END_DATE
+           AND (PERSTAT_END_DATE >= TERMS.TERM_START_DATE OR PERSTAT_END_DATE IS NULL)
+           AND (POSITION.POS_CLASS != 'FAC' OR POSITION.POS_CLASS IS NULL)
+           AND (POSITION.POS_RANK != 'A' OR POSITION.POS_RANK IS NULL)
+           AND (POSITION.POS_EEO_RANK != 'INS' OR POSITION.POS_EEO_RANK IS NULL)
+           AND PERSTAT.PERSTAT_STATUS != 'STU'
+           AND POSITION.POS_DEPT = 'SWK'
+        """
+        agg = lambda query: f"""
+        --(Begin 2)------------------------------------------------------------------------------------------------------------
+        SELECT TERM,
+               STATUS,
+               COUNT(*) AS COUNT
+        FROM (
+        --(Begin 1)------------------------------------------------------------------------------------------------------------
+                {query}
+        --(End 1)--------------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, STATUS, TERM_START_DATE
+        --(End 2)--------------------------------------------------------------------------------------------------------------
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT X.* FROM ({query}) AS X
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-07-07-MSW Faculty-Staff Program Review"
+        name = "Staff Load"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getTenureStatus_2(self):
+        query = f"""
+                 SELECT TERMS.TERMS_ID AS TERM,
+                PERSTAT.PERSTAT_HRP_ID,
+                PERSON.LAST_NAME,
+                PERSON.FIRST_NAME,
+                COALESCE(TENURE_STATUS.NAME, 'Unknown') AS TENURE_STATUS
+         FROM TERMS
+          CROSS JOIN PERSTAT
+          JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
+          JOIN POSITION ON PERSTAT.PERSTAT_PRIMARY_POS_ID = POSITION.POSITION_ID
+          LEFT JOIN (VALUES
+            ('T', 'Tenured'), ('O', 'On Tenure Track'), ('N', 'Not Tenure Track'))
+            AS TENURE_STATUS(ID, NAME) ON PERSTAT_TENURE_TYPE = TENURE_STATUS.ID
+          WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+            AND TERMS.TERM_END_DATE < '2025-06-01'
+            AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+            AND PERSTAT_START_DATE <= TERMS.TERM_END_DATE
+            AND (PERSTAT_END_DATE >= TERMS.TERM_START_DATE OR PERSTAT_END_DATE IS NULL)
+           AND POSITION.POS_CLASS = 'FAC'
+          AND POSITION.POS_DEPT = 'SWK'
+        """
+        agg = lambda query: f"""
+        --(Begin 1)------------------------------------------------------------------------------------------------------------
+         SELECT TERMS.TERMS_ID AS TERM,
+                PERSTAT.PERSTAT_HRP_ID,
+                PERSON.LAST_NAME,
+                PERSON.FIRST_NAME,
+                COALESCE(TENURE_STATUS.NAME, 'Unknown') AS TENURE_STATUS
+         FROM TERMS
+          CROSS JOIN PERSTAT
+          JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
+          JOIN POSITION ON PERSTAT.PERSTAT_PRIMARY_POS_ID = POSITION.POSITION_ID
+          LEFT JOIN (VALUES
+            ('T', 'Tenured'), ('O', 'On Tenure Track'), ('N', 'Not Tenure Track'))
+            AS TENURE_STATUS(ID, NAME) ON PERSTAT_TENURE_TYPE = TENURE_STATUS.ID
+          WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+            AND TERMS.TERM_END_DATE < '2025-06-01'
+            AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+            AND PERSTAT_START_DATE <= TERMS.TERM_END_DATE
+            AND (PERSTAT_END_DATE >= TERMS.TERM_START_DATE OR PERSTAT_END_DATE IS NULL)
+           AND POSITION.POS_CLASS = 'FAC'
+          AND POSITION.POS_DEPT = 'SWK'
+        --(End 1)--------------------------------------------------------------------------------------------------------------
+        ORDER BY TERM_START_DATE, LAST_NAME, FIRST_NAME
+        """
+        names = lambda query: f"""
+        SELECT X.* FROM ({query}) AS X
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-07-07-MSW Faculty-Staff Program Review"
+        name = "Tenure Status"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getTotalFilledFacultyPositions_2(self):
+        query = f"""
+                 SELECT TERMS.TERMS_ID AS TERM,
+                TERM_START_DATE,
+                PERSTAT.PERSTAT_HRP_ID,
+                PERSON.LAST_NAME,
+                PERSON.FIRST_NAME
+         FROM TERMS
+             CROSS JOIN PERSTAT
+              JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
+              JOIN POSITION ON PERSTAT.PERSTAT_PRIMARY_POS_ID = POSITION.POSITION_ID
+         WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+            AND TERMS.TERM_END_DATE < '2025-06-01'
+            AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+            AND PERSTAT_START_DATE <= TERMS.TERM_END_DATE
+            AND (PERSTAT_END_DATE >= TERMS.TERM_START_DATE OR PERSTAT_END_DATE IS NULL)
+           AND POSITION.POS_CLASS = 'FAC'
+            AND POSITION.POS_DEPT = 'SWK'
+        """
+        agg = lambda query: f"""
+        --(Begin 2)------------------------------------------------------------------------------------------------------------
+        SELECT TERM,
+               COUNT(*) AS TOTAL_FACULTY
+        FROM (
+        --(Begin 1)------------------------------------------------------------------------------------------------------------
+                 SELECT TERMS.TERMS_ID AS TERM,
+                        TERM_START_DATE,
+                        PERSTAT.PERSTAT_HRP_ID,
+                        PERSON.LAST_NAME,
+                        PERSON.FIRST_NAME
+                 FROM TERMS
+                     CROSS JOIN PERSTAT
+                      JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
+                      JOIN POSITION ON PERSTAT.PERSTAT_PRIMARY_POS_ID = POSITION.POSITION_ID
+                 WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+                    AND TERMS.TERM_END_DATE < '2025-06-01'
+                    AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+                    AND PERSTAT_START_DATE <= TERMS.TERM_END_DATE
+                    AND (PERSTAT_END_DATE >= TERMS.TERM_START_DATE OR PERSTAT_END_DATE IS NULL)
+                   AND POSITION.POS_CLASS = 'FAC'
+                    AND POSITION.POS_DEPT = 'SWK'
+        --(End 1)--------------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, TERM_START_DATE
+        --(End 2)--------------------------------------------------------------------------------------------------------------
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT X.* FROM ({query}) AS X
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-07-07-MSW Faculty-Staff Program Review"
+        name = "Total Filled Faculty Positions"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getTotalStaff_2(self):
+        query = f"""
+                 SELECT TERMS.TERMS_ID AS TERM,
+                TERM_START_DATE,
+                PERSTAT.PERSTAT_HRP_ID,
+                PERSON.LAST_NAME,
+                PERSON.FIRST_NAME
+         FROM TERMS
+             CROSS JOIN PERSTAT
+              JOIN PERSON ON PERSTAT.PERSTAT_HRP_ID = PERSON.ID
+              JOIN POSITION ON PERSTAT.PERSTAT_PRIMARY_POS_ID = POSITION.POSITION_ID
+         WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+            AND TERMS.TERM_END_DATE < '2025-06-01'
+            AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+            AND PERSTAT_START_DATE <= TERMS.TERM_END_DATE
+            AND (PERSTAT_END_DATE >= TERMS.TERM_START_DATE OR PERSTAT_END_DATE IS NULL)
+           AND (POSITION.POS_CLASS != 'FAC' OR POSITION.POS_CLASS IS NULL)
+           AND (POSITION.POS_RANK != 'A' OR POSITION.POS_RANK IS NULL)
+           AND (POSITION.POS_EEO_RANK != 'INS' OR POSITION.POS_EEO_RANK IS NULL)
+          AND PERSTAT.PERSTAT_STATUS != 'STU'
+         AND POSITION.POS_DEPT = 'SWK'
+        """
+        agg = lambda query: f"""
+        --(Begin 2)------------------------------------------------------------------------------------------------------------
+        SELECT TERM,
+               COUNT(*) AS TOTAL_ADMIN_STAFF
+        FROM (
+        --(Begin 1)------------------------------------------------------------------------------------------------------------
+                {query}
+        --(End 1)--------------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, TERM_START_DATE
+        --(End 2)--------------------------------------------------------------------------------------------------------------
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT X.* FROM ({query}) AS X
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-07-07-MSW Faculty-Staff Program Review"
+        name = "Total Staff"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    '''
+    ID: Unknown
+    Name: 2025-07-10-FTE for Fall 2025
+    Person: Rebecca Schwartz
+    Start Date: 2025-07-10
+    End Date: 2025-07-10
+    Description:
+    '''
+    def getFTE_2025FA(self):
+        query = f"""
+                 SELECT STTR_STUDENT,
+                CASE
+                    WHEN STTR_STUDENT_LOAD IN ('F', 'O') THEN 'Full-Time'
+                    ELSE 'Part-Time' END AS LOAD
+         FROM ODS_STUDENT_TERMS
+         WHERE STTR_TERM = '2025FA'
+           AND STATUS_DESC = 'Registered'
+        """
+        agg = lambda query: f"""
+        --(Begin 2)---------------------------------------------------------------------------------------------
+        SELECT COALESCE(LOAD, 'FTE') AS LOAD,
+               COUNT(*) AS COUNT,
+               CAST(SUM(CASE WHEN LOAD = 'Full-Time' THEN 1.0 ELSE 1.0 / 3 END) AS INT) AS WEIGHTED_COUNT
+        FROM (
+        --(Begin 1)---------------------------------------------------------------------------------------------
+                 SELECT STTR_STUDENT,
+                        CASE
+                            WHEN STTR_STUDENT_LOAD IN ('F', 'O') THEN 'Full-Time'
+                            ELSE 'Part-Time' END AS LOAD
+                 FROM ODS_STUDENT_TERMS
+                 WHERE STTR_TERM = '2025FA'
+                   AND STATUS_DESC = 'Registered'
+        --(End 1)------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY LOAD WITH ROLLUP
+        --(End 2)------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN ODS_PERSON P ON X.STTR_STUDENT = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-07-10-FTE for Fall 2025"
+        name = "2025-07-10-FTE for Fall 2025"
+        self.save_query_results(query, db="ODS", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    '''
+    ID: Unknown
+    Name: 2025-07-21-Three-Year Average of Retention and Persistence
+    Person: Amy Honchell
+    Start Date: 2025-07-21
+    End Date: 2025-07-21
+    Description:
+    '''
+    def getPersistence(self):
+        query = f"""
+        SELECT DISTINCT STC_PERSON_ID AS STUDENT_ID,
+       STC_TERM AS START_TERM,
+        PERSISTENCE.Y AS NEXT_TERM,
+        CASE WHEN EXISTS (
+            SELECT 1
+            FROM STUDENT_ACAD_CRED AS STC_INNER
+            LEFT JOIN STC_STATUSES AS STATUS_INNER ON STC_INNER.STUDENT_ACAD_CRED_ID = STATUS_INNER.STUDENT_ACAD_CRED_ID
+                                                          AND STATUS_INNER.POS = 1
+            LEFT JOIN STUDENT_COURSE_SEC AS SEC_INNER
+                ON STC_INNER.STC_STUDENT_COURSE_SEC = SEC_INNER.STUDENT_COURSE_SEC_ID
+            WHERE STC.STC_PERSON_ID = STC_INNER.STC_PERSON_ID
+            AND STC_INNER.STC_TERM = PERSISTENCE.Y
+            AND STATUS_INNER.STC_STATUS IN ('N', 'A')
+            AND COALESCE(SEC_INNER.SCS_PASS_AUDIT, '') != 'A'
+        ) THEN 1 ELSE 0 END AS STAYED,
+       CASE
+       WHEN EXISTS (SELECT 1
+                    FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                    WHERE SAPV.STUDENT_ID = STC.STC_PERSON_ID
+                      AND STP_CURRENT_STATUS = 'Graduated'
+                      AND (STP_END_DATE > TERMS.TERM_START_DATE OR STP_END_DATE IS NULL))
+           THEN 1
+       ELSE 0 END AS GRADUATED
+
+        FROM STUDENT_ACAD_CRED AS STC
+        LEFT JOIN STC_STATUSES AS STATUS ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND STATUS.POS = 1
+        LEFT JOIN STUDENT_COURSE_SEC AS SEC ON STC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+        JOIN (VALUES ('2022FA', '2023SP'),
+                     ('2023FA', '2024SP'),
+                     ('2024FA', '2025SP')) AS PERSISTENCE(X, Y) ON STC.STC_TERM = X
+        JOIN TERMS ON STC.STC_TERM = TERMS_ID
+        WHERE STATUS.STC_STATUS IN ('N', 'A')
+        AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
+        """
+        agg = lambda query: f"""
+        --(Begin 4)------------------------------------------------------------------------------------------------------
+        SELECT AVG(PERSISTENCE_RATE) AS THREE_YEAR_AVG_PERSISTENCE_RATE
+        FROM (
+        --(Begin 3)------------------------------------------------------------------------------------------------------
+                 SELECT PERIOD,
+                        AVG(1.0 * PERSISTED) AS PERSISTENCE_RATE
+                 FROM (
+        --(Begin 2)------------------------------------------------------------------------------------------------------
+                          SELECT STUDENT_ID,
+                                 START_TERM + '-' + NEXT_TERM                            AS PERIOD,
+                                 CASE WHEN STAYED = 1 OR GRADUATED = 1 THEN 1 ELSE 0 END AS PERSISTED
+                          FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End 1)--------------------------------------------------------------------------------------------------------------
+                               ) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+                      ) AS X
+                 GROUP BY PERIOD
+        --(End 3)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        --(End 4)-------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-07-21-Three-Year Average of Retention and Persistence"
+        name = "Persistence"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getRetention(self):
+        query = f"""
+        SELECT DISTINCT STC_PERSON_ID AS STUDENT_ID,
+       STC_TERM AS START_TERM,
+        PERSISTENCE.Y AS NEXT_TERM,
+        CASE WHEN EXISTS (
+            SELECT 1
+            FROM STUDENT_ACAD_CRED AS STC_INNER
+            LEFT JOIN STC_STATUSES AS STATUS_INNER ON STC_INNER.STUDENT_ACAD_CRED_ID = STATUS_INNER.STUDENT_ACAD_CRED_ID
+                                                          AND STATUS_INNER.POS = 1
+            LEFT JOIN STUDENT_COURSE_SEC AS SEC_INNER
+                ON STC_INNER.STC_STUDENT_COURSE_SEC = SEC_INNER.STUDENT_COURSE_SEC_ID
+            WHERE STC.STC_PERSON_ID = STC_INNER.STC_PERSON_ID
+            AND STC_INNER.STC_TERM = PERSISTENCE.Y
+            AND STATUS_INNER.STC_STATUS IN ('N', 'A')
+            AND COALESCE(SEC_INNER.SCS_PASS_AUDIT, '') != 'A'
+        ) THEN 1 ELSE 0 END AS STAYED,
+       CASE
+       WHEN EXISTS (SELECT 1
+                    FROM STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                    WHERE SAPV.STUDENT_ID = STC.STC_PERSON_ID
+                      AND STP_CURRENT_STATUS = 'Graduated'
+                      AND (STP_END_DATE > TERMS.TERM_START_DATE OR STP_END_DATE IS NULL))
+           THEN 1
+       ELSE 0 END AS GRADUATED
+
+FROM STUDENT_ACAD_CRED AS STC
+LEFT JOIN STC_STATUSES AS STATUS ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND STATUS.POS = 1
+LEFT JOIN STUDENT_COURSE_SEC AS SEC ON STC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+JOIN (VALUES ('2021FA', '2022FA'),
+             ('2022FA', '2023FA'),
+             ('2023FA', '2024FA')) AS PERSISTENCE(X, Y) ON STC.STC_TERM = X
+JOIN TERMS ON STC.STC_TERM = TERMS_ID
+WHERE STATUS.STC_STATUS IN ('N', 'A')
+AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
+        """
+        agg = lambda query: f"""
+        --(Begin 4)------------------------------------------------------------------------------------------------------
+        SELECT AVG(RETENTION_RATE) AS THREE_YEAR_AVG_RETENTION_RATE
+        FROM (
+        --(Begin 3)------------------------------------------------------------------------------------------------------
+                 SELECT PERIOD,
+                        AVG(1.0 * RETAINED) AS RETENTION_RATE
+                 FROM (
+        --(Begin 2)------------------------------------------------------------------------------------------------------
+                          SELECT STUDENT_ID,
+                                 START_TERM + '-' + NEXT_TERM                            AS PERIOD,
+                                 CASE WHEN STAYED = 1 OR GRADUATED = 1 THEN 1 ELSE 0 END AS RETAINED
+                          FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End 1)--------------------------------------------------------------------------------------------------------------
+                               ) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+                      ) AS X
+                 GROUP BY PERIOD
+        --(End 3)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        --(End 4)-------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-07-21-Three-Year Average of Retention and Persistence"
+        name = "Retention"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    '''
+    ID: Unknown
+    Name: 2025-07-29-FISAP
+    Person: Rebecca Schwartz
+    Start Date: 2025-07-29
+    End Date: 2025-07-29
+    Description
+    '''
+    def getUnduplicatedHeadcount(self):
+        query = f"""
+                 SELECT DISTINCT LEFT(STC_STUDENT_ACAD_LEVELS_ID, 7) AS STUDENT_ID,
+                         SPT_STUDENT_ACAD_CRED.ACAD_LEVEL_DESC AS ACAD_LEVEL
+         FROM SPT_STUDENT_ACAD_CRED
+         WHERE STC_START_DATE >= '2024-07-01'
+           AND STC_END_DATE < '2025-07-01'
+           AND STC_CRED_TYPE = 'INST'
+           AND CURRENT_STATUS_DESC IN ('New', 'Add')
+           AND STC_GRADE != 'Audit'
+           AND STC_CRED > 0
+        """
+        agg = lambda query: f"""
+        --(Begin 2)-------------------------------------------------------------------------------------------------------------
+        SELECT ACAD_LEVEL,
+               COUNT(*) AS UNDUPLICATED_HEADCOUNT
+        FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------------
+                    {query}
+        --(End 1)---------------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY ACAD_LEVEL
+        --(End 2)---------------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN ODS_PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-07-29-FISAP"
+        name = "Unduplicated Headcount"
+        self.save_query_results(query, db="ODS", func_dict={"Agg": agg, "Names": names})(report, name)
+
 
 
 

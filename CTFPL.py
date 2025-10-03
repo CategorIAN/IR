@@ -9,6 +9,7 @@ import numpy as np
 from matplotlib.patches import Patch, Rectangle
 from itertools import product
 from tabulate import tabulate
+from pathlib import Path
 
 class CTFPL:
     def __init__(self):
@@ -113,11 +114,42 @@ class CTFPL:
         df.to_csv(os.path.join(self.guides, "Distance.csv"), index = False)
 
     def number_in_range(self, std_threshold):
-        df = self.distance
+        df = self.distance.loc[lambda df: df["School"] != "Carroll College"]
         df["In Range"] = df["Distance"].map(lambda x: int(x <= std_threshold))
-        agg_df = df.groupby(by="School").agg(Close_Metrics = ("In Range", "sum"))
-        self.print_table(agg_df)
+        agg_df = df.groupby(by="School_ID").agg(Close_Metrics = ("In Range", "sum"))
         return agg_df.loc[lambda df: df["Close_Metrics"] >= 4].shape[0]
+
+    def makeSTDCorrelation(self, start, stop):
+        std_thresholds = np.linspace(start, stop, 500)
+        my_func = np.vectorize(self.number_in_range)
+        school_neighborhood_sizes = my_func(std_thresholds)
+        df = pd.DataFrame({"STD Threshold": std_thresholds, "Neighborhood Size": school_neighborhood_sizes})
+        plt.figure(figsize = (10, 10))
+        plt.axhline(y = 50, color='red', linestyle='--', linewidth = 2, label = "50 Schools")
+        plt.axhline(y=100, color='green', linestyle='--', linewidth = 2, label="100 Schools")
+        plt.plot(df["STD Threshold"], df["Neighborhood Size"])
+        plt.xlabel('Standard Deviation Threshold')
+        plt.ylabel('Number of Schools Within STD Threshold From Carroll College For 4+ Metrics')
+        plt.title('School Neighborhood Size Distribution')
+        plt.grid(True)
+        path_folder = Path(os.path.join(self.folder, f"From {start} to {stop}"))
+        path_folder.mkdir(parents = True, exist_ok = True)
+        df.to_csv(path_folder / f"From {start} to {stop}.csv")
+        plt.savefig(path_folder / f"From {start} to {stop}.png")
+        plt.show()
+        plt.close()
+
+    def getTop50Schools(self):
+        std_threshold = 0.0258917835671342
+        df = self.distance
+        df = df.loc[lambda df: df['School'] != "Carroll College"]
+        df["In Range"] = df["Distance"].map(lambda x: int(x <= std_threshold))
+        df = df.groupby(by="School_ID").agg(Close_Metrics=("In Range", "sum")).reset_index()
+        df["School_ID"] = df["School_ID"].astype(str)
+        df = df.loc[lambda df: df["Close_Metrics"] >= 4].sort_values(by="Close_Metrics", ascending = False)
+        df = pd.merge(df, self.schools, on = "School_ID")[["School_ID", "School", "Close_Metrics"]]
+        df.to_csv(os.path.join(self.folder, "Top Schools.csv"), index = False)
+        self.print_table(df)
 
 
 
