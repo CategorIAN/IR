@@ -2071,366 +2071,6 @@ ORDER BY ORDER_1.N, ORDER_2.N --Gave it an ordering
 
     '''
     ID: Unknown
-    Name: 2025-04-10-Program Review
-    Person: Rebecca Schwartz
-    Start Date: 2025-04-10
-    End Date: 2025-04-24
-    Description:
-        I need to generate a bunch of data to help with program review.
-    '''
-    def getGraduationRateByCohort(self):
-        query = f"""
-        --(Begin 7)------------------------------------------------------------------------------------------------------------
-            SELECT MAJOR,
-                   MAJOR_COHORT,
-                   FORMAT(COMPLETION_RATE, 'P') AS COMPLETION_RATE,
-                   FORMAT(FOUR_YEAR_GRADUATION_RATE, 'P') AS FOUR_YEAR_GRADUATION_RATE,
-                   FORMAT(SIX_YEAR_GRADUATION_RATE, 'P') AS SIX_YEAR_GRADUATION_RATE,
-                   STUDENT_COUNT
-            FROM (
-            --(Begin 6)------------------------------------------------------------------------------------------------------------
-                     SELECT MAJOR,
-                            MAJOR_COHORT,
-                            AVG(MAJOR_COMPLETED * 1.0)    AS COMPLETION_RATE,
-                            AVG(FOUR_YEAR_GRADUATE * 1.0) AS FOUR_YEAR_GRADUATION_RATE,
-                            AVG(SIX_YEAR_GRADUATE * 1.0)  AS SIX_YEAR_GRADUATION_RATE,
-                            COUNT(*)                      AS STUDENT_COUNT,
-                            START
-                     FROM (
-            --(Begin 5)------------------------------------------------------------------------------------------------------------
-                              SELECT MAJOR,
-                                     STUDENT_ID,
-                                     MAJOR_COHORT,
-                                     MAJOR_COMPLETED,
-                                     CASE
-                                         WHEN MAJOR_COMPLETED = 1 AND ACAD_END_DATE < DATEADD(YEAR, 4, START) THEN 1
-                                         ELSE 0 END AS FOUR_YEAR_GRADUATE,
-                                     CASE
-                                         WHEN MAJOR_COMPLETED = 1 AND ACAD_END_DATE < DATEADD(YEAR, 4, START) THEN 1
-                                         ELSE 0 END AS SIX_YEAR_GRADUATE,
-                                        START
-                              FROM (
-            --(Begin 4)------------------------------------------------------------------------------------------------------------
-                                       SELECT X.MAJOR,
-                                              X.STUDENT_ID,
-                                              COHORTS.TERM            AS MAJOR_COHORT,
-                                              MAX(COMPLETE)           AS MAJOR_COMPLETED,
-                                              COHORTS.TERM_START_DATE AS START,
-                                              ACAD_END_DATE
-                                       FROM (
-            --(Begin 3)------------------------------------------------------------------------------------------------------------
-                                                SELECT MAJOR,
-                                                       STUDENT_ID,
-                                                       CASE
-                                                           WHEN (MAJOR_END >= ACAD_END_DATE OR MAJOR_END IS NULL)
-                                                               AND STATUS = 'Graduated' THEN 1
-                                                           ELSE 0 END AS COMPLETE,
-                                                       ACAD_END_DATE
-                                                FROM (
-            --(Begin 2)------------------------------------------------------------------------------------------------------------
-                                                         SELECT MAJOR,
-                                                                STUDENT_ID,
-                                                                STATUS,
-                                                                CASE WHEN MAJOR = MAIN THEN MAIN_END ELSE ADDNL_END END AS MAJOR_END,
-                                                                ACAD_END_DATE
-                                                         FROM (
-            --(Begin 1)------------------------------------------------------------------------------------------------------------
-                                                                  SELECT MAJORS.MAJ_DESC           AS MAJOR,
-                                                                         SAPV.STUDENT_ID,
-                                                                         STP_CURRENT_STATUS        AS STATUS,
-                                                                         MAIN_MAJOR.MAJ_DESC       AS MAIN,
-                                                                         STP_END_DATE              AS MAIN_END,
-                                                                         STPR_ADDNL_MAJOR_END_DATE AS ADDNL_END,
-                                                                         AC.ACAD_END_DATE
-                                                                  FROM MAJORS
-                                                                           CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
-                                                                           JOIN ACAD_CREDENTIALS AS AC
-                                                                                ON SAPV.STUDENT_ID = AC.ACAD_PERSON_ID AND
-                                                                                   SAPV.STP_DEGREE = AC.ACAD_DEGREE
-            
-                                                                           LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
-                                                                                     ON SAPV.STUDENT_ID = STPR_STUDENT AND
-                                                                                        STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
-                                                                           LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
-                                                                           LEFT JOIN MAJORS AS ADDNL_MAJOR
-                                                                                     ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
-                                                                  WHERE STP_CURRENT_STATUS != 'Did Not Enroll'
-                                                                    AND STP_START_DATE >= '2019-08-01'
-                                                                    AND (
-                                                                      (
-                                                                          MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
-                                                                          )
-                                                                          OR (
-                                                                          MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
-                                                                          )
-                                                                      )
-                                                                    AND MAJORS.MAJ_DESC = 'Master of Social Work'
-            --(End 1)------------------------------------------------------------------------------------------------------------
-                                                              ) AS X
-            --(End 2)------------------------------------------------------------------------------------------------------------
-                                                     ) AS X
-            --(End 3)------------------------------------------------------------------------------------------------------------
-                                            ) AS X
-                                                JOIN (
-            --(Begin B2)-----------------------------------------------------------------------------------------------------------
-                                           SELECT MAJOR,
-                                                  STUDENT_ID,
-                                                  TERM,
-                                                  TERM_START_DATE
-                                           FROM (
-            --(Begin B1)-----------------------------------------------------------------------------------------------------------
-                                                    SELECT DISTINCT TERMS.TERMS_ID                AS TERM,
-                                                                    TERMS.TERM_START_DATE,
-                                                                    MAJORS.MAJ_DESC               AS MAJOR,
-                                                                    SAPV.STUDENT_ID,
-                                                                    ROW_NUMBER() OVER (PARTITION BY STUDENT_ID, MAJORS.MAJ_DESC
-                                                                        ORDER BY TERM_START_DATE) AS TERM_RANK
-                                                    FROM MAJORS
-                                                             CROSS JOIN TERMS
-                                                             CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
-            
-                                                             LEFT JOIN STPR_MAJOR_LIST_VIEW AS SMLV
-                                                                       ON SAPV.STUDENT_ID = SMLV.STPR_STUDENT AND
-                                                                          SAPV.STP_ACADEMIC_PROGRAM = SMLV.STPR_ACAD_PROGRAM
-                                                             LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
-                                                             LEFT JOIN MAJORS AS ADDNL_MAJOR ON SMLV.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
-            
-                                                    WHERE TERMS.TERM_START_DATE >= DATEADD(YEAR, -10, '2019-08-01')
-                                                      AND TERMS.TERM_END_DATE < '2025-06-01'
-                                                      AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
-                                                      AND SAPV.STP_CURRENT_STATUS != 'Did Not Enroll'
-            
-                                                      AND (
-                                                        (
-                                                            MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
-                                                                AND SAPV.STP_START_DATE <= TERMS.TERM_END_DATE
-                                                                AND
-                                                            (SAPV.STP_END_DATE >= TERMS.TERM_START_DATE OR SAPV.STP_END_DATE IS NULL)
-                                                            )
-                                                            OR (
-                                                            MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
-                                                                AND SMLV.STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
-                                                                AND
-                                                            (SMLV.STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR
-                                                             SMLV.STPR_ADDNL_MAJOR_END_DATE IS NULL)
-                                                            )
-                                                        )
-            --(End B1)-------------------------------------------------------------------------------------------------------------
-                                                ) AS X
-                                           WHERE TERM_RANK = 1
-                                             AND TERM_START_DATE >= '2019-08-01'
-            --(End B2)-------------------------------------------------------------------------------------------------------------
-                                       ) AS COHORTS ON X.MAJOR = COHORTS.MAJOR AND X.STUDENT_ID = COHORTS.STUDENT_ID
-                                       GROUP BY X.MAJOR, X.STUDENT_ID, COHORTS.TERM, COHORTS.TERM_START_DATE, ACAD_END_DATE
-            --(End 4)------------------------------------------------------------------------------------------------------------
-                                   ) AS X
-            --(End 5)------------------------------------------------------------------------------------------------------------
-                          ) AS X
-                     GROUP BY MAJOR, MAJOR_COHORT, START
-            --(End 6)------------------------------------------------------------------------------------------------------------
-                 ) AS X
-            --(End 7)------------------------------------------------------------------------------------------------------------
-            ORDER BY START, X.COMPLETION_RATE DESC, X.FOUR_YEAR_GRADUATION_RATE DESC, X.SIX_YEAR_GRADUATION_RATE DESC
-        """
-        report = "2025-04-10-Program Review"
-        name = "Graduation Rate By Cohort"
-        self.save_query_results(query, snapshot_term="2025SP")(report, name)
-
-    def getMajorCompletionRates(self):
-        query = f"""
-        --(Begin 6)------------------------------------------------------------------------------------------------------------
-        SELECT MAJOR,
-        FORMAT(COMPLETION_RATE, 'P') AS COMPLETION_RATE,
-        STUDENT_COUNT
-        FROM (
-        --(Begin 5)------------------------------------------------------------------------------------------------------------
-        SELECT MAJOR,
-        AVG(MAJOR_COMPLETED * 1.0) AS COMPLETION_RATE,
-        COUNT(*)                   AS STUDENT_COUNT
-        FROM (
-        --(Begin 4)------------------------------------------------------------------------------------------------------------
-        SELECT MAJOR,
-        STUDENT_ID,
-        MAX(COMPLETE) AS MAJOR_COMPLETED
-        FROM (
-        --(Begin 3)------------------------------------------------------------------------------------------------------------
-        SELECT MAJOR,
-        STUDENT_ID,
-        CASE
-        WHEN (MAJOR_END >= ACAD_END_DATE OR MAJOR_END IS NULL)
-        AND STATUS = 'Graduated' THEN 1
-        ELSE 0 END AS COMPLETE
-        FROM (
-        --(Begin 2)------------------------------------------------------------------------------------------------------------
-        SELECT MAJOR,
-        STUDENT_ID,
-        STATUS,
-        CASE WHEN MAJOR = MAIN THEN MAIN_END ELSE ADDNL_END END AS MAJOR_END,
-        ACAD_END_DATE
-        FROM (
-        --(Begin 1)------------------------------------------------------------------------------------------------------------
-        SELECT MAJORS.MAJ_DESC           AS MAJOR,
-        STUDENT_ID,
-        STP_CURRENT_STATUS        AS STATUS,
-        MAIN_MAJOR.MAJ_DESC       AS MAIN,
-        STP_END_DATE              AS MAIN_END,
-        STPR_ADDNL_MAJOR_END_DATE AS ADDNL_END,
-        AC.ACAD_END_DATE
-        FROM MAJORS
-        CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
-        JOIN ACAD_CREDENTIALS AS AC
-           ON SAPV.STUDENT_ID = AC.ACAD_PERSON_ID AND
-              SAPV.STP_DEGREE = AC.ACAD_DEGREE
-        LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
-                ON SAPV.STUDENT_ID = STPR_STUDENT AND
-                   STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
-        LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
-        LEFT JOIN MAJORS AS ADDNL_MAJOR
-                ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
-        WHERE STP_CURRENT_STATUS != 'Did Not Enroll'
-        AND STP_START_DATE >= '2019-08-01'
-        AND (
-        (
-        MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
-        )
-        OR (
-        MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
-        )
-        )
-        --(End 1)------------------------------------------------------------------------------------------------------------
-        ) AS X
-        --(End 2)------------------------------------------------------------------------------------------------------------
-        ) AS X
-        --(End 3)------------------------------------------------------------------------------------------------------------
-        ) AS X
-        GROUP BY MAJOR, STUDENT_ID
-        --(End 4)------------------------------------------------------------------------------------------------------------
-        ) AS X
-        GROUP BY MAJOR
-        --(End 5)------------------------------------------------------------------------------------------------------------
-        ) AS X
-        WHERE MAJOR = 'Master of Social Work'
-        --(End 6)------------------------------------------------------------------------------------------------------------
-        ORDER BY X.COMPLETION_RATE DESC
-        """
-        report = "2025-04-10-Program Review"
-        name = "Major Completion Rates"
-        self.save_query_results(query, snapshot_term="2025SP")(report, name)
-
-    def getAvgEnrollmentPerCourse(self):
-        query = f"""
-        --(Begin 3)-------------------------------------------------------------------------------------------------------------
-        SELECT COURSE_TITLE,
-               COURSE_NAME,
-               AVG(TOTAL_ENROLLMENT) AS AVG_ENROLLMENT
-        FROM (
-        --(Begin 2)-------------------------------------------------------------------------------------------------------------
-                 SELECT TERM,
-                        COURSE_TITLE,
-                        COURSE_NAME,
-                        COUNT(STUDENT_ID) AS TOTAL_ENROLLMENT
-                 FROM (
-        --(Begin 1)-------------------------------------------------------------------------------------------------------------
-                          SELECT DISTINCT TERMS.TERMS_ID           AS TERM,
-                                          TERM_START_DATE,
-                                          SAPV.STUDENT_ID,
-                                          SEV.SECTION_COURSE_NAME AS COURSE_NAME,
-                                          SEV.SECTION_COURSE_TITLE AS COURSE_TITLE,
-                                          SEV.ENROLL_CREDITS
-                          FROM MAJORS
-                                   CROSS JOIN TERMS
-                                   CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
-                                   LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
-                                             ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
-                                   LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
-                                   LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
-                                   JOIN STUDENT_ENROLLMENT_VIEW AS SEV
-                                        ON SAPV.STUDENT_ID = SEV.STUDENT_ID AND TERMS_ID = SEV.ENROLL_TERM
-                          WHERE TERMS.TERM_START_DATE >= '2019-08-01'
-                            AND TERMS.TERM_END_DATE < '2025-06-01'
-                            AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
-                            AND STP_CURRENT_STATUS != 'Did Not Enroll'
-                            AND (
-                              (
-                                  MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
-                                      AND STP_START_DATE <= TERMS.TERM_END_DATE
-                                      AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
-                                  )
-                                  OR (
-                                  MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
-                                      AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
-                                      AND
-                                  (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
-                                  )
-                              )
-                            AND MAJORS.MAJ_DESC = 'Master of Social Work'
-                            -------------------------------------------------------------------------------------------------
-                            AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
-        --(End 1)-------------------------------------------------------------------------------------------------------------
-                      ) AS X
-                 GROUP BY TERM, TERM_START_DATE, COURSE_TITLE, COURSE_NAME
-        --(End 2)-------------------------------------------------------------------------------------------------------------
-             ) AS X
-        GROUP BY COURSE_TITLE, COURSE_NAME
-        --(End 3)-------------------------------------------------------------------------------------------------------------
-        """
-        report = "2025-04-10-Program Review"
-        name = "Avg Enrollment Per Course"
-        self.save_query_results(query, snapshot_term="2025SP")(report, name)
-
-    def getCourseCompletionRates(self):
-        query = f"""
-        --(Begin 2)--------------------------------------------------------------------------------------
-        SELECT COURSE_TITLE,
-               COURSE_NAME,
-               FORMAT(AVG(COMPLETED * 1.0), 'P') AS COMPLETION_RATE,
-               COUNT(*) AS ENROLLMENT_COUNT
-        FROM (
-        --(Begin 1)--------------------------------------------------------------------------------------
-                 SELECT STUDENTS.STUDENT_ID,
-                        SEV.SECTION_COURSE_NAME          AS COURSE_NAME,
-                        SEV.SECTION_COURSE_TITLE         AS COURSE_TITLE,
-                        CASE WHEN ENROLL_CURRENT_STATUS IN ('New', 'Add') THEN 1 ELSE 0 END AS COMPLETED
-                 FROM (SELECT DISTINCT TERMS.TERMS_ID AS TERM,
-                                       TERMS.TERM_START_DATE,
-                                       SAPV.STUDENT_ID
-                       FROM MAJORS
-                                CROSS JOIN TERMS
-                                CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
-                                LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
-                                          ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
-                                LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
-                                LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
-                       WHERE TERMS.TERM_START_DATE >= '2019-08-01'
-                         AND TERMS.TERM_END_DATE < GETDATE()
-                         AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
-                         AND (
-                           (
-                               MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
-                                   AND STP_START_DATE <= TERMS.TERM_END_DATE
-                                   AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
-                               )
-                               OR (
-                               MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
-                                   AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
-                                   AND
-                               (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
-                               )
-                           )
-                         AND MAJORS.MAJ_DESC = 'Master of Social Work') AS STUDENTS
-                          JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON STUDENTS.STUDENT_ID = SEV.STUDENT_ID AND TERM = ENROLL_TERM
-        --(End 1)--------------------------------------------------------------------------------------------------------------
-             ) AS X
-        GROUP BY COURSE_TITLE, COURSE_NAME
-        --(End 2)--------------------------------------------------------------------------------------------------------------
-        ORDER BY COURSE_NAME, COURSE_TITLE
-        """
-        report = "2025-04-10-Program Review"
-        name = "Course Completion Rates"
-        self.save_query_results(query, snapshot_term="2025SP")(report, name)
-
-    '''
-    ID: Unknown
     Name: 2025-04-22-Honors Convocation Health Science Student Summaries
     Person: Gerald Schafer
     Start Date: 2025-04-22
@@ -7975,6 +7615,19 @@ GROUP BY TERM, CATEGORY
 
     '''
     ID: Unknown
+    Name: 2025-06-30-NWCCU
+    Person: Amy Honchell
+    Start Date: 2025-06-30
+    End Date: 2025-06-30
+    '''
+    #===================================================================================================================
+    '''
+    Code is in another file.
+    '''
+    # ===================================================================================================================
+
+    '''
+    ID: Unknown
     Name: 2025-06-30-NWCCU Carroll
     Person: Amy Honchell
     Start Date: 2025-06-30
@@ -9326,6 +8979,7 @@ GROUP BY GENDER
     End Date: 2025-07-10
     Description:
     '''
+
     def getFTE_2025FA(self):
         query = f"""
                  SELECT STTR_STUDENT,
@@ -9515,6 +9169,7 @@ AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
     End Date: 2025-07-29
     Description
     '''
+
     def getUnduplicatedHeadcount(self):
         query = f"""
                  SELECT DISTINCT LEFT(STC_STUDENT_ACAD_LEVELS_ID, 7) AS STUDENT_ID,
@@ -9548,9 +9203,869 @@ AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
         self.save_query_results(query, db="ODS", func_dict={"Agg": agg, "Names": names})(report, name)
 
 
+    '''
+    ID: Unknown
+    Name: 2025-07-29-Summer Enrollments
+    Person: Rebecca Schwartz
+    Start Date: 2025-07-29
+    End Date: 2025-07-29
+    Description:
+    '''
+
+    def getSummerEnrollments(self):
+        query = f"""
+                 SELECT
+                DISTINCT COURSES.CRS_NAME AS COURSE,
+                STC_TERM AS TERM,
+                STC_PERSON_ID
+         FROM STUDENT_ACAD_CRED AS STC
+                  LEFT JOIN STC_STATUSES AS STATUS
+                            ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND STATUS.POS = 1
+                  LEFT JOIN STUDENT_COURSE_SEC AS SEC ON STC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+                    LEFT JOIN COURSES ON STC.STC_COURSE = COURSES_ID
+         WHERE STATUS.STC_STATUS IN ('N', 'A')
+           AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
+           AND STC_CRED_TYPE = 'INST'
+           AND STC_START_DATE BETWEEN DATEADD(YEAR, -5, '2025-01-01') AND '2025-01-01'
+           AND STC_TERM LIKE '%SU'
+        """
+        agg = lambda query: f"""
+        --(Begin 2)-------------------------------------------------------------------------------------------------------------
+        SELECT COURSE,
+               TERM,
+               COUNT(*) AS STUDENT_COUNT
+        FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------------
+                 SELECT
+                        DISTINCT COURSES.CRS_NAME AS COURSE,
+                        STC_TERM AS TERM,
+                        STC_PERSON_ID
+                 FROM STUDENT_ACAD_CRED AS STC
+                          LEFT JOIN STC_STATUSES AS STATUS
+                                    ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND STATUS.POS = 1
+                          LEFT JOIN STUDENT_COURSE_SEC AS SEC ON STC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+                            LEFT JOIN COURSES ON STC.STC_COURSE = COURSES_ID
+                 WHERE STATUS.STC_STATUS IN ('N', 'A')
+                   AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
+                   AND STC_CRED_TYPE = 'INST'
+                   AND STC_START_DATE BETWEEN DATEADD(YEAR, -5, '2025-01-01') AND '2025-01-01'
+                   AND STC_TERM LIKE '%SU'
+        --(End 1)---------------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY COURSE, TERM
+        --(End 2)---------------------------------------------------------------------------------------------------------------
+        ORDER BY COURSE, TERM
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.STC_PERSON_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-07-29-Summer Enrollments"
+        name = "Summer Enrollments"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    '''
+    ID: Unknown
+    Name: 2025-08-01-FTE for Global Music Rights
+    Person: Rebecca Schwartz
+    Start Date: 2025-08-01
+    End Date: 2025-08-01
+    Description:
+    '''
+    def getFTE(self):
+        query = f"""
+              SELECT DISTINCT STC_PERSON_ID                                                                       AS ID,
+                      STC_ACAD_LEVEL                                                                      AS LEVEL,
+                      CASE
+                          WHEN STV.STTR_STUDENT_LOAD IN ('F', 'O') THEN 'Full-Time'
+                          ELSE 'Part-Time' END                                                            AS LOAD
+      FROM STUDENT_ACAD_CRED AS STC
+               LEFT JOIN STC_STATUSES AS STATUS
+                         ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND STATUS.POS = 1
+               LEFT JOIN STUDENT_COURSE_SEC AS SEC ON STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+               LEFT JOIN STUDENT_TERMS_VIEW AS STV
+                         ON STC.STC_PERSON_ID = STV.STTR_STUDENT AND STC.STC_TERM = STV.STTR_TERM AND
+                            STC.STC_ACAD_LEVEL = STV.STTR_ACAD_LEVEL
+      WHERE STATUS.STC_STATUS IN ('N', 'A')
+        AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
+        AND STC.STC_TERM = '2024FA'
+        """
+        agg = lambda query: f"""
+        --(Begin 3)-------------------------------------------------------------------------------------------------------------
+        SELECT CAST(SUM(WEIGHT) AS INT) AS FTE
+        FROM (
+        --(Begin 2)-------------------------------------------------------------------------------------------------------------
+                 SELECT DISTINCT ID,
+                                 CASE
+                                     WHEN LEVEL = 'UG' AND LOAD = 'Full-Time' THEN 1.0
+                                     WHEN LEVEL = 'GR' OR LOAD = 'Part-Time' THEN 1.0 / 3 END AS WEIGHT
+                 FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------------
+                {query}
+        --(End 1)---------------------------------------------------------------------------------------------------------------
+                      ) AS X
+        --(End 2)---------------------------------------------------------------------------------------------------------------
+             ) AS X
+        --(End 3)---------------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.STC_PERSON_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-08-01-FTE for Global Music Rights"
+        name = "FTE"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getStudentCountsByType(self):
+        query = f"""
+        --(Begin C1)-------------------------------------------------------------------------------------------------------------
+                  SELECT DISTINCT STC_PERSON_ID                      AS STUDENT_ID,
+                                  CASE
+                                      WHEN STUDENT_CURRENT_TYPE = 'ACE' THEN 'High School'
+                                      WHEN STUDENT_CURRENT_TYPE = 'SC' THEN 'Senior Citizen'
+                                      WHEN STUDENT_CURRENT_TYPE = 'UG' AND PROGRAM = 'Non-Degree Seeking Students'
+                                          THEN 'Non-Degree UG'
+                                      WHEN STUDENT_CURRENT_TYPE = 'PB' THEN 'Post-Bacc'
+                                      WHEN STUDENT_CURRENT_TYPE = 'ACNU' THEN 'Accelerated Nursing'
+                                      WHEN STC_ACAD_LEVEL = 'GR' THEN PROGRAM
+                                      WHEN STC_ACAD_LEVEL = 'UG' THEN 'Undergrad'
+                                      END                            AS TYPE,
+                                  CASE
+                                      WHEN STTR_STUDENT_LOAD IN ('F', 'O') THEN 'Full-Time or Over'
+                                      ELSE 'Less Than Full-Time' END AS LOAD
+
+                  FROM STUDENT_ACAD_CRED AS STC
+                           LEFT JOIN STC_STATUSES AS STATUS
+                                     ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND POS = 1
+                           LEFT JOIN STUDENT_TERMS
+                                     ON STUDENT_TERMS.STUDENT_TERMS_ID =
+                                        STC_PERSON_ID + '*' + STC_TERM + '*' + STC_ACAD_LEVEL
+                           LEFT JOIN (
+                    --(Begin A2)-------------------------------------------------------------------------------------------------------------
+                                          SELECT STUDENTS_ID AS ID,
+                                                 STU_TYPES   AS STUDENT_CURRENT_TYPE
+                                          FROM (
+                    --(Begin A1)-------------------------------------------------------------------------------------------------------------
+                                                   SELECT STUDENTS_ID,
+                                                          STU_TYPES,
+                                                          ROW_NUMBER() OVER (PARTITION BY STUDENTS_ID ORDER BY STU_TYPE_DATES DESC) AS RANK
+                                                   FROM STU_TYPE_INFO
+                    --(End A1)---------------------------------------------------------------------------------------------------------------
+                                               ) AS X
+                                          WHERE RANK = 1
+                    --(End A2)---------------------------------------------------------------------------------------------------------------
+                                      ) AS STUDENT_TYPES ON STC.STC_PERSON_ID = STUDENT_TYPES.ID
+                                               LEFT JOIN (
+                    --(Begin B2)------------------------------------------------------------------------------------------------------------
+                                          SELECT *
+                                          FROM (
+                    --(Begin B1)------------------------------------------------------------------------------------------------------------
+                                                   SELECT STUDENT_ID,
+                                                          STP_PROGRAM_TITLE                                                                 AS PROGRAM,
+                                                          STP_CURRENT_STATUS,
+                                                          ROW_NUMBER() OVER (PARTITION BY STUDENT_ID
+                                                              ORDER BY CASE WHEN STP_END_DATE IS NULL THEN 0 ELSE 1 END, STP_END_DATE DESC) AS PROGRAM_RANK
+                                                   FROM STUDENT_ACAD_PROGRAMS_VIEW
+                                                   WHERE STP_START_DATE <=
+                                                         (SELECT TOP 1 TERMS.TERM_END_DATE
+                                                          FROM TERMS
+                                                          WHERE TERMS_ID = '2024FA')
+                    --(End B1)---------------------------------------------------------------------------------------------------------------
+                                               ) AS X
+                                          WHERE PROGRAM_RANK = 1
+                    --(End B2)---------------------------------------------------------------------------------------------------------------
+                                      ) AS SAPV
+                                                         ON STC.STC_PERSON_ID = SAPV.STUDENT_ID
+                                      WHERE STC_TERM = '2024FA'
+                                        AND STATUS.STC_STATUS IN ('N', 'A')
+                                        AND STC_CRED_TYPE = 'INST'
+                    --(End C1)---------------------------------------------------------------------------------------------------------------
+        """
+        agg = lambda query: f"""
+        --(Begin C3)-------------------------------------------------------------------------------------------------------------
+SELECT X.TYPE,
+       [Less Than Full-Time],
+        [Full-Time or Over],
+        [Total]
+FROM (
+--(Begin C2)-------------------------------------------------------------------------------------------------------------
+         SELECT TYPE,
+                [Less Than Full-Time],
+                [Full-Time or Over],
+                [Less Than Full-Time] + [Full-Time or Over] as [Total]
+         FROM (
+--(Begin C1)-------------------------------------------------------------------------------------------------------------
+            {query}
+--(End C1)---------------------------------------------------------------------------------------------------------------
+              ) AS X
+                  PIVOT (COUNT(STUDENT_ID) FOR LOAD IN (
+                 [Less Than Full-Time],
+                 [Full-Time or Over]
+                 )) AS X
+--(End C2)---------------------------------------------------------------------------------------------------------------
+     ) AS X
+JOIN (VALUES ('High School', 1),
+             ('Senior Citizen', 2),
+             ('Non-Degree UG', 3),
+             ('Post-Bacc', 4),
+             ('Accelerated Nursing', 5),
+             ('Master of Social Work', 6),
+             ('Undergrad', 7)
+) AS TYPE_ORDER(TYPE, N) ON X.TYPE = TYPE_ORDER.TYPE
+--(End C3)---------------------------------------------------------------------------------------------------------------
+ORDER BY TYPE_ORDER.N
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-08-01-FTE for Global Music Rights"
+        name = "Student Counts"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    '''
+    ID: Unknown
+    Name: 2025-08-05-AY 23-24 Headcounts
+    Person: Rebecca Schwartz
+    Start Date: 2025-08-05
+    End Date: 2025-08-05
+    '''
+
+    def getGraduateFTHeadcount(self):
+        query = f"""
+                 SELECT DISTINCT STC_TERM          AS TERM,
+                         TERM_START_DATE,
+                         STC.STC_PERSON_ID AS ID
+         FROM STUDENT_ACAD_CRED AS STC
+                  LEFT JOIN STC_STATUSES AS STATUS
+                            ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND STATUS.POS = 1
+                  LEFT JOIN STUDENT_COURSE_SEC AS SEC ON STC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+                  LEFT JOIN STUDENT_TERMS
+                            ON STUDENT_TERMS_ID = STC.STC_PERSON_ID + '*' + STC.STC_TERM + '*' + STC.STC_ACAD_LEVEL
+                  LEFT JOIN TERMS ON STC_TERM = TERMS_ID
+         WHERE STC_TERM IN ('2023FA', '2024SP', '2024SU')
+           AND STATUS.STC_STATUS IN ('N', 'A')
+           AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
+           AND STC.STC_CRED > 0
+           AND STC.STC_CRED_TYPE = 'INST'
+           AND STC.STC_ACAD_LEVEL = 'GR'
+           AND STUDENT_TERMS.STTR_STUDENT_LOAD IN ('F', 'O')
+        """
+        agg = lambda query: f"""
+        --(Begin 2)-------------------------------------------------------------------------------------------------------------
+        SELECT TERM,
+               COUNT(*) AS [Graduate FT Headcount]
+        FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End 1)---------------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, TERM_START_DATE
+        --(End 2)---------------------------------------------------------------------------------------------------------------
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-08-05-AY 23-24 Headcounts"
+        name = "Graduate FT Headcount"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getGraduateFTE(self):
+        query = f"""
+                 SELECT DISTINCT STC_TERM                                                                        AS TERM,
+                         TERM_START_DATE,
+                         STC.STC_PERSON_ID                                                               AS ID,
+                         CASE WHEN STTR_STUDENT_LOAD IN ('F', 'O') THEN 1.0 ELSE 1.0/3 END AS WEIGHT
+         FROM STUDENT_ACAD_CRED AS STC
+                  LEFT JOIN STC_STATUSES AS STATUS
+                            ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND STATUS.POS = 1
+                  LEFT JOIN STUDENT_COURSE_SEC AS SEC ON STC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+                  LEFT JOIN STUDENT_TERMS
+                            ON STUDENT_TERMS_ID = STC.STC_PERSON_ID + '*' + STC.STC_TERM + '*' + STC.STC_ACAD_LEVEL
+         LEFT JOIN TERMS ON STC_TERM = TERMS_ID
+         WHERE STC_TERM IN ('2023FA', '2024SP', '2024SU')
+           AND STATUS.STC_STATUS IN ('N', 'A')
+           AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
+           AND STC.STC_CRED > 0
+           AND STC.STC_CRED_TYPE = 'INST'
+            AND STC.STC_ACAD_LEVEL = 'GR'
+        """
+        agg = lambda query: f"""
+        --(Begin 2)-------------------------------------------------------------------------------------------------------------
+        SELECT TERM,
+               CAST(ROUND(SUM(WEIGHT), 0) AS INT) AS [Graduate Full-Time-Equivalent]
+        FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------------
+                {query}
+        --(End 1)---------------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, TERM_START_DATE
+        --(End 2)---------------------------------------------------------------------------------------------------------------
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-08-05-AY 23-24 Headcounts"
+        name = "Graduate FTE"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getGraduatePTHeadcount(self):
+        query = f"""
+                 SELECT DISTINCT STC_TERM          AS TERM,
+                         TERM_START_DATE,
+                         STC.STC_PERSON_ID AS ID
+         FROM STUDENT_ACAD_CRED AS STC
+                  LEFT JOIN STC_STATUSES AS STATUS
+                            ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND STATUS.POS = 1
+                  LEFT JOIN STUDENT_COURSE_SEC AS SEC ON STC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+                  LEFT JOIN STUDENT_TERMS
+                            ON STUDENT_TERMS_ID = STC.STC_PERSON_ID + '*' + STC.STC_TERM + '*' + STC.STC_ACAD_LEVEL
+                  LEFT JOIN TERMS ON STC_TERM = TERMS_ID
+         WHERE STC_TERM IN ('2023FA', '2024SP', '2024SU')
+           AND STATUS.STC_STATUS IN ('N', 'A')
+           AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
+           AND STC.STC_CRED > 0
+           AND STC.STC_CRED_TYPE = 'INST'
+           AND STC.STC_ACAD_LEVEL = 'GR'
+           AND STUDENT_TERMS.STTR_STUDENT_LOAD NOT IN ('F', 'O')
+        """
+        agg = lambda query: f"""
+        --(Begin 2)-------------------------------------------------------------------------------------------------------------
+SELECT TERM,
+       COUNT(*) AS [Graduate PT Headcount]
+FROM (
+--(Begin 1)-------------------------------------------------------------------------------------------------------------
+        {query}
+--(End 1)---------------------------------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY TERM, TERM_START_DATE
+--(End 2)---------------------------------------------------------------------------------------------------------------
+ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-08-05-AY 23-24 Headcounts"
+        name = "Graduate PT Headcount"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getTotalFTE(self):
+        query = f"""
+        --(Begin 1)-------------------------------------------------------------------------------------------------------------
+         SELECT DISTINCT STC_TERM                                                                        AS TERM,
+                         TERM_START_DATE,
+                         STC.STC_PERSON_ID                                                               AS ID,
+                         CASE WHEN STTR_STUDENT_LOAD IN ('F', 'O') THEN 1.0 ELSE 1.0/3 END AS WEIGHT
+         FROM STUDENT_ACAD_CRED AS STC
+                  LEFT JOIN STC_STATUSES AS STATUS
+                            ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND STATUS.POS = 1
+                  LEFT JOIN STUDENT_COURSE_SEC AS SEC ON STC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+                  LEFT JOIN STUDENT_TERMS
+                            ON STUDENT_TERMS_ID = STC.STC_PERSON_ID + '*' + STC.STC_TERM + '*' + STC.STC_ACAD_LEVEL
+         LEFT JOIN TERMS ON STC_TERM = TERMS_ID
+         WHERE STC_TERM IN ('2023FA', '2024SP', '2024SU')
+           AND STATUS.STC_STATUS IN ('N', 'A')
+           AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
+           AND STC.STC_CRED > 0
+           AND STC.STC_CRED_TYPE = 'INST'
+        """
+        agg = lambda query: f"""
+        --(Begin 2)-------------------------------------------------------------------------------------------------------------
+        SELECT TERM,
+               CAST(ROUND(SUM(WEIGHT), 0) AS INT) AS [Total Full-Time-Equivalent]
+        FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------------
+                {query}
+        --(End 1)---------------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, TERM_START_DATE
+        --(End 2)---------------------------------------------------------------------------------------------------------------
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-08-05-AY 23-24 Headcounts"
+        name = "Total FTE"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getTotalHeadcount(self):
+        query = f"""
+        SELECT COUNT(DISTINCT STC.STC_PERSON_ID) AS [Unduplicated Student Count]
+        FROM STUDENT_ACAD_CRED AS STC
+        LEFT JOIN STC_STATUSES AS STATUS ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND STATUS.POS = 1
+        LEFT JOIN STUDENT_COURSE_SEC AS SEC ON STC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+        WHERE STC_TERM IN ('2023FA', '2024SP', '2024SU')
+        AND STATUS.STC_STATUS IN ('N', 'A')
+        AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
+        AND STC.STC_CRED > 0
+        AND STC.STC_CRED_TYPE = 'INST'
+        """
+        report = "2025-08-05-AY 23-24 Headcounts"
+        name = "Total Headcount"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict=None)(report, name)
+
+    def getUGFTHeadcount(self):
+        query = f"""
+                 SELECT DISTINCT STC_TERM          AS TERM,
+                         TERM_START_DATE,
+                         STC.STC_PERSON_ID AS ID
+         FROM STUDENT_ACAD_CRED AS STC
+                  LEFT JOIN STC_STATUSES AS STATUS
+                            ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND STATUS.POS = 1
+                  LEFT JOIN STUDENT_COURSE_SEC AS SEC ON STC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+                  LEFT JOIN STUDENT_TERMS
+                            ON STUDENT_TERMS_ID = STC.STC_PERSON_ID + '*' + STC.STC_TERM + '*' + STC.STC_ACAD_LEVEL
+                  LEFT JOIN TERMS ON STC_TERM = TERMS_ID
+         WHERE STC_TERM IN ('2023FA', '2024SP', '2024SU')
+           AND STATUS.STC_STATUS IN ('N', 'A')
+           AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
+           AND STC.STC_CRED > 0
+           AND STC.STC_CRED_TYPE = 'INST'
+           AND STC.STC_ACAD_LEVEL = 'UG'
+           AND STUDENT_TERMS.STTR_STUDENT_LOAD IN ('F', 'O')
+        """
+        agg = lambda query: f"""
+            --(Begin 2)-------------------------------------------------------------------------------------------------------------
+        SELECT TERM,
+               COUNT(*) AS [Undergraduate FT Headcount]
+        FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End 1)---------------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, TERM_START_DATE
+        --(End 2)---------------------------------------------------------------------------------------------------------------
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-08-05-AY 23-24 Headcounts"
+        name = "Undergraduate FT Headcount"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getUGPTHeadcount(self):
+        query = f"""
+                 SELECT DISTINCT STC_TERM          AS TERM,
+                         TERM_START_DATE,
+                         STC.STC_PERSON_ID AS ID
+         FROM STUDENT_ACAD_CRED AS STC
+                  LEFT JOIN STC_STATUSES AS STATUS
+                            ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND STATUS.POS = 1
+                  LEFT JOIN STUDENT_COURSE_SEC AS SEC ON STC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+                  LEFT JOIN STUDENT_TERMS
+                            ON STUDENT_TERMS_ID = STC.STC_PERSON_ID + '*' + STC.STC_TERM + '*' + STC.STC_ACAD_LEVEL
+                  LEFT JOIN TERMS ON STC_TERM = TERMS_ID
+         WHERE STC_TERM IN ('2023FA', '2024SP', '2024SU')
+           AND STATUS.STC_STATUS IN ('N', 'A')
+           AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
+           AND STC.STC_CRED > 0
+           AND STC.STC_CRED_TYPE = 'INST'
+           AND STC.STC_ACAD_LEVEL = 'UG'
+           AND STUDENT_TERMS.STTR_STUDENT_LOAD NOT IN ('F', 'O')
+        """
+        agg = lambda query: f"""
+        --(Begin 2)-------------------------------------------------------------------------------------------------------------
+        SELECT TERM,
+               COUNT(*) AS [Undergraduate PT Headcount]
+        FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End 1)---------------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, TERM_START_DATE
+        --(End 2)---------------------------------------------------------------------------------------------------------------
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-08-05-AY 23-24 Headcounts"
+        name = "Undergraduate PT Headcount"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getUGFTE(self):
+        query = f"""
+                 SELECT DISTINCT STC_TERM                                                                        AS TERM,
+                         TERM_START_DATE,
+                         STC.STC_PERSON_ID                                                               AS ID,
+                         CASE WHEN STTR_STUDENT_LOAD IN ('F', 'O') THEN 1.0 ELSE 1.0/3 END AS WEIGHT
+         FROM STUDENT_ACAD_CRED AS STC
+                  LEFT JOIN STC_STATUSES AS STATUS
+                            ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND STATUS.POS = 1
+                  LEFT JOIN STUDENT_COURSE_SEC AS SEC ON STC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+                  LEFT JOIN STUDENT_TERMS
+                            ON STUDENT_TERMS_ID = STC.STC_PERSON_ID + '*' + STC.STC_TERM + '*' + STC.STC_ACAD_LEVEL
+         LEFT JOIN TERMS ON STC_TERM = TERMS_ID
+         WHERE STC_TERM IN ('2023FA', '2024SP', '2024SU')
+           AND STATUS.STC_STATUS IN ('N', 'A')
+           AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
+           AND STC.STC_CRED > 0
+           AND STC.STC_CRED_TYPE = 'INST'
+            AND STC.STC_ACAD_LEVEL = 'UG'
+        """
+        agg = lambda query: f"""
+        --(Begin 2)-------------------------------------------------------------------------------------------------------------
+        SELECT TERM,
+               CAST(ROUND(SUM(WEIGHT), 0) AS INT) AS [Undergraduate Full-Time-Equivalent]
+        FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End 1)---------------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, TERM_START_DATE
+        --(End 2)---------------------------------------------------------------------------------------------------------------
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-08-05-AY 23-24 Headcounts"
+        name = "Undergraduate FTE"
+        self.save_query_results(query, snapshot_term="2025SP", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    '''
+    ID: Unknown
+    Name: 2025-08-13-Top Enrollment Numbers
+    Person: Amy Honchell
+    Start Date: 2025-08-13
+    End Date: 2025-08-13
+    Description:
+    '''
+
+    def getTopEnrollmentNumbers(self):
+        query = f"""
+                 SELECT DISTINCT AC.STC_PERSON_ID AS ID,
+                         STUDENT_MAJORS.MAJOR
+         FROM SPT_STUDENT_ACAD_CRED AS AC
+                  LEFT JOIN SPT_STUDENT_COURSE_SEC AS SEC ON AC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+                  JOIN SPT_STUDENT_PROGRAMS AS SP ON AC.STC_PERSON_ID = SP.STPR_STUDENT
+                  JOIN (SELECT STUDENT_PROGRAMS_ID AS ID,
+                               MAJOR_DESC          AS MAJOR
+                        FROM SPT_STUDENT_PROGRAM_MAJORS
+                        UNION
+                        SELECT STUDENT_PROGRAMS_ID,
+                               ADDNL_MAJOR_DESC
+                        FROM SPT_STU_PROG_ADDNL_MAJORS
+                        WHERE COALESCE(STPR_ADDNL_MAJOR_END_DATE, GETDATE()) >= GETDATE()) AS STUDENT_MAJORS
+                       ON SP.STUDENT_PROGRAMS_ID = ID
+         WHERE AC.CURRENT_STATUS_DESC IN ('New', 'Add')
+           AND STC_TERM = '2025FA'
+           AND STC_CRED_TYPE = 'INST'
+           AND COALESCE(SEC.Z01_SCS_PASS_AUDIT, '') != 'A'
+           AND SP.CURRENT_STATUS_DESC = 'Active'
+        """
+        agg = lambda query: f"""
+        --(Begin 2)---------------------------------------------------------------------------------------------------------
+SELECT TOP 9
+       MAJOR,
+       COUNT(*) AS STUDENT_COUNT
+FROM (
+--(Begin 1)---------------------------------------------------------------------------------------------------------
+        {query}
+--(End 1)----------------------------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY MAJOR
+--(End 2)----------------------------------------------------------------------------------------------------------
+ORDER BY STUDENT_COUNT DESC
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN ODS_PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-08-13-Top Enrollment Numbers"
+        name = "Top Enrollment Numbers"
+        self.save_query_results(query, db="ODS", func_dict={"Agg": agg, "Names": names})(report, name)
 
 
+    '''
+    ID: Unknown
+    Name: 2025-08-15-FVT-GE
+    Person: Rebecca Schwartz
+    Start Date: 2025-08-15
+    End Date: 2025-08-15
+    Description:
+    '''
+    #===================================================================================================================
+    '''
+    Code is in another file.
+    '''
+    # ===================================================================================================================
 
+    '''
+    ID: Unknown
+    Name: 2025-08-20-All 2025FA Students For Gaming Events
+    Person: Charles Gross
+    Start Date: 2025-08-20
+    End Date: 2025-08-20
+    Description:
+    '''
+
+    def get2025FAStudents(self):
+        query = f"""
+--(Begin 1)-------------------------------------------------------------------------------------------------------------
+SELECT DISTINCT ID,
+       FIRST_NAME,
+       LAST_NAME
+FROM SPT_STUDENT_ACAD_CRED STC
+JOIN ODS_PERSON PERSON ON STC.STC_PERSON_ID = PERSON.ID
+WHERE STC_TERM = '2025FA'
+AND CURRENT_STATUS_DESC IN ('New', 'Add')
+AND STC_CRED_TYPE = 'INST'
+--(End 1)---------------------------------------------------------------------------------------------------------------
+ORDER BY LAST_NAME
+        """
+        report = "2025-08-20-All 2025FA Students For Gaming Events"
+        name = "Top Enrollment Numbers"
+        self.save_query_results(query, db="ODS", func_dict=None)(report, name)
+
+    '''
+    ID: Unknown
+    Name: 2025-08-20-First Day Numbers
+    Person: Rebecca Schwartz
+    Start Date: 2025-08-20
+    End Date: 2025-08-20
+    Description:
+    '''
+
+    def getAcceleratedNursingList(self):
+        query = f"""
+        --(Begin C1)-------------------------------------------------------------------------------------------------------------
+        SELECT  TABLE_1.*,
+                TABLE_2.PROGRAM,
+                TABLE_2.MAJOR_OR_MINOR,
+                TABLE_2.TYPE
+        FROM (
+        --(Begin A1)-------------------------------------------------------------------------------------------------------------
+                 SELECT DISTINCT STC_PERSON_ID                 AS ID,
+                                 FIRST_NAME,
+                                 LAST_NAME,
+                                 ST.STTR_STUDENT_LOAD          AS LOAD,
+                                 COALESCE(STT_DESC, 'Unknown') AS STUDENT_TYPE,
+                                 ACADEMIC_LEVEL_DESC           AS ACADEMIC_LEVEL,
+                                 STATUS_DESC                   AS TERM_STATUS
+                 FROM SPT_STUDENT_ACAD_CRED AS STC
+                          JOIN ODS_PERSON ON STC.STC_PERSON_ID = ODS_PERSON.ID
+                          JOIN ODS_STUDENT_TERMS AS ST
+                               ON STC.STC_PERSON_ID + '*' + STC.STC_TERM + '*' + STC.STC_ACAD_LEVEL = STUDENT_TERMS_ID
+                          LEFT JOIN (SELECT STUDENTS_ID,
+                                            STU_TYPES,
+                                            ROW_NUMBER() OVER (PARTITION BY STUDENTS_ID ORDER BY STU_TYPE_DATES DESC) AS RANK
+                                     FROM Z01_STU_TYPE_INFO) AS Z01_STU_TYPE_INFO ON STC_PERSON_ID = STUDENTS_ID AND RANK = 1
+                          LEFT JOIN Z01_STUDENT_TYPES ON Z01_STU_TYPE_INFO.STU_TYPES = Z01_STUDENT_TYPES.STUDENT_TYPES_ID
+                 WHERE STC_TERM = '2025FA'
+                   AND STC_CRED_TYPE = 'INST'
+        --(End A1)---------------------------------------------------------------------------------------------------------------
+             ) AS TABLE_1
+        LEFT JOIN (
+        --(Begin B1)------------------------------------------------------------------------------------------------------------
+                 SELECT DISTINCT AC.STC_PERSON_ID AS ID,
+                                 FIRST_NAME,
+                                 LAST_NAME,
+                                 SP.STPR_ACAD_PROGRAM AS PROGRAM,
+                                 STUDENT_MAJORS_MINORS.MAJOR_OR_MINOR,
+                                 STUDENT_MAJORS_MINORS.TYPE
+                 FROM SPT_STUDENT_ACAD_CRED AS AC
+                     JOIN ODS_PERSON ON AC.STC_PERSON_ID = ODS_PERSON.ID
+                          LEFT JOIN SPT_STUDENT_COURSE_SEC AS SEC ON AC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+                          JOIN SPT_STUDENT_PROGRAMS AS SP ON AC.STC_PERSON_ID = SP.STPR_STUDENT
+                          JOIN (SELECT STUDENT_PROGRAMS_ID AS ID,
+                                       MAJOR_DESC         AS MAJOR_OR_MINOR,
+                                       'Program Major' AS TYPE
+                                FROM SPT_STUDENT_PROGRAM_MAJORS
+                                WHERE MAJOR_DESC IS NOT NULL
+                                UNION
+                                SELECT STUDENT_PROGRAMS_ID,
+                                       ADDNL_MAJOR_DESC,
+                                       'Additional Major'
+                                FROM SPT_STU_PROG_ADDNL_MAJORS
+                                WHERE COALESCE(STPR_ADDNL_MAJOR_END_DATE, GETDATE()) >= GETDATE()
+                                UNION
+                                SELECT STUDENT_PROGRAMS_ID,
+                                       ADDNL_MINOR_DESC,
+                                       'Minor'
+                                FROM SPT_STU_PROG_ADDNL_MINORS
+                                WHERE COALESCE(STPR_MINOR_END_DATE, GETDATE()) >= GETDATE()
+                                ) AS STUDENT_MAJORS_MINORS
+                               ON SP.STUDENT_PROGRAMS_ID = STUDENT_MAJORS_MINORS.ID
+                 WHERE AC.CURRENT_STATUS_DESC IN ('New', 'Add')
+                   AND STC_TERM = '2025FA'
+                   AND STC_CRED_TYPE = 'INST'
+                   AND COALESCE(SEC.Z01_SCS_PASS_AUDIT, '') != 'A'
+                   AND SP.CURRENT_STATUS_DESC = 'Active'
+        --(End B1)--------------------------------------------------------------------------------------------------------------
+        ) AS TABLE_2 ON TABLE_1.ID = TABLE_2.ID
+        WHERE PROGRAM = 'ANUR.BS'
+        --(End C1)---------------------------------------------------------------------------------------------------------------
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-08-20-First Day Numbers"
+        name = "Accelerated Nursing"
+        self.save_query_results(query, db="ODS", func_dict=None)(report, name)
+
+    def getStudentMajorsAndMinors(self):
+        query = f"""
+        --(Begin 1)---------------------------------------------------------------------------------------------------------
+         SELECT DISTINCT AC.STC_PERSON_ID AS ID,
+                         FIRST_NAME,
+                         LAST_NAME,
+                         SP.STPR_ACAD_PROGRAM AS PROGRAM,
+                         STUDENT_MAJORS_MINORS.MAJOR_OR_MINOR,
+                         STUDENT_MAJORS_MINORS.TYPE
+         FROM SPT_STUDENT_ACAD_CRED AS AC
+             JOIN ODS_PERSON ON AC.STC_PERSON_ID = ODS_PERSON.ID
+                  LEFT JOIN SPT_STUDENT_COURSE_SEC AS SEC ON AC.STC_STUDENT_COURSE_SEC = SEC.STUDENT_COURSE_SEC_ID
+                  JOIN SPT_STUDENT_PROGRAMS AS SP ON AC.STC_PERSON_ID = SP.STPR_STUDENT
+                  JOIN (SELECT STUDENT_PROGRAMS_ID AS ID,
+                               MAJOR_DESC         AS MAJOR_OR_MINOR,
+                               'Program Major' AS TYPE
+                        FROM SPT_STUDENT_PROGRAM_MAJORS
+                        WHERE MAJOR_DESC IS NOT NULL
+                        UNION
+                        SELECT STUDENT_PROGRAMS_ID,
+                               ADDNL_MAJOR_DESC,
+                               'Additional Major'
+                        FROM SPT_STU_PROG_ADDNL_MAJORS
+                        WHERE COALESCE(STPR_ADDNL_MAJOR_END_DATE, GETDATE()) >= GETDATE()
+                        UNION
+                        SELECT STUDENT_PROGRAMS_ID,
+                               ADDNL_MINOR_DESC,
+                               'Minor'
+                        FROM SPT_STU_PROG_ADDNL_MINORS
+                        WHERE COALESCE(STPR_MINOR_END_DATE, GETDATE()) >= GETDATE()
+                        ) AS STUDENT_MAJORS_MINORS
+                       ON SP.STUDENT_PROGRAMS_ID = STUDENT_MAJORS_MINORS.ID
+         WHERE AC.CURRENT_STATUS_DESC IN ('New', 'Add')
+           AND STC_TERM = '2025FA'
+           AND STC_CRED_TYPE = 'INST'
+           AND COALESCE(SEC.Z01_SCS_PASS_AUDIT, '') != 'A'
+           AND SP.CURRENT_STATUS_DESC = 'Active'
+--(End 1)----------------------------------------------------------------------------------------------------------
+ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-08-20-First Day Numbers"
+        name = "Student Majors and Minors"
+        self.save_query_results(query, db="ODS", func_dict=None)(report, name)
+
+    '''
+    ID: Unknown
+    Name: 2025-08-21-New Fall 2025 and Summer 2025 By Student and Acad Level
+    Person: Rebecca Schwartz
+    Start Date: 2025-08-21
+    End Date: 2025-08-21
+    Description:
+    '''
+
+    def getNew2025FA2025SU_StudentAcadLevel(self):
+        query = f"""
+        --(Begin 2)-------------------------------------------------------------------------------------------------------------
+         SELECT X.ID,
+                FIRST_NAME,
+                LAST_NAME,
+                LEVEL,
+                TERM
+         FROM (
+--(Begin 1)-------------------------------------------------------------------------------------------------------------
+                  SELECT APPL_APPLICANT                                                           AS ID,
+                         ACAD_PR.ACADEMIC_LEVEL_DESC                                              AS LEVEL,
+                         APPL_START_TERM                                                          AS TERM,
+                         ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT, ACADEMIC_LEVEL_DESC ORDER BY TERM_START_DATE) AS RANK
+                  FROM Z01_APPLICATIONS AS AP
+                      JOIN ODS_ACAD_PROGRAMS AS ACAD_PR ON AP.APPL_ACAD_PROGRAM = ACAD_PR.ACAD_PROGRAMS_ID
+                       JOIN SPT_STUDENT_ACAD_CRED AS STC
+                        ON AP.APPL_APPLICANT = STC.STC_PERSON_ID AND AP.APPL_START_TERM = STC.STC_TERM
+                           JOIN ODS_TERMS ON APPL_START_TERM = TERMS_ID
+                  WHERE STC_CURRENT_STATUS IN ('N', 'A')
+                    AND STC_CRED_TYPE = 'INST'
+                    AND APPL_START_TERM IS NOT NULL
+--(End 1)---------------------------------------------------------------------------------------------------------------
+              ) AS X
+         JOIN ODS_PERSON ON X.ID = ODS_PERSON.ID
+         WHERE RANK = 1
+        AND TERM IN ('2025FA', '2025SU')
+--(End 2)---------------------------------------------------------------------------------------------------------------
+ORDER BY LAST_NAME
+        """
+        report = "2025-08-21-New Fall 2025 and Summer 2025 By Student and Acad Level"
+        name = "New Fall 2025 and Summer 2025 By Student and Acad Level"
+        self.save_query_results(query, db="ODS", func_dict=None)(report, name)
+
+    '''
+    ID: Unknown
+    Name: 2025-08-21-Total Enrollment By FT, PT, SC Status
+    Person: Rebecca Schwartz
+    Start Date: 2025-08-21
+    End Date: 2025-08-21
+    Description:
+    '''
+
+    def getEnrollmentByFTPTSC(self):
+        query = f"""
+                          SELECT DISTINCT STTR_STUDENT                  AS ID,
+                                  FIRST_NAME,
+                                  LAST_NAME,
+                                  ST.STTR_STUDENT_LOAD          AS LOAD,
+                                  COALESCE(STT_DESC, 'Unknown') AS STUDENT_TYPE,
+                                  CASE
+                                      WHEN EXISTS (SELECT 1
+                                                   FROM SPT_STUDENT_ACAD_CRED AS STC
+                                                   WHERE STC_TERM = '2025FA'
+                                                     AND STC_PERSON_ID = STTR_STUDENT
+                                                     AND STC_CRED_TYPE = 'INST'
+                                                     AND STC_CRED > 0) THEN 1
+                                      ELSE 0 END                AS FOR_CREDIT
+                  FROM ODS_STUDENT_TERMS AS ST
+                           JOIN ODS_PERSON ON ST.STTR_STUDENT = ODS_PERSON.ID
+                           LEFT JOIN (SELECT STUDENTS_ID,
+                                             STU_TYPES,
+                                             ROW_NUMBER() OVER (PARTITION BY STUDENTS_ID ORDER BY STU_TYPE_DATES DESC) AS RANK
+                                      FROM Z01_STU_TYPE_INFO) AS Z01_STU_TYPE_INFO
+                                     ON STTR_STUDENT = STUDENTS_ID AND RANK = 1
+                           LEFT JOIN Z01_STUDENT_TYPES
+                                     ON Z01_STU_TYPE_INFO.STU_TYPES = Z01_STUDENT_TYPES.STUDENT_TYPES_ID
+                  WHERE STTR_TERM = '2025FA'
+                    AND STATUS_DESC = 'Registered'
+        """
+        agg = lambda query: f"""
+        --(Begin 3)-------------------------------------------------------------------------------------------------------------
+SELECT STATUS,
+       COUNT(*) AS STUDENT_COUNT_2025FA
+FROM (
+--(Begin 2)-------------------------------------------------------------------------------------------------------------
+         SELECT ID,
+                FIRST_NAME,
+                LAST_NAME,
+                CASE
+                    WHEN STUDENT_TYPE = 'Senior Citizen' AND FOR_CREDIT = 1 THEN 'Senior Citizen For Credit'
+                    WHEN LOAD IN ('F', 'O') THEN 'Full-Time'
+                    ELSE 'Part-Time' END AS STATUS
+         FROM (
+--(Begin 1)-------------------------------------------------------------------------------------------------------------
+            {query}
+--(End 1)---------------------------------------------------------------------------------------------------------------
+              ) AS X
+--(End 2)---------------------------------------------------------------------------------------------------------------
+     ) AS X
+GROUP BY STATUS
+--(End 3)---------------------------------------------------------------------------------------------------------------
+        """
+        names = lambda query: f"""
+        SELECT X.* FROM ({query}) AS X JOIN ODS_PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-08-21-Total Enrollment By FT, PT, SC Status"
+        name = "Total Enrollment By FT, PT, SC Status"
+        self.save_query_results(query, db="ODS", func_dict={"Agg": agg, "Names": names})(report, name)
 
 
     '''
@@ -9758,6 +10273,7 @@ AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
         self.save_query_results(query, snapshot_term = '2024FA')(report, name)
     # ===================================================================================================================
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
     '''
     ID: Unknown
     Name: 2025-09-03-More Snapshot Calculations
@@ -11436,6 +11952,32 @@ AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
         """
         self.save_query_results(query, {"Agg": agg, "Names": names}, db="ODS")(report, name)
 
+    '''
+    ID: Unknown
+    Name: 2025-09-15-Update IPEDS IC Survey
+    Person: IPEDS
+    Start Date: 2025-09-15
+    End Date: 2025-09-15
+    '''
+    #===================================================================================================================
+    '''
+    Code is in another file.
+    '''
+    # ===================================================================================================================
+
+    '''
+    ID: Unknown
+    Name: 2025-09-17-IPEDS Fall Survey
+    Person: IPEDS
+    Start Date: 2025-09-15
+    End Date: 2025-09-15
+    '''
+    #===================================================================================================================
+    '''
+    Code is in another file.
+    '''
+    # ===================================================================================================================
+
 
     '''
     ID: Unknown
@@ -11600,6 +12142,19 @@ AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
         name = "2021FA Cohort Four-Year Graduation Rate"
         self.save_query_results(query, {"Agg": agg, "Names": names}, snapshot_term="2025FA")(report, name)
 
+    '''
+    ID: Unknown
+    Name: 2025-09-24-Review IPEDS Spring Survey
+    Person: IPEDS
+    Start Date: 2025-09-24
+    End Date: 
+    Description:
+    '''
+    #===================================================================================================================
+    '''
+    Code is in another file.
+    '''
+    # ===================================================================================================================
 
     '''
     ID: Unknown
@@ -11772,6 +12327,20 @@ AND COALESCE(SEC.SCS_PASS_AUDIT, '') != 'A'
         report = "2025-09-30-Another Nursing Data Request"
         name = "Nursing Students By Gender"
         self.save_query_results(query, {"Agg": agg, "Names": names}, snapshot_term="2025FA")(report, name)
+
+    '''
+    ID: Unknown
+    Name: 2025-10-01-IPEDS Database Standard Deviation
+    Person: Rebecca Schwartz
+    Start Date: 2025-10-01
+    End Date: 2025-10-01
+    Description: 
+    '''
+    #===================================================================================================================
+    '''
+    Code is in another file.
+    '''
+    # ===================================================================================================================
 
 
 
