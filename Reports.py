@@ -13520,7 +13520,7 @@ GROUP BY STATUS
 
     def getSpecialEdTermHeadcount(self):
         query = f"""
-                 SELECT TERMS.TERMS_ID  AS TERM,
+                 SELECT DISTINCT TERMS.TERMS_ID  AS TERM,
                 TERMS.TERM_START_DATE,
                 MAJORS.MAJ_DESC AS MAJOR,
                 STUDENT_ID,
@@ -13632,7 +13632,7 @@ GROUP BY STATUS
 
     def getSpecialEdTermHeadcountByLevel(self):
         query = f"""
-                 SELECT TERMS.TERMS_ID  AS TERM,
+                 SELECT DISTINCT TERMS.TERMS_ID  AS TERM,
                 TERMS.TERM_START_DATE,
                 MAJORS.MAJ_DESC AS MAJOR,
                 STUDENT_ID,
@@ -13686,7 +13686,7 @@ GROUP BY STATUS
 
     def getSpecialEdTermHeadcountByRace(self):
         query = f"""
-                 SELECT TERMS.TERMS_ID  AS TERM,
+                 SELECT DISTINCT TERMS.TERMS_ID  AS TERM,
                 TERMS.TERM_START_DATE,
                 MAJORS.MAJ_DESC AS MAJOR,
                 STUDENT_ID,
@@ -13792,7 +13792,6 @@ GROUP BY STATUS
              )
            AND MAJORS.MAJ_DESC = 'Elementary Educ & Special Educ'
         """
-        self.print_table(query)
         agg = lambda query: f"""
         --(Begin 2)------------------------------------------------------------------------------------------------------------
         SELECT TERM,
@@ -13829,8 +13828,8 @@ GROUP BY STATUS
                     FROM STA_OTHER_COHORTS_VIEW
                     WHERE STA_OTHER_COHORT_GROUPS = 'VETS'
                     AND STA_STUDENT = STUDENT_ID
-                    AND (STP_START_DATE <= STA_OTHER_COHORT_END_DATES OR STA_OTHER_COHORT_END_DATES IS NULL)
-                    AND (STP_END_DATE >= STA_OTHER_COHORT_START_DATES OR STP_END_DATE IS NULL)
+                    AND (TERMS.TERM_START_DATE <= STA_OTHER_COHORT_END_DATES OR STA_OTHER_COHORT_END_DATES IS NULL)
+                    AND (TERMS.TERM_END_DATE >= STA_OTHER_COHORT_START_DATES)
                 ) THEN 'Veteran' ELSE 'Not Veteran' END AS VET_STATUS
          FROM MAJORS
                   CROSS JOIN TERMS
@@ -13912,8 +13911,8 @@ GROUP BY STATUS
                                         'Women''s Volleyball'
                                      )
                     AND STA_STUDENT = STUDENT_ID
-                    AND (STP_START_DATE <= STA_OTHER_COHORT_END_DATES OR STA_OTHER_COHORT_END_DATES IS NULL)
-                    AND (STP_END_DATE >= STA_OTHER_COHORT_START_DATES OR STP_END_DATE IS NULL)
+                    AND (TERMS.TERM_START_DATE <= STA_OTHER_COHORT_END_DATES OR STA_OTHER_COHORT_END_DATES IS NULL)
+                    AND (TERMS.TERM_END_DATE >= STA_OTHER_COHORT_START_DATES)
                 ) THEN 'Athlete' ELSE 'Not Athlete' END AS ATHLETE_STATUS
          FROM MAJORS
                   CROSS JOIN TERMS
@@ -14314,38 +14313,19 @@ GROUP BY STATUS
 
     def getSpecialEdSCHPerTerm(self):
         query = f"""
-                 SELECT DISTINCT TERMS.TERMS_ID    AS TERM,
-                TERM_START_DATE,
-                SAPV.STUDENT_ID,
-                SEV.SECTION_COURSE_TITLE,
-                SEV.SECTION_COURSE_NAME,
-                SEV.ENROLL_CREDITS
-         FROM MAJORS
-         CROSS JOIN TERMS
-         CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
-         LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
-            ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
-         LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
-         LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
-         JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON SAPV.STUDENT_ID = SEV.STUDENT_ID AND TERMS_ID = SEV.ENROLL_TERM
+          SELECT DISTINCT TERMS.TERMS_ID           AS TERM,
+                  TERM_START_DATE,
+                  SEV.STUDENT_ID,
+                  SEV.SECTION_COURSE_NAME AS COURSE_NAME,
+                  SEV.SECTION_COURSE_TITLE AS COURSE_TITLE,
+                  SEV.ENROLL_CREDITS
+           FROM TERMS 
+           JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON TERMS_ID = SEV.ENROLL_TERM
           WHERE TERMS.TERM_START_DATE >= '2019-08-01'
-           AND TERMS.TERM_END_DATE < '2025-06-01'
-           AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
-           AND STP_CURRENT_STATUS != 'Did Not Enroll'
-           AND (
-             (
-               MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
-               AND STP_START_DATE <= TERMS.TERM_END_DATE
-               AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
-             )
-                 OR (
-                     MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
-                 AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
-                 AND (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
-                 )
-             )
-           AND MAJORS.MAJ_DESC = 'Elementary Educ & Special Educ'
-           AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+            AND TERMS.TERM_END_DATE < '2025-06-01'
+            AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+            AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+            AND SECTION_DEPARTMENT1 = 'EDU'
         """
         agg = lambda query: f"""
         SELECT TERM,
@@ -14369,41 +14349,18 @@ GROUP BY STATUS
 
     def getSpecialEdAvgEnrollmentPerCourse(self):
         query = f"""
-                          SELECT DISTINCT TERMS.TERMS_ID           AS TERM,
-                                  TERM_START_DATE,
-                                  SAPV.STUDENT_ID,
-                                  SEV.SECTION_COURSE_NAME AS COURSE_NAME,
-                                  SEV.SECTION_COURSE_TITLE AS COURSE_TITLE,
-                                  SEV.ENROLL_CREDITS
-                  FROM MAJORS
-                           CROSS JOIN TERMS
-                           CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
-                           LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
-                                     ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
-                           LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
-                           LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
-                           JOIN STUDENT_ENROLLMENT_VIEW AS SEV
-                                ON SAPV.STUDENT_ID = SEV.STUDENT_ID AND TERMS_ID = SEV.ENROLL_TERM
-                  WHERE TERMS.TERM_START_DATE >= '2019-08-01'
-                    AND TERMS.TERM_END_DATE < '2025-06-01'
-                    AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
-                    AND STP_CURRENT_STATUS != 'Did Not Enroll'
-                    AND (
-                      (
-                          MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
-                              AND STP_START_DATE <= TERMS.TERM_END_DATE
-                              AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
-                          )
-                          OR (
-                          MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
-                              AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
-                              AND
-                          (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
-                          )
-                      )
-                    AND MAJORS.MAJ_DESC = 'Elementary Educ & Special Educ'
-                    -------------------------------------------------------------------------------------------------
-                    AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+          SELECT DISTINCT TERMS.TERMS_ID           AS TERM,
+                  TERM_START_DATE,
+                  SEV.STUDENT_ID,
+                  SEV.SECTION_COURSE_NAME AS COURSE_NAME,
+                  SEV.SECTION_COURSE_TITLE AS COURSE_TITLE
+           FROM TERMS 
+           JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON TERMS_ID = SEV.ENROLL_TERM
+          WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+            AND TERMS.TERM_END_DATE < '2025-06-01'
+            AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+            AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+            AND SECTION_DEPARTMENT1 = 'EDU'
         """
         agg = lambda query: f"""
         --(Begin 3)-------------------------------------------------------------------------------------------------------------
@@ -14425,6 +14382,7 @@ GROUP BY STATUS
              ) AS X
         GROUP BY COURSE_TITLE, COURSE_NAME
         --(End 3)-------------------------------------------------------------------------------------------------------------
+        ORDER BY COURSE_TITLE, COURSE_NAME
         """
         names = lambda query: f"""
         SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
@@ -14436,44 +14394,18 @@ GROUP BY STATUS
 
     def getSpecialEdPercentUnderenrolled(self):
         query = f"""
-                    SELECT DISTINCT TERMS.TERMS_ID           AS TERM,
-                            TERM_START_DATE,
-                            SAPV.STUDENT_ID,
-                            SEV.SECTION_COURSE_NAME  AS COURSE_NAME,
-                            SEV.SECTION_COURSE_TITLE AS COURSE_TITLE,
-                            SEV.ENROLL_CREDITS
-            FROM MAJORS
-                     CROSS JOIN TERMS
-                     CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
-                     LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
-                               ON SAPV.STUDENT_ID = STPR_STUDENT AND
-                                  STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
-                     LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
-                     LEFT JOIN MAJORS AS ADDNL_MAJOR
-                               ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
-                     JOIN STUDENT_ENROLLMENT_VIEW AS SEV
-                          ON SAPV.STUDENT_ID = SEV.STUDENT_ID AND TERMS_ID = SEV.ENROLL_TERM
-            WHERE TERMS.TERM_START_DATE >= '2019-08-01'
-              AND TERMS.TERM_END_DATE < '2025-06-01'
-              AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
-              AND STP_CURRENT_STATUS != 'Did Not Enroll'
-              AND (
-                (
-                    MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
-                        AND STP_START_DATE <= TERMS.TERM_END_DATE
-                        AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
-                    )
-                    OR (
-                    MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
-                        AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
-                        AND
-                    (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR
-                     STPR_ADDNL_MAJOR_END_DATE IS NULL)
-                    )
-                )
-              AND MAJORS.MAJ_DESC = 'Elementary Educ & Special Educ'
-              ---------------------------------------------------------------------------------
-              AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                  SELECT DISTINCT TERMS.TERMS_ID           AS TERM,
+                  TERM_START_DATE,
+                  SEV.STUDENT_ID,
+                  SEV.SECTION_COURSE_NAME AS COURSE_NAME,
+                  SEV.SECTION_COURSE_TITLE AS COURSE_TITLE
+                   FROM TERMS 
+                   JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON TERMS_ID = SEV.ENROLL_TERM
+                  WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+                    AND TERMS.TERM_END_DATE < '2025-06-01'
+                    AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+                    AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                    AND SECTION_DEPARTMENT1 = 'EDU'
                 """
         agg = lambda query: f"""
                 --(Begin 5)------------------------------------------------------------------------------------------------------------
@@ -14522,38 +14454,18 @@ GROUP BY STATUS
 
     def getSpecialEdCourseCompletionRates(self):
         query = f"""
-                 SELECT STUDENTS.STUDENT_ID,
-                SEV.SECTION_COURSE_NAME          AS COURSE_NAME,
-                SEV.SECTION_COURSE_TITLE         AS COURSE_TITLE,
-                CASE WHEN ENROLL_CURRENT_STATUS IN ('New', 'Add') THEN 1 ELSE 0 END AS COMPLETED
-         FROM (SELECT DISTINCT TERMS.TERMS_ID AS TERM,
-                               TERMS.TERM_START_DATE,
-                               SAPV.STUDENT_ID
-               FROM MAJORS
-                        CROSS JOIN TERMS
-                        CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
-                        LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
-                                  ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
-                        LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
-                        LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
-               WHERE TERMS.TERM_START_DATE >= '2019-08-01'
-                 AND TERMS.TERM_END_DATE < GETDATE()
-                 AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
-                 AND (
-                   (
-                       MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
-                           AND STP_START_DATE <= TERMS.TERM_END_DATE
-                           AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
-                       )
-                       OR (
-                       MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
-                           AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
-                           AND
-                       (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
-                       )
-                   )
-                 AND MAJORS.MAJ_DESC = 'Elementary Educ & Special Educ') AS STUDENTS
-                  JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON STUDENTS.STUDENT_ID = SEV.STUDENT_ID AND TERM = ENROLL_TERM
+                  SELECT DISTINCT TERMS.TERMS_ID           AS TERM,
+                  TERM_START_DATE,
+                  SEV.STUDENT_ID,
+                  SEV.SECTION_COURSE_NAME AS COURSE_NAME,
+                  SEV.SECTION_COURSE_TITLE AS COURSE_TITLE,
+                  CASE WHEN ENROLL_CURRENT_STATUS IN ('New', 'Add') THEN 1 ELSE 0 END AS COMPLETED
+           FROM TERMS 
+           JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON TERMS_ID = SEV.ENROLL_TERM
+          WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+            AND TERMS.TERM_END_DATE < '2025-06-01'
+            AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+            AND SECTION_DEPARTMENT1 = 'EDU'
         """
         agg = lambda query: f"""
         --(Begin 2)--------------------------------------------------------------------------------------
@@ -14568,7 +14480,7 @@ GROUP BY STATUS
              ) AS X
         GROUP BY COURSE_TITLE, COURSE_NAME
         --(End 2)--------------------------------------------------------------------------------------------------------------
-        ORDER BY COURSE_NAME, COURSE_TITLE
+        ORDER BY COURSE_TITLE, COURSE_NAME
         """
         names = lambda query: f"""
         SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
@@ -14745,7 +14657,107 @@ GROUP BY STATUS
         name = "Graduation Rate By Cohort"
         self.save_query_results(query, snapshot_term="2025FA", func_dict={"Agg": agg, "Names": names})(report, name)
 
+    '''
+    ID: Unknown
+    Name: 2025-10-07-Student Lists
+    Person: Kevin Sandoval
+    Start Date: 2025-10-07
+    End Date:
+    Description:
+    I was wondering if you can get me some data? I am looking for student lists such as current incoming transfer 
+    students, students who have identified as American Indian/Alaskan Natives (AI/AN), and incoming non-traditional 
+    students. I would like to perform some outreach and check in with these populations.
+    '''
 
+    def getCurrentTransferStudents(self):
+        query = f"""
+        SELECT DISTINCT STC_PERSON_ID AS ID
+        FROM STUDENT_ACAD_CRED AS STC
+        JOIN STC_STATUSES AS STAT ON STC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+        JOIN (
+            SELECT DISTINCT APPL_APPLICANT AS ID,
+            APPL_ADMIT_STATUS AS STATUS,
+            ROW_NUMBER() OVER (PARTITION BY APPL_APPLICANT ORDER BY TERM_START_DATE DESC) AS RANK
+            FROM APPLICATIONS
+            JOIN TERMS ON APPL_START_TERM = TERMS_ID
+            WHERE APPL_DATE IS NOT NULL
+            AND EXISTS (
+                SELECT 1
+                    FROM STUDENT_ACAD_CRED AS STC
+                    JOIN STC_STATUSES AS STATUS ON STC.STUDENT_ACAD_CRED_ID = STATUS.STUDENT_ACAD_CRED_ID AND POS = 1
+                    WHERE STC_PERSON_ID = APPL_APPLICANT
+                    AND STC_TERM = APPL_START_TERM
+                    AND STC_STATUS IN ('N', 'A')
+                    AND STC_CRED_TYPE = 'INST'
+                )
+        ) AS STU_APPL ON STC.STC_PERSON_ID = STU_APPL.ID AND RANK = 1
+        WHERE STC_TERM = '2025FA'
+        AND STC_STATUS IN ('N', 'A')
+        AND STU_APPL.STATUS = 'TR'
+        """
+        agg = lambda query: f"""
+        SELECT COUNT(*) AS TOTAL_TRANSFER_STUDENTS
+        FROM ({query}) AS X
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-10-07-Student Lists"
+        name = "Current Transfer Students"
+        self.save_query_results(query, snapshot_term="2025FA", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getCurrentAmericanIndianStudents(self):
+        query = f"""
+        SELECT DISTINCT STC_PERSON_ID AS ID
+        FROM STUDENT_ACAD_CRED AS STC
+        JOIN STC_STATUSES AS STAT ON STC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+        JOIN (
+            SELECT ID, IPEDS_RACE_ETHNIC_DESC AS RACE
+            FROM Z01_ALL_RACE_ETHNIC_W_FLAGS
+        ) AS STU_RACE ON STC_PERSON_ID = STU_RACE.ID
+        WHERE STC_TERM = '2025FA'
+        AND STC_STATUS IN ('N', 'A')
+        AND STU_RACE.RACE = 'American Indian'
+        """
+        agg = lambda query: f"""
+        SELECT COUNT(*) AS TOTAL_AMERICAN_INDIAN_STUDENTS
+        FROM ({query}) AS X
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-10-07-Student Lists"
+        name = "Current American Indian Students"
+        self.save_query_results(query, snapshot_term="2025FA", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getCurrentNonTraditionalStudents(self):
+        query = f"""
+        SELECT DISTINCT STC_PERSON_ID AS ID,
+        AGE
+        FROM STUDENT_ACAD_CRED AS STC
+        JOIN STC_STATUSES AS STAT ON STC.STUDENT_ACAD_CRED_ID = STAT.STUDENT_ACAD_CRED_ID AND POS = 1
+        JOIN (
+            SELECT ID,
+            CAST(DATEDIFF(DAY, BIRTH_DATE, GETDATE())  / 365.25 AS INT) AS AGE
+            FROM PERSON
+        ) AS STU_AGE ON STC_PERSON_ID = STU_AGE.ID
+        WHERE STC_TERM = '2025FA'
+        AND STC_STATUS IN ('N', 'A')
+        AND STU_AGE.AGE >= 24
+        """
+        agg = lambda query: f"""
+        SELECT COUNT(*) AS TOTAL_NON_TRADITIONAL_STUDENTS
+        FROM ({query}) AS X
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-10-07-Student Lists"
+        name = "Current Non-Traditional Students"
+        self.save_query_results(query, snapshot_term="2025FA", func_dict={"Agg": agg, "Names": names})(report, name)
 
 
 
