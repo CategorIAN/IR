@@ -12811,6 +12811,55 @@ GROUP BY STATUS
         name = "Term Headcount By Athlete Status"
         self.save_query_results(query, snapshot_term="2025FA", func_dict = {"Agg": agg, "Names": names})(report, name)
 
+    def getElemEdMinors(self):
+        query = f"""
+        SELECT DISTINCT TERMS.TERMS_ID  AS TERM,
+        TERMS.TERM_START_DATE,
+        MINORS.MINORS_DESC AS MINOR,
+        STUDENT_ID
+        FROM MINORS
+        CROSS JOIN TERMS
+        CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+        LEFT JOIN STPR_MINOR_LIST_VIEW AS STUDENT_MINORS
+                ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+        LEFT JOIN MINORS AS ADDNL_MINOR ON STUDENT_MINORS.STPR_MINORS = ADDNL_MINOR.MINORS_ID
+        WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+        AND TERMS.TERM_END_DATE < '2025-06-01'
+        AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+        AND STP_START_DATE <= TERMS.TERM_END_DATE
+        AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+        AND STP_CURRENT_STATUS != 'Did Not Enroll'
+        AND (
+        MINORS.MINORS_ID = ADDNL_MINOR.MINORS_ID
+        AND STPR_MINOR_START_DATE <= TERMS.TERM_END_DATE
+        AND (STPR_MINOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_MINOR_END_DATE IS NULL)
+        )
+        AND STP_PROGRAM_TITLE IN (
+        'Elementary Education',
+        'Pre-Elementary Education'
+        )
+        """
+        agg = lambda query: f"""
+        SELECT TERM,
+                MINOR,
+                COUNT(*) AS STUDENT_COUNT
+        FROM (
+        {query}
+        ) AS X
+        GROUP BY TERM, TERM_START_DATE, MINOR
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-10-05-Elementary Education Program Review"
+        name = "Program Minor Counts Per Term"
+        self.save_query_results(query, snapshot_term="2025FA", func_dict = {"Agg": agg, "Names": names})(report, name)
+
     #---------New Students----------------------------------------------------------------------------------------------
 
     def getElemEdNewStudentCountPerTerm(self):
@@ -13338,6 +13387,129 @@ GROUP BY STATUS
         """
         report = "2025-10-05-Elementary Education Program Review"
         name = "Course Completion Rates"
+        self.save_query_results(query, snapshot_term="2025FA", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    #~~~~~~~~~New~~~~~~~~~~~~~~~~~~
+
+    def getElemEnrollmentClassificationPerCourse(self):
+        query = f"""
+          SELECT DISTINCT TERMS.TERMS_ID           AS TERM,
+                  TERM_START_DATE,
+                  SEV.STUDENT_ID,
+                  SEV.SECTION_COURSE_NAME AS COURSE_NAME,
+                  SEV.SECTION_COURSE_TITLE AS COURSE_TITLE
+           FROM TERMS 
+           JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON TERMS_ID = SEV.ENROLL_TERM
+          WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+            AND TERMS.TERM_END_DATE < '2025-06-01'
+            AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+            AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+            AND SECTION_DEPARTMENT1 = 'EDU'
+        """
+        agg = lambda query: f"""
+        --(Begin 4)-------------------------------------------------------------------------------------------------------------
+        SELECT TERM,
+               SIZE,
+               FORMAT(1.0 * COUNT(*) / TERM_COUNT, 'P') AS PERCENTAGE,
+               COUNT(*) AS CLASS_COUNT 
+        FROM (
+        --(Begin 3)-------------------------------------------------------------------------------------------------------------
+                SELECT TERM, TERM_START_DATE,
+                COURSE_TITLE,
+                COURSE_NAME,
+                CASE WHEN TOTAL_ENROLLMENT <= 10 THEN 'Small (x<=10)'
+                WHEN TOTAL_ENROLLMENT >= 20 THEN 'Large (x>=20)'
+                ELSE 'Medium (10<x<20)' END AS SIZE,
+                COUNT(*) OVER (PARTITION BY TERM) AS TERM_COUNT
+        FROM (
+        --(Begin 2)-------------------------------------------------------------------------------------------------------------
+                 SELECT TERM, TERM_START_DATE,
+                        COURSE_TITLE,
+                        COURSE_NAME,
+                        COUNT(STUDENT_ID) AS TOTAL_ENROLLMENT
+                 FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------------
+                      ) AS X
+                 GROUP BY TERM, TERM_START_DATE, COURSE_TITLE, COURSE_NAME
+        --(End 2)-------------------------------------------------------------------------------------------------------------
+             ) AS X
+        --(End 3)-------------------------------------------------------------------------------------------------------------
+        ) AS X
+        GROUP BY TERM, TERM_START_DATE, SIZE, TERM_COUNT
+        --(End 4)------------------------------------------------------------------------------------------------
+        ORDER BY TERM_START_DATE, SIZE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-10-05-Elementary Education Program Review"
+        name = "Course Size Distribution Per Term"
+        self.save_query_results(query, snapshot_term="2025FA", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getElemEdAvgClassCountPerSize(self):
+        query = f"""
+          SELECT DISTINCT TERMS.TERMS_ID           AS TERM,
+                  TERM_START_DATE,
+                  SEV.STUDENT_ID,
+                  SEV.SECTION_COURSE_NAME AS COURSE_NAME,
+                  SEV.SECTION_COURSE_TITLE AS COURSE_TITLE
+           FROM TERMS 
+           JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON TERMS_ID = SEV.ENROLL_TERM
+          WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+            AND TERMS.TERM_END_DATE < '2025-06-01'
+            AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+            AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+            AND SECTION_DEPARTMENT1 = 'EDU'
+        """
+        agg = lambda query: f"""
+        --(Begin 5)-------------------------------------------------------------------------------------------------------------
+        SELECT SIZE,
+                CAST(AVG(1.0 * CLASS_COUNT) AS INT) AS AVG_CLASS_COUNT
+        FROM (
+        --(Begin 4)-------------------------------------------------------------------------------------------------------------
+        SELECT TERM,
+               SIZE,
+               COUNT(*) AS CLASS_COUNT
+        FROM (
+        --(Begin 3)-------------------------------------------------------------------------------------------------------------
+                SELECT TERM, TERM_START_DATE,
+                COURSE_TITLE,
+                COURSE_NAME,
+                CASE WHEN TOTAL_ENROLLMENT <= 10 THEN 'Small (x<=10)'
+                WHEN TOTAL_ENROLLMENT >= 20 THEN 'Large (x>=20)'
+                ELSE 'Medium (10<x<20)' END AS SIZE
+        FROM (
+        --(Begin 2)-------------------------------------------------------------------------------------------------------------
+                 SELECT TERM, TERM_START_DATE,
+                        COURSE_TITLE,
+                        COURSE_NAME,
+                        COUNT(STUDENT_ID) AS TOTAL_ENROLLMENT
+                 FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------------
+                      ) AS X
+                 GROUP BY TERM, TERM_START_DATE, COURSE_TITLE, COURSE_NAME
+        --(End 2)-------------------------------------------------------------------------------------------------------------
+             ) AS X
+        --(End 3)-------------------------------------------------------------------------------------------------------------
+        ) AS X
+        GROUP BY TERM, TERM_START_DATE, SIZE
+        --(End 4)------------------------------------------------------------------------------------------------
+        ) AS X
+        GROUP BY SIZE
+        --(End 5)------------------------------------------------------------------------------------------------
+        ORDER BY SIZE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-10-05-Elementary Education Program Review"
+        name = "Avg Class Count By Size"
         self.save_query_results(query, snapshot_term="2025FA", func_dict={"Agg": agg, "Names": names})(report, name)
 
     # ----------Completion Rates---------------------------------------------------------------------------------------
@@ -13961,6 +14133,55 @@ GROUP BY STATUS
         name = "Term Headcount By Athlete Status"
         self.save_query_results(query, snapshot_term="2025FA", func_dict = {"Agg": agg, "Names": names})(report, name)
 
+    def getSpecialEdMinors(self):
+        query = f"""
+        SELECT DISTINCT TERMS.TERMS_ID  AS TERM,
+        TERMS.TERM_START_DATE,
+        MINORS.MINORS_DESC AS MINOR,
+        STUDENT_ID
+        FROM MINORS
+        CROSS JOIN TERMS
+        CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+        LEFT JOIN STPR_MINOR_LIST_VIEW AS STUDENT_MINORS
+                ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+        LEFT JOIN MINORS AS ADDNL_MINOR ON STUDENT_MINORS.STPR_MINORS = ADDNL_MINOR.MINORS_ID
+        WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+        AND TERMS.TERM_END_DATE < '2025-06-01'
+        AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+        AND STP_START_DATE <= TERMS.TERM_END_DATE
+        AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+        AND STP_CURRENT_STATUS != 'Did Not Enroll'
+        AND (
+        MINORS.MINORS_ID = ADDNL_MINOR.MINORS_ID
+        AND STPR_MINOR_START_DATE <= TERMS.TERM_END_DATE
+        AND (STPR_MINOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_MINOR_END_DATE IS NULL)
+        )
+        AND STP_PROGRAM_TITLE IN (
+        'Elementary Education K-8 & Special Education K-12',
+        'Pre-Elementary and Special Education'
+        )
+        """
+        agg = lambda query: f"""
+        SELECT TERM,
+                MINOR,
+                COUNT(*) AS STUDENT_COUNT
+        FROM (
+        {query}
+        ) AS X
+        GROUP BY TERM, TERM_START_DATE, MINOR
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-10-06-Special Education Program Review"
+        name = "Program Minor Counts Per Term"
+        self.save_query_results(query, snapshot_term="2025FA", func_dict = {"Agg": agg, "Names": names})(report, name)
+
     # ---------New Students----------------------------------------------------------------------------------------------
 
     def getSpecialEdNewStudentCountPerTerm(self):
@@ -14488,6 +14709,129 @@ GROUP BY STATUS
         """
         report = "2025-10-06-Special Education Program Review"
         name = "Course Completion Rates"
+        self.save_query_results(query, snapshot_term="2025FA", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    #~~~~~~~~~New~~~~~~~~~~~~~~~~~~
+
+    def getSpecialEnrollmentClassificationPerCourse(self):
+        query = f"""
+          SELECT DISTINCT TERMS.TERMS_ID           AS TERM,
+                  TERM_START_DATE,
+                  SEV.STUDENT_ID,
+                  SEV.SECTION_COURSE_NAME AS COURSE_NAME,
+                  SEV.SECTION_COURSE_TITLE AS COURSE_TITLE
+           FROM TERMS 
+           JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON TERMS_ID = SEV.ENROLL_TERM
+          WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+            AND TERMS.TERM_END_DATE < '2025-06-01'
+            AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+            AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+            AND SECTION_DEPARTMENT1 = 'EDU'
+        """
+        agg = lambda query: f"""
+        --(Begin 4)-------------------------------------------------------------------------------------------------------------
+        SELECT TERM,
+               SIZE,
+               FORMAT(1.0 * COUNT(*) / TERM_COUNT, 'P') AS PERCENTAGE,
+               COUNT(*) AS CLASS_COUNT 
+        FROM (
+        --(Begin 3)-------------------------------------------------------------------------------------------------------------
+                SELECT TERM, TERM_START_DATE,
+                COURSE_TITLE,
+                COURSE_NAME,
+                CASE WHEN TOTAL_ENROLLMENT <= 10 THEN 'Small (x<=10)'
+                WHEN TOTAL_ENROLLMENT >= 20 THEN 'Large (x>=20)'
+                ELSE 'Medium (10<x<20)' END AS SIZE,
+                COUNT(*) OVER (PARTITION BY TERM) AS TERM_COUNT
+        FROM (
+        --(Begin 2)-------------------------------------------------------------------------------------------------------------
+                 SELECT TERM, TERM_START_DATE,
+                        COURSE_TITLE,
+                        COURSE_NAME,
+                        COUNT(STUDENT_ID) AS TOTAL_ENROLLMENT
+                 FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------------
+                      ) AS X
+                 GROUP BY TERM, TERM_START_DATE, COURSE_TITLE, COURSE_NAME
+        --(End 2)-------------------------------------------------------------------------------------------------------------
+             ) AS X
+        --(End 3)-------------------------------------------------------------------------------------------------------------
+        ) AS X
+        GROUP BY TERM, TERM_START_DATE, SIZE, TERM_COUNT
+        --(End 4)------------------------------------------------------------------------------------------------
+        ORDER BY TERM_START_DATE, SIZE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-10-06-Special Education Program Review"
+        name = "Course Size Distribution Per Term"
+        self.save_query_results(query, snapshot_term="2025FA", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getSpecialEdAvgClassCountPerSize(self):
+        query = f"""
+          SELECT DISTINCT TERMS.TERMS_ID           AS TERM,
+                  TERM_START_DATE,
+                  SEV.STUDENT_ID,
+                  SEV.SECTION_COURSE_NAME AS COURSE_NAME,
+                  SEV.SECTION_COURSE_TITLE AS COURSE_TITLE
+           FROM TERMS 
+           JOIN STUDENT_ENROLLMENT_VIEW AS SEV ON TERMS_ID = SEV.ENROLL_TERM
+          WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+            AND TERMS.TERM_END_DATE < '2025-06-01'
+            AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+            AND ENROLL_CURRENT_STATUS IN ('New', 'Add')
+            AND SECTION_DEPARTMENT1 = 'EDU'
+        """
+        agg = lambda query: f"""
+        --(Begin 5)-------------------------------------------------------------------------------------------------------------
+        SELECT SIZE,
+                CAST(AVG(1.0 * CLASS_COUNT) AS INT) AS AVG_CLASS_COUNT
+        FROM (
+        --(Begin 4)-------------------------------------------------------------------------------------------------------------
+        SELECT TERM,
+               SIZE,
+               COUNT(*) AS CLASS_COUNT
+        FROM (
+        --(Begin 3)-------------------------------------------------------------------------------------------------------------
+                SELECT TERM, TERM_START_DATE,
+                COURSE_TITLE,
+                COURSE_NAME,
+                CASE WHEN TOTAL_ENROLLMENT <= 10 THEN 'Small (x<=10)'
+                WHEN TOTAL_ENROLLMENT >= 20 THEN 'Large (x>=20)'
+                ELSE 'Medium (10<x<20)' END AS SIZE
+        FROM (
+        --(Begin 2)-------------------------------------------------------------------------------------------------------------
+                 SELECT TERM, TERM_START_DATE,
+                        COURSE_TITLE,
+                        COURSE_NAME,
+                        COUNT(STUDENT_ID) AS TOTAL_ENROLLMENT
+                 FROM (
+        --(Begin 1)-------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End 1)-------------------------------------------------------------------------------------------------------------
+                      ) AS X
+                 GROUP BY TERM, TERM_START_DATE, COURSE_TITLE, COURSE_NAME
+        --(End 2)-------------------------------------------------------------------------------------------------------------
+             ) AS X
+        --(End 3)-------------------------------------------------------------------------------------------------------------
+        ) AS X
+        GROUP BY TERM, TERM_START_DATE, SIZE
+        --(End 4)------------------------------------------------------------------------------------------------
+        ) AS X
+        GROUP BY SIZE
+        --(End 5)------------------------------------------------------------------------------------------------
+        ORDER BY SIZE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-10-06-Special Education Program Review"
+        name = "Avg Class Count By Size"
         self.save_query_results(query, snapshot_term="2025FA", func_dict={"Agg": agg, "Names": names})(report, name)
 
     # ----------Completion Rates---------------------------------------------------------------------------------------

@@ -6,7 +6,7 @@ from CTFPL import CTFPL
 def f(i):
     X = Reports()
     if i == 1:
-        X.getCurrentNonTraditionalStudents()
+        X.getSpecialEdAvgClassCountPerSize()
 
 def g(i):
     X = CTFPL()

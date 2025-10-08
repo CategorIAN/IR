@@ -38,17 +38,43 @@ CREATE TABLE Person (
     Department NVARCHAR(50)
 )
 ---------------------------------------------------------------------------------------------------
-CREATE TABLE Request (
+
+
+CREATE TABLE REPORT (
     ID Int primary key,
+    Name nvarchar(50),
     Person nvarchar(50) references Person(Name),
-    Description nvarchar(255),
-    Start_Date Date,
-    End_Date Date
+    Start Date,
+    Due Date,
+    Finish Date,
+    Updated Date
 )
----------------------------------------------------------------------------------------------------
-CREATE TABLE Request_Variables (
-    Request_ID int references Request(ID),
-    VarName nvarchar(255) references Variables(Name),
+
+CREATE TABLE REPORT_TABLE (
+    Report_ID Int references REPORT(ID),
+    Table_ID Int,
+    Name nvarchar(50),
+    Updated Date
+)
+
+CREATE TABLE TABLE_DRAFT (
+    Report_ID Int,
+    Table_ID Int,
+    Draft_ID Int,
+    Date Date
+)
+
+CREATE TABLE SUBMISSION (
+    Report_ID Int,
+    Submission_ID Int,
+    Date Date
+)
+
+CREATE TABLE SUBMISSION_TABLE (
+    Report_ID Int,
+    Submission_ID Int,
+    Table_ID Int,
+    Draft_ID Int
 )
 
 --------------------------------------------------------------------------------------------------
@@ -131,6 +157,7 @@ CREATE TABLE IPEDS_Collection_Checklist (
     Start Date,
     Finish Date
 )
+
 
 CREATE TABLE My_IPEDS_Requests (
     ID int primary key,
