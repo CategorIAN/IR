@@ -50,6 +50,9 @@ CREATE TABLE REPORT (
     Updated Date
 )
 
+ALTER TABLE REPORT
+ALTER COLUMN Name NVARCHAR(100)
+
 CREATE TABLE REPORT_TABLE (
     Report_ID Int references REPORT(ID),
     Table_ID Int,

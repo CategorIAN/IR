@@ -4,11 +4,48 @@ import pyodbc, environ
 from pathlib import Path
 from tabulate import tabulate
 BASE_DIR = Path(__file__).resolve()
+from Report import Report
 
 
 class Reports:
     def __init__(self):
-        pass
+        self.report_fields = ["name", "person", "start", "due", "finish"]
+        self.report_dict = {
+            1: {
+                "name": "2025-02-05-Average GPA of Current Students Who Are Not Athletes",
+                "person": "Charles Gross",
+                "start": "2025-02-05",
+                "due": None,
+                "finish": "2025-02-11",
+                "tables": {
+                    1: {
+                    "name": "Average GPA of Non Athletes",
+                    "query": f"""
+                SELECT Avg([STUDENT_OVERALL_CUM_GPA]) AS AVG_CUMULATIVE_GPA,
+                Avg([STUDENT_TERM_GPA]) AS AVG_TERM_GPA_2024FA
+                FROM [PERSON]
+                JOIN [STUDENT_CUM_GPA_VIEW] ON PERSON.ID = STUDENT_CUM_GPA_VIEW.STUDENT_ID
+                JOIN [STUDENT_TERM_GPA_VIEW] ON PERSON.ID = STUDENT_TERM_GPA_VIEW.STUDENT_ID
+                Left JOIN [STA_OTHER_COHORTS_VIEW] ON PERSON.ID = STA_OTHER_COHORTS_VIEW.STA_STUDENT
+                WHERE STUDENT_TERM_GPA_VIEW.TERM = '2024FA' and
+                      (
+                        STA_OTHER_COHORT_GROUPS IN ('HNRS', 'FOR', 'ROTC', 'VETS', 'INTL', 'ACCESS', 
+                        'CIC', 'GRSET', 'GRSUA', 'GRSMX') OR 
+                        STA_OTHER_COHORT_GROUPS IS NULL OR
+                        STA_OTHER_COHORT_END_DATES < GETDATE()
+                     )
+                """,
+                    "snapshot_term": "2025SP",
+                    "func_dict": None
+                    }
+                }
+            }
+        }
+
+    def getReport(self, id):
+        report = Report(**({"id": id} | {k: self.report_dict[id][k] for k in self.report_fields}))
+        report.tables = self.report_dict[id]["tables"]
+        return report
 #=============Helper Functions==========================================================================================
     '''
     I need to transform MSSQL query into pandas dataframe.
@@ -123,7 +160,7 @@ class Reports:
 
 #==================Reports==============================================================================================
     '''
-    ID: Unknown
+    ID: 1
     Name: 2025-02-05-Average GPA of Current Students Who Are Not Athletes
     Person: Charles Gross
     Start Date: 2025-02-05
@@ -150,6 +187,8 @@ class Reports:
         report = "2025-02-05-Average GPA of Current Students Who Are Not Athletes"
         name = "Average GPA of Non Athletes"
         self.save_query_results(query, snapshot_term="2025SP")(report, name)
+
+
 
     '''
     ID: Unknown
@@ -15102,6 +15141,138 @@ GROUP BY STATUS
         report = "2025-10-07-Student Lists"
         name = "Current Non-Traditional Students"
         self.save_query_results(query, snapshot_term="2025FA", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    '''
+    ID: Unknown
+    Name: 2025-10-09-Current Student List By Major and Minor
+    Person: Rebecca Schwartz
+    Start: 2025-10-09
+    Finish:
+    Description:
+    Can you run a list of all the majors and minors?  This would be the names of every student enrolled in Carroll and 
+    their major and minor. It should be listed by major.  Like, a tab for Biology and a list of all student names and 
+    IDs with a major in Biology on that tap.
+    '''
+    def getStudentMajors_2025FA(self):
+        query = f"""
+        SELECT DISTINCT 
+               CURRENT_MAJORS.MAJ_DESC AS MAJOR,
+               STUDENT_ID
+        FROM MAJORS AS CURRENT_MAJORS
+        JOIN TERMS AS CURRENT_TERM ON TERMS_ID = '2025FA'
+        CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+        LEFT JOIN STPR_MAJOR_LIST_VIEW 
+            ON SAPV.STUDENT_ID = STPR_MAJOR_LIST_VIEW.STPR_STUDENT 
+            AND SAPV.STP_ACADEMIC_PROGRAM = STPR_MAJOR_LIST_VIEW.STPR_ACAD_PROGRAM
+        LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
+        LEFT JOIN MAJORS AS ADDNL_MAJOR ON STPR_MAJOR_LIST_VIEW.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
+        WHERE STP_CURRENT_STATUS = 'Active'
+        AND
+        (
+                CURRENT_MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
+        OR (
+            CURRENT_MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
+            AND STPR_MAJOR_LIST_VIEW.STPR_ADDNL_MAJOR_END_DATE IS NULL
+            )
+        )
+        AND STP_START_DATE < CURRENT_TERM.TERM_END_DATE
+        """
+        agg = lambda query: f"""
+        SELECT MAJOR,
+                COUNT(*) AS STUDENT_COUNT
+        FROM ({query}) AS STUDENT_MAJORS GROUP BY MAJOR ORDER BY MAJOR
+        """
+        names = lambda query: f"""
+        SELECT STUDENT_ID,
+        LAST_NAME,
+        FIRST_NAME,
+        PERSON_EMAIL_ADDRESSES AS EMAIL,
+        MAJOR
+        FROM ({query}) AS STUDENT_MAJORS
+        JOIN PERSON ON STUDENT_MAJORS.STUDENT_ID = PERSON.ID
+        JOIN PEOPLE_EMAIL ON STUDENT_MAJORS.STUDENT_ID = PEOPLE_EMAIL.ID
+        WHERE PERSON_PREFERRED_EMAIL = 'Y'
+        ORDER BY MAJOR, LAST_NAME, FIRST_NAME
+        """
+        report = "2025-10-09-Current Student List By Major and Minor"
+        name = "Current Students By Major"
+        self.save_query_results(query, func_dict={"Agg": agg, "Names": names}, snapshot_term="2025FA")(report, name)
+
+    def getStudentMinors_2025FA(self):
+        query = f"""
+        SELECT DISTINCT
+        CURRENT_MINORS.MINORS_DESC AS MINOR,
+        STUDENT_ID
+        FROM MINORS AS CURRENT_MINORS
+        JOIN TERMS AS CURRENT_TERM ON TERMS_ID = '2025FA'
+        CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+        LEFT JOIN STPR_MINOR_LIST_VIEW 
+            ON SAPV.STUDENT_ID = STPR_MINOR_LIST_VIEW.STPR_STUDENT 
+            AND SAPV.STP_ACADEMIC_PROGRAM = STPR_MINOR_LIST_VIEW.STPR_ACAD_PROGRAM
+        LEFT JOIN MINORS AS ADDED_MINOR ON STPR_MINOR_LIST_VIEW.STPR_MINORS = ADDED_MINOR.MINORS_ID
+        WHERE
+        STP_CURRENT_STATUS = 'Active'
+        AND CURRENT_MINORS.MINORS_ID = ADDED_MINOR.MINORS_ID
+        AND STPR_MINOR_LIST_VIEW.STPR_MINOR_END_DATE IS NULL
+        AND STP_START_DATE < CURRENT_TERM.TERM_END_DATE
+        """
+        agg = lambda query: f"""
+        SELECT MINOR, COUNT(*) AS STUDENT_COUNT FROM ({query}) AS STUDENT_MINORS GROUP BY MINOR ORDER BY MINOR
+        """
+        names = lambda query: f"""
+        SELECT STUDENT_ID,
+        LAST_NAME,
+        FIRST_NAME,
+        PERSON_EMAIL_ADDRESSES AS EMAIL,
+        MINOR
+        FROM ({query}) AS STUDENT_MINORS
+        JOIN PERSON ON STUDENT_MINORS.STUDENT_ID = PERSON.ID
+        JOIN PEOPLE_EMAIL ON STUDENT_MINORS.STUDENT_ID = PEOPLE_EMAIL.ID
+        WHERE PERSON_PREFERRED_EMAIL = 'Y'
+        ORDER BY MINOR, LAST_NAME, FIRST_NAME
+        """
+        report = "2025-10-09-Current Student List By Major and Minor"
+        name = "Current Students By Minor"
+        self.save_query_results(query, func_dict={"Agg": agg, "Names": names}, snapshot_term="2025FA")(report, name)
+
+    def getNursingStudentsByProgram_2025FA(self):
+        query = f"""
+        SELECT DISTINCT 
+        CURRENT_MAJORS.MAJ_DESC AS MAJOR,
+        STUDENT_ID,
+        SAPV.STP_PROGRAM_TITLE AS NURSING_PROGRAM
+        FROM MAJORS AS CURRENT_MAJORS
+        CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+        LEFT JOIN STPR_MAJOR_LIST_VIEW 
+            ON SAPV.STUDENT_ID = STPR_MAJOR_LIST_VIEW.STPR_STUDENT 
+            AND SAPV.STP_ACADEMIC_PROGRAM = STPR_MAJOR_LIST_VIEW.STPR_ACAD_PROGRAM
+        LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
+        LEFT JOIN MAJORS AS ADDNL_MAJOR ON STPR_MAJOR_LIST_VIEW.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
+        WHERE CURRENT_MAJORS.MAJ_DESC = 'Nursing'
+        AND STP_CURRENT_STATUS = 'Active'
+        AND (
+        CURRENT_MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID
+        OR (
+            CURRENT_MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
+            AND STPR_MAJOR_LIST_VIEW.STPR_ADDNL_MAJOR_END_DATE IS NULL
+            )
+        )
+        """
+        agg = lambda query: f"""
+        SELECT NURSING_PROGRAM, COUNT(*) AS STUDENT_COUNT FROM ({query}) AS STUDENT_MAJORS
+        GROUP BY NURSING_PROGRAM ORDER BY NURSING_PROGRAM
+        """
+        names = lambda query: f"""
+        SELECT STUDENT_ID, LAST_NAME, FIRST_NAME, PERSON_EMAIL_ADDRESSES AS EMAIL, NURSING_PROGRAM
+        FROM ({query}) AS STUDENT_MAJORS JOIN PERSON ON STUDENT_MAJORS.STUDENT_ID = PERSON.ID
+        JOIN PEOPLE_EMAIL ON STUDENT_MAJORS.STUDENT_ID = PEOPLE_EMAIL.ID
+        WHERE PERSON_PREFERRED_EMAIL = 'Y'
+        ORDER BY NURSING_PROGRAM, LAST_NAME, FIRST_NAME
+        """
+        report = "2025-10-09-Current Student List By Major and Minor"
+        name = "Current Nursing Students By Program"
+        self.save_query_results(query, func_dict={"Agg": agg, "Names": names}, snapshot_term="2025FA")(report, name)
+
 
 
 
