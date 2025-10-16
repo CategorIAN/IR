@@ -88,7 +88,7 @@ class Report_Table:
         else:
             dict_func = lambda key: {f"{self.name} ({key}).csv": self.db_table(func_dict[key](query), snapshot_term),
                                      f"{self.name} ({key}).txt": func_dict[key](query)}
-            return reduce(lambda d, k: d | dict_func(k), func_dict.keys, {})
+            return reduce(lambda d, k: d | dict_func(k), func_dict.keys(), {})
 
     def save_bundle(self, path, bundle, include_code = True):
         path.mkdir(parents=True, exist_ok=True)
@@ -122,20 +122,17 @@ class Report_Table:
         AND TABLE_ID = '{self.table}'
         """
         draft_number = int(self.readAWSSQL(query).iat[0, 0])
-        if overwrite:
-            if draft_number > 0:
-                path = self.carroll / self.report_name / self.name / f"Draft {draft_number}"
-                self.save_bundle(path, bundle)
-                command = f"""
-                UPDATE TABLE_DRAFT
-                SET DATE = GETDATE()
-                WHERE REPORT_ID = '{self.report}'
-                AND TABLE_ID = '{self.table}'
-                AND DRAFT_ID = '{draft_number}'
-                """
-                self.executeAWSSQL(command)
-            else:
-                print("Draft Does Not Exist")
+        if overwrite and draft_number > 0:
+            path = self.carroll / self.report_name / self.name / f"Draft {draft_number}"
+            self.save_bundle(path, bundle)
+            command = f"""
+            UPDATE TABLE_DRAFT
+            SET DATE = GETDATE()
+            WHERE REPORT_ID = '{self.report}'
+            AND TABLE_ID = '{self.table}'
+            AND DRAFT_ID = '{draft_number}'
+            """
+            self.executeAWSSQL(command)
         else:
             new_draft = draft_number + 1
             path = self.carroll / self.report_name / self.name / f"Draft {new_draft}"
