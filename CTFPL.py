@@ -25,10 +25,15 @@ class CTFPL:
             "Institutional Support Expenses Per FTE (FASB)",
             "Student Services Expenses Per FTE (FASB)",
         ]
+        self.additional_info = [
+            "School",
+            "Carnegie Classification 2018",
+            "Religious Affiliation"
+        ]
         self.std = pd.read_csv(os.path.join(self.guides, "STD.csv"))
         self.carroll = pd.read_csv(os.path.join(self.guides, "Carroll Metrics.csv"))
         self.schools = pd.read_csv(os.path.join(self.guides, "Schools.csv"), dtype=str)
-        self.distance = pd.read_csv(os.path.join(self.guides, "Distance.csv"))
+        self.distance_df = pd.read_csv(os.path.join(self.guides, "Distance.csv")).astype({"School_ID": "string"})
 
     def queried_df(self, cursor, query, index_col = False):
         cursor.execute(query)
@@ -79,15 +84,14 @@ class CTFPL:
         """
         df = self.ipeds_table(query, year)
         df["METRIC_VALUE"] = df["METRIC_VALUE"].map(lambda x: np.nan if x in {"None", None} else x)
-        #print(tabulate(df.head(100), headers='keys', tablefmt='psql'))
         return df
 
     def all_school_metrics(self, year = 2023):
         return pd.concat([self.value_df(name, year) for name in self.metrics])
 
     def getSchools(self, year = 2023):
-        df = self.value_df("School", year).rename(columns={"METRIC_VALUE": "School"})
-        df = df[["School_ID", "School"]]
+        df = pd.concat([self.value_df(name, year) for name in self.additional_info])
+        df = df.pivot(index="School_ID", columns = "METRIC_NAME", values = "METRIC_VALUE").reset_index()
         df.to_csv(os.path.join(self.guides, "Schools.csv"), index=False)
 
     def getSTD_DF(self, year = 2023):
@@ -100,24 +104,26 @@ class CTFPL:
         df = df.rename(columns = {"METRIC_VALUE": "Carroll College"})[["METRIC_NAME", "Carroll College"]]
         df.to_csv(os.path.join(self.guides, "Carroll Metrics.csv"), index = False)
 
-    def distance(self, df, i):
-        metric, carroll, std = [float(v) for v in df.loc[i, ["METRIC_VALUE", "Carroll College", "STD"]]]
-        return np.nan if pd.isna(metric) else abs(metric - carroll) / std
+    def distance(self, df):
+        def f(i):
+            metric, carroll, std = [float(v) for v in df.loc[i, ["METRIC_VALUE", "Carroll College", "STD"]]]
+            return np.nan if pd.isna(metric) else abs(metric - carroll) / std
+        return f
 
     def get_data(self, year = 2023):
         df = self.all_school_metrics(year)
         df = pd.merge(df, self.std, on = "METRIC_NAME")
         df = pd.merge(df, self.carroll, on = "METRIC_NAME")
         df = pd.merge(df, self.schools, on = "School_ID")
-        df["Distance"] = df.index.map(lambda i: self.distance(df, i))
+        df["Distance"] = df.index.map(self.distance(df))
         df = df.loc[lambda df: pd.isna(df["Distance"]) == False]
         df.to_csv(os.path.join(self.guides, "Distance.csv"), index = False)
 
     def number_in_range(self, std_threshold):
-        df = self.distance.loc[lambda df: df["School"] != "Carroll College"]
+        df = self.distance_df.loc[lambda df: df["School"] != "Carroll College"]
         df["In Range"] = df["Distance"].map(lambda x: int(x <= std_threshold))
         agg_df = df.groupby(by="School_ID").agg(Close_Metrics = ("In Range", "sum"))
-        return agg_df.loc[lambda df: df["Close_Metrics"] >= 4].shape[0]
+        return agg_df.loc[lambda df: df["Close_Metrics"] >= 7].shape[0]
 
     def makeSTDCorrelation(self, start, stop):
         std_thresholds = np.linspace(start, stop, 500)
@@ -126,10 +132,10 @@ class CTFPL:
         df = pd.DataFrame({"STD Threshold": std_thresholds, "Neighborhood Size": school_neighborhood_sizes})
         plt.figure(figsize = (10, 10))
         plt.axhline(y = 50, color='red', linestyle='--', linewidth = 2, label = "50 Schools")
-        plt.axhline(y=100, color='green', linestyle='--', linewidth = 2, label="100 Schools")
+        plt.axhline(y=500, color='green', linestyle='--', linewidth = 2, label="100 Schools")
         plt.plot(df["STD Threshold"], df["Neighborhood Size"])
         plt.xlabel('Standard Deviation Threshold')
-        plt.ylabel('Number of Schools Within STD Threshold From Carroll College For 4+ Metrics')
+        plt.ylabel('Number of Schools Within STD Threshold From Carroll College For All 7 Metrics')
         plt.title('School Neighborhood Size Distribution')
         plt.grid(True)
         path_folder = Path(os.path.join(self.folder, f"From {start} to {stop}"))
@@ -139,17 +145,21 @@ class CTFPL:
         plt.show()
         plt.close()
 
-    def getTop50Schools(self):
-        std_threshold = 0.0258917835671342
-        df = self.distance
-        df = df.loc[lambda df: df['School'] != "Carroll College"]
+    def getNeighborSchools(self):
+        std_threshold = 0.5
+        df = self.distance_df
         df["In Range"] = df["Distance"].map(lambda x: int(x <= std_threshold))
-        df = df.groupby(by="School_ID").agg(Close_Metrics=("In Range", "sum")).reset_index()
+        df = df.groupby(by=["School_ID"]).agg(Close_Metrics=("In Range", "sum")).reset_index()
         df["School_ID"] = df["School_ID"].astype(str)
-        df = df.loc[lambda df: df["Close_Metrics"] >= 4].sort_values(by="Close_Metrics", ascending = False)
-        df = pd.merge(df, self.schools, on = "School_ID")[["School_ID", "School", "Close_Metrics"]]
-        df.to_csv(os.path.join(self.folder, "Top Schools.csv"), index = False)
+        df = df.loc[lambda df: df["Close_Metrics"] >= 7]
+        df = pd.merge(df, self.distance_df, on = "School_ID")[["School_ID", "METRIC_NAME", "METRIC_VALUE"]
+                                                              + self.additional_info]
+        df.to_csv(os.path.join(self.folder, "Top Schools (0.5 STD).csv"), index = False)
         self.print_table(df)
+        pivoted = df.pivot(index=["School_ID"] + self.additional_info,
+                           columns="METRIC_NAME", values = "METRIC_VALUE").reset_index()
+        pivoted.to_csv(os.path.join(self.folder, "Top Schools (0.5 STD) (Pivoted).csv"), index = False)
+        self.print_table(pivoted)
 
 
 

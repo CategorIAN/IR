@@ -951,6 +951,683 @@ class Reports:
                     """,
                         "snapshot_term": "2025SP",
                         "func_dict": None
+                    },
+                    4: {
+                        "name": "Demographics",
+                        "query": f"""
+                        SELECT  STTR_STUDENT,
+                        LAST_NAME,
+                        FIRST_NAME,
+                        GENDER,
+                        RACE.IPEDS_RACE_ETHNIC_DESC AS RACE,
+                        CASE WHEN STTR_STUDENT_LOAD IN ('F', 'O') THEN 'Full-Time' ELSE 'Part-Time' END AS LOAD,
+                        CASE
+                            WHEN STTR_ACAD_LEVEL = 'GR' THEN 'Graduate'
+                            WHEN STTR_ACAD_LEVEL = 'UG' THEN CASE
+                            WHEN STP_PROGRAM_TITLE = 'Non-Degree Seeking Students' THEN 'Non-Degree Seeking Undergraduate'
+                            WHEN FM.TERM = '2024FA' OR FM.TERM = '2025SP' THEN CASE
+                                WHEN STPR_ADMIT_STATUS = 'FY' THEN 'First-time Undergraduate'
+                                WHEN STPR_ADMIT_STATUS IN ('TR', 'RE') THEN 'Transfer-in Undergraduate' END
+                            ELSE 'Continuing/Returning Undergraduate' END END AS STATUS
+                
+                        FROM STUDENT_TERMS_VIEW AS STV
+                        JOIN PERSON ON STV.STTR_STUDENT = PERSON.ID
+                        JOIN Z01_ALL_RACE_ETHNIC_W_FLAGS AS RACE ON PERSON.ID = RACE.ID
+                        LEFT JOIN Z01_AAV_STUDENT_FIRST_MATRIC AS FM ON STV.STTR_STUDENT = FM.ID
+                        LEFT JOIN (SELECT STPR_STUDENT, STPR_ADMIT_STATUS
+                                   FROM (
+                                       SELECT   STPR_STUDENT,
+                                                STPR_ADMIT_STATUS,
+                                                ROW_NUMBER() OVER (PARTITION BY STPR_STUDENT
+                                                ORDER BY STUDENT_PROGRAMS_ADDDATE) AS rn
+                                       FROM STUDENT_PROGRAMS_VIEW
+                                       WHERE STPR_ADMIT_STATUS IN ('FY', 'TR', 'RE')
+                                       ) ranked
+                                       WHERE rn = 1) AS FIRST_ADMIT ON STV.STTR_STUDENT = FIRST_ADMIT.STPR_STUDENT
+                        JOIN (SELECT *
+                                   FROM (SELECT STUDENT_ID,
+                                                STP_ACADEMIC_PROGRAM,
+                                                STP_PROGRAM_TITLE,
+                                                STP_CURRENT_STATUS,
+                                                ROW_NUMBER() OVER (PARTITION BY STUDENT_ID
+                                                    ORDER BY CASE WHEN STP_END_DATE IS NULL THEN 0 ELSE 1 END, STP_END_DATE DESC) AS rn
+                                         FROM STUDENT_ACAD_PROGRAMS_VIEW
+                                         WHERE STP_CURRENT_STATUS != 'Changed Program'
+                                         AND STP_START_DATE <= (SELECT TOP 1 TERMS.TERM_END_DATE
+                                                                FROM TERMS
+                                                                WHERE TERMS_ID = '2024FA')
+                                         ) ranked
+                                    WHERE rn = 1) AS SAPV ON STV.STTR_STUDENT = SAPV.STUDENT_ID
+                        WHERE STTR_TERM = '2024FA'
+                        """,
+                        "snapshot_term": "2025SP",
+                        "func_dict": None
+                    },
+                    5: {
+                        "name": "Enrollment (10 Years)",
+                        "query": f"""
+                        SELECT ENROLL_TERM,
+                        COUNT(STUDENT_ID) AS STUDENT_COUNT
+                        FROM (
+                        SELECT DISTINCT STUDENT_ID, ENROLL_TERM
+                        FROM STUDENT_ENROLLMENT_VIEW AS SEV
+                        JOIN TERMS ON SEV.ENROLL_TERM = TERMS.TERMS_ID
+                        WHERE ENROLL_CURRENT_STATUS IN ('New', 'Add')
+                        AND  (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL)
+                        AND TERM_START_DATE >= '2014-08-01'
+                        AND ENROLL_TERM LIKE '%FA'
+                        ) AS X
+                        GROUP BY ENROLL_TERM
+                        """,
+                        "snapshot_term": "2025SP",
+                        "func_dict": None
+                    },
+                    6: {
+                        "name": "Geographic Origins",
+                        "query": f"""
+                        SELECT STTR_STUDENT,
+                       LAST_NAME,
+                       FIRST_NAME,
+                       ADDRESS.ADDRESS_ID,
+                       CITY,
+                       STATE,
+                       ZIP,
+                       ADDRESS_LINES
+                    FROM (
+                    SELECT STTR_STUDENT,
+                           LAST_NAME,
+                           FIRST_NAME,
+                           ADDRESS_ID
+                    FROM (
+                    SELECT STTR_STUDENT,
+                           P.LAST_NAME,
+                           P.FIRST_NAME,
+                           ADDRESS.ADDRESS_ID,
+                           ROW_NUMBER() OVER (PARTITION BY STTR_STUDENT ORDER BY ADDRESS_ADD_DATE DESC) AS rn
+                    
+                    FROM STUDENT_TERMS_VIEW AS STV
+                    JOIN PERSON AS P ON STV.STTR_STUDENT = P.ID
+                    JOIN Z01_AAV_STUDENT_FIRST_MATRIC AS FM ON STV.STTR_STUDENT = FM.ID
+                    JOIN TERMS AS STARTING_TERM ON FM.TERM = STARTING_TERM.TERMS_ID
+                    JOIN PERSON_ADDRESSES_VIEW AS PAV  ON STV.STTR_STUDENT = PAV.ID
+                    JOIN ADDRESS ON PAV.ADDRESS_ID = ADDRESS.ADDRESS_ID
+                    WHERE STTR_TERM = '2024FA'
+                    AND ADDRESS_TYPE = 'H'
+                    AND ADDRESS_ADD_DATE < STARTING_TERM.TERM_START_DATE) AS X WHERE rn = 1) AS X
+                    JOIN ADDRESS ON X.ADDRESS_ID = ADDRESS.ADDRESS_ID
+                    JOIN ADDRESS_LS ON X.ADDRESS_ID = ADDRESS_LS.ADDRESS_ID
+                    WHERE POS = 1
+                    """,
+                        "snapshot_term": "2025SP",
+                        "func_dict": None
+                    }
+                }
+            },
+            11: {
+                "name": "2025-03-31-Enrollment Summary & Class Distribution",
+                "person": "Cindy Trimp",
+                "start": "2025-03-31",
+                "due": None,
+                "finish": "2025-04-04",
+                "tables": {
+                    1: {
+                        "name": "Fall 2024",
+                        "query": f"""
+          SELECT DISTINCT SEV.STUDENT_ID,
+                  CASE WHEN (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL) THEN
+                  CASE
+                      WHEN STUDENT_ACAD_LEVEL = 'UG' THEN CASE
+                        WHEN STUDENT_CURRENT_TYPE = 'ACE'
+                          THEN 'Early High School'
+                        WHEN STUDENT_CURRENT_TYPE = 'NDFTV'
+                          THEN 'International Exchange'
+                      WHEN PROGRAM = 'Accelerated Nursing'
+                          THEN 'Accelerated Nursing'
+                      WHEN PROGRAM = 'Non-Degree Seeking Students'
+                          THEN 'Non-Degree UG'
+                    WHEN STUDENT_CURRENT_TYPE = 'PB'
+                            THEN 'Post-Baccalaureate'
+
+                      WHEN STUDENT_CLASS_LEVEL = 'Freshman'
+                          THEN CASE
+                                   WHEN FIRST_ADMIT.STPR_ADMIT_STATUS = 'FY'
+                                       THEN 'First-Time Beginning Freshman'
+                                   ELSE 'Other Freshman' END
+                      WHEN STUDENT_CLASS_LEVEL = 'Sophomore'
+                          THEN 'Sophomores'
+                      WHEN STUDENT_CLASS_LEVEL = 'Junior'
+                          THEN 'Juniors'
+                      WHEN STUDENT_CLASS_LEVEL = 'Senior'
+                          THEN 'Seniors'
+                      ELSE 'Non-Degree UG' END
+                      WHEN STUDENT_ACAD_LEVEL = 'GR'
+                          THEN 'Master''s Candidates'
+                      WHEN STUDENT_ACAD_LEVEL = 'CE'
+                          THEN 'Continuing Education'
+                      END
+                      ELSE 'Senior Citizen Auditor' END AS STUDENT_SUB_CLASSIFICATION,
+                  CASE
+                      WHEN STUDENT_LOAD IN ('F', 'O') THEN CASE
+                                                               WHEN 'M' IN (STUDENT_GENDER, ASSIGNED_GENDER)
+                                                                   THEN 'Full-Time Male'
+                                                               WHEN 'F' IN (STUDENT_GENDER, ASSIGNED_GENDER)
+                                                                   THEN 'Full-Time Female'
+                                                                ELSE 'Unknown' END
+                      ELSE CASE
+                               WHEN 'M' IN (STUDENT_GENDER, ASSIGNED_GENDER)
+                                   THEN 'Part-Time Male'
+                               WHEN 'F' IN (STUDENT_GENDER, ASSIGNED_GENDER)
+                                   THEN 'Part-Time Female'
+                                ELSE 'Unknown' END END AS LOAD_GENDER
+            FROM STUDENT_ENROLLMENT_VIEW AS SEV
+           LEFT JOIN (SELECT STPR_STUDENT, STPR_ADMIT_STATUS
+                      FROM (SELECT STPR_STUDENT,
+                                   STPR_ADMIT_STATUS,
+                                   ROW_NUMBER() OVER (PARTITION BY STPR_STUDENT
+                                       ORDER BY STUDENT_PROGRAMS_ADDDATE) AS ADMIT_RANK
+                            FROM STUDENT_PROGRAMS_VIEW
+                            WHERE STPR_ADMIT_STATUS IN ('FY', 'TR', 'RE')) ranked
+                      WHERE ADMIT_RANK = 1) AS FIRST_ADMIT
+                     ON SEV.STUDENT_ID = FIRST_ADMIT.STPR_STUDENT
+           LEFT JOIN (SELECT *
+                 FROM (SELECT STUDENT_ID,
+                              STP_PROGRAM_TITLE                                                                 AS PROGRAM,
+                              STP_CURRENT_STATUS,
+                              ROW_NUMBER() OVER (PARTITION BY STUDENT_ID
+                                  ORDER BY CASE WHEN STP_END_DATE IS NULL THEN 0 ELSE 1 END, STP_END_DATE DESC) AS PROGRAM_RANK
+                       FROM STUDENT_ACAD_PROGRAMS_VIEW
+                       WHERE STP_START_DATE <=
+                             (SELECT TOP 1 TERMS.TERM_END_DATE
+                              FROM TERMS
+                              WHERE TERMS_ID = '2024FA')) ranked
+                 WHERE PROGRAM_RANK = 1) AS SAPV
+                ON SEV.STUDENT_ID = SAPV.STUDENT_ID
+            LEFT JOIN (VALUES
+                           ('6184447', 'F'),
+                            ('6184697', 'F'),
+                            ('6184977', 'F'),
+                            ('6185039', 'F'),
+                            ('6186217', 'M'),
+                            ('6186670', 'F'),
+                            ('6187467', 'F'),
+                            ('6187468', 'M'),
+                            ('6187470', 'F'),
+                            ('6188264', 'F'),
+                            ('6188541', 'F'),
+                            ('6188544', 'F'),
+                            ('6188723', 'F'),
+                            ('6188731', 'F'),
+                            ('6188797', 'F'),
+                            ('6188940', 'F'),
+                            ('6189182', 'M'),
+                            ('6189200', 'M'),
+                            ('6189204', 'M'),
+                            ('6189250', 'F'),
+                            ('6189252', 'M'),
+                            ('6189317', 'F'),
+                            ('6189318', 'M'),
+                            ('6189523', 'F'),
+                            ('6189571', 'F'),
+                            ('6189572', 'M'),
+                            ('6189575', 'F'),
+                            ('6189620', 'F'),
+                            ('6189635', 'M'),
+                            ('6189662', 'M')) AS Y(ID, ASSIGNED_GENDER)
+                            ON SEV.STUDENT_ID = Y.ID
+  WHERE ENROLL_TERM = '2024FA'
+    AND ENROLL_CURRENT_STATUS IN ('Add', 'New')
+    AND ((ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL) OR STUDENT_CURRENT_TYPE = 'SC') --Original Data
+        """,
+                        "snapshot_term": "2025SP",
+                        "func_dict": {
+                            "Agg": lambda query: f"""
+        --(Begin 7)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        SELECT X.*
+        FROM (
+        --(Begin 6)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                 SELECT Y.STUDENT_CLASSIFICATION,
+                        X.*
+                 FROM (
+        --(Begin 5)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                          SELECT CASE
+                                     WHEN GROUPING(STUDENT_SUB_CLASSIFICATION) = 1
+                                        AND GROUPING(FRESHMAN) = 1
+                                        AND GROUPING(STUDENT_CLASSIFICATION) = 0
+                                         THEN CASE
+                                                  WHEN STUDENT_CLASSIFICATION = 'Undergraduate'
+                                                      THEN 'Total Undergraduates'
+                                                  WHEN STUDENT_CLASSIFICATION = 'Graduate and Special'
+                                                      THEN 'Total Graduates and Special'
+                                                  WHEN STUDENT_CLASSIFICATION = 'Miscellaneous'
+                                                      THEN 'Total Miscellaneous' END
+                                    WHEN GROUPING(STUDENT_SUB_CLASSIFICATION) = 1
+                                    AND GROUPING(FRESHMAN) = 0
+                                    AND GROUPING(STUDENT_CLASSIFICATION) = 1
+                                        THEN CASE
+                                            WHEN FRESHMAN = 'Freshman' THEN 'Total Freshman' END
+                                     WHEN GROUPING(STUDENT_SUB_CLASSIFICATION) = 1
+                                        AND GROUPING(STUDENT_CLASSIFICATION) = 1
+                                         AND GROUPING(FRESHMAN) = 1 THEN 'Grand Total'
+                                     ELSE STUDENT_SUB_CLASSIFICATION END AS STUDENT_SUB_CLASSIFICATION,
+                                 SUM(PART_TIME_MALE)                     AS PART_TIME_MALE,
+                                 SUM(PART_TIME_FEMALE)                   AS PART_TIME_FEMALE,
+                                 SUM(PART_TIME_TOTAL)                    AS PART_TIME_TOTAL,
+                                 SUM(FULL_TIME_MALE)                     AS FULL_TIME_MALE,
+                                 SUM(FULL_TIME_FEMALE)                   AS FULL_TIME_FEMALE,
+                                 SUM(FULL_TIME_TOTAL)                    AS FULL_TIME_TOTAL,
+                                 SUM(MALE_TOTAL)                         AS MALE_TOTAL,
+                                 SUM(FEMALE_TOTAL)                       AS FEMALE_TOTAL,
+                                 SUM(TOTAL)                              AS TOTAL
+                          FROM (
+        --(Begin 4)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                   SELECT STUDENT_CLASSIFICATION,
+                                          FRESHMAN,
+                                          STUDENT_SUB_CLASSIFICATION,
+                                          PART_TIME_MALE,
+                                          PART_TIME_FEMALE,
+                                          (PART_TIME_MALE + PART_TIME_FEMALE)                                     AS PART_TIME_TOTAL,
+                                          FULL_TIME_MALE,
+                                          FULL_TIME_FEMALE,
+                                          (FULL_TIME_MALE + FULL_TIME_FEMALE)                                     AS FULL_TIME_TOTAL,
+                                          (PART_TIME_MALE + FULL_TIME_MALE)                                       AS MALE_TOTAL,
+                                          (PART_TIME_FEMALE + FULL_TIME_FEMALE)                                   AS FEMALE_TOTAL,
+                                          (PART_TIME_MALE + PART_TIME_FEMALE + FULL_TIME_MALE + FULL_TIME_FEMALE) AS TOTAL,
+                                          UNKNOWN
+                                   FROM (
+        --(Begin 3)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                            SELECT STUDENT_CLASSIFICATION,
+                                                   FRESHMAN,
+                                                   STUDENT_SUB_CLASSIFICATION,
+                                                   [Part-Time Male]   AS PART_TIME_MALE,
+                                                   [Part-Time Female] AS PART_TIME_FEMALE,
+                                                   [Full-Time Male]   AS FULL_TIME_MALE,
+                                                   [Full-Time Female] AS FULL_TIME_FEMALE,
+                                                   [Unknown] AS UNKNOWN
+                                            FROM (
+        --(Begin 2)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                                     SELECT X.STUDENT_ID,
+                                                            Y.STUDENT_CLASSIFICATION,
+                                                            Z.FRESHMAN,
+                                                            X.STUDENT_SUB_CLASSIFICATION,
+                                                            X.LOAD_GENDER
+                                                     FROM (
+        ---(Begin 1)-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                        {query}
+        --(End 1)--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                                          ) AS X
+                                            JOIN (VALUES ('First-Time Beginning Freshman', 'Undergraduate'),
+                                                         ('Other Freshman', 'Undergraduate'),
+                                                         ('Sophomores', 'Undergraduate'),
+                                                         ('Juniors', 'Undergraduate'),
+                                                         ('Seniors', 'Undergraduate'),
+                                                         ('Master''s Candidates', 'Graduate and Special'),
+                                                         ('Accelerated Nursing', 'Graduate and Special'),
+                                                         ('Continuing Education', 'Miscellaneous'),
+                                                         ('Post-Baccalaureate', 'Miscellaneous'),
+                                                         ('Early High School', 'Miscellaneous'),
+                                                         ('Non-Degree UG', 'Miscellaneous'),
+                                                         ('International Exchange', 'Miscellaneous'),
+                                                         ('Senior Citizen Auditor', 'Miscellaneous')
+                                                  ) AS Y(STUDENT_SUB_CLASSIFICATION, STUDENT_CLASSIFICATION)
+                                                     ON X.STUDENT_SUB_CLASSIFICATION = Y.STUDENT_SUB_CLASSIFICATION
+                                            LEFT JOIN (VALUES ('First-Time Beginning Freshman', 'Freshman'),
+                                                              ('Other Freshman', 'Freshman')
+                                                       ) AS Z(STUDENT_SUB_CLASSIFICATION, FRESHMAN)
+                                                ON X.STUDENT_SUB_CLASSIFICATION = Z.STUDENT_SUB_CLASSIFICATION
+                                                     -- Added Student Classification
+        --(End 2)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                                 ) AS X PIVOT (COUNT(STUDENT_ID) FOR LOAD_GENDER IN (
+                                                [Part-Time Male],
+                                                [Part-Time Female],
+                                                [Full-Time Male],
+                                                [Full-Time Female],
+                                                [Unknown]
+                                                )) AS X --Original Pivot Table
+        --(End 3)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                        ) AS X --With Column Totals
+        --(End 4)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                               ) AS X
+                          GROUP BY GROUPING SETS ((STUDENT_SUB_CLASSIFICATION), (STUDENT_CLASSIFICATION), (FRESHMAN), ())
+        --(End 5)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                      ) AS X
+                 JOIN (VALUES ('First-Time Beginning Freshman', 'Undergraduate'),
+                               ('Other Freshman', 'Undergraduate'),
+                               ('Sophomores', 'Undergraduate'),
+                             ('Juniors', 'Undergraduate'),
+                             ('Seniors', 'Undergraduate'),
+                             ('Master''s Candidates', 'Graduate and Special'),
+                             ('Accelerated Nursing', 'Graduate and Special'),
+                             ('Continuing Education', 'Miscellaneous'),
+                             ('Post-Baccalaureate', 'Miscellaneous'),
+                             ('Early High School', 'Miscellaneous'),
+                             ('Non-Degree UG', 'Miscellaneous'),
+                             ('International Exchange', 'Miscellaneous'),
+                             ('Senior Citizen Auditor', 'Miscellaneous'),
+                     --------------------------------------------------------------------
+                            ('Total Freshman', 'Undergraduate'),
+                            ('Total Undergraduates', 'Undergraduate'),
+                            ('Total Graduates and Special', 'Graduate and Special'),
+                            ('Total Miscellaneous', 'Miscellaneous'),
+                            ('Grand Total', 'Grand Total')
+                                                  ) AS Y(STUDENT_SUB_CLASSIFICATION, STUDENT_CLASSIFICATION)
+                                                     ON X.STUDENT_SUB_CLASSIFICATION = Y.STUDENT_SUB_CLASSIFICATION
+                 --Appended on Student Classification Again
+        --(End 6)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+             ) AS X
+        LEFT JOIN (VALUES ('Undergraduate', 1),
+                          ('Graduate and Special', 2),
+                          ('Miscellaneous', 3),
+                            ('Grand Total', 4))
+            AS ORDER_1(LABEL, N)
+        ON X.STUDENT_CLASSIFICATION = ORDER_1.LABEL
+        LEFT JOIN (VALUES
+                ('First-Time Beginning Freshman', 1),
+                ('Other Freshman', 2),
+                ('Total Freshman', 3),
+                ('Sophomores', 4),
+                ('Juniors', 5),
+                ('Seniors', 6),
+                ('Total Undergraduates', 7),
+        ----------------------------------------
+                ('Master''s Candidates', 1),
+                ('Accelerated Nursing', 2),
+                ('Total Graduates and Special', 3),
+        ----------------------------------------
+                ('Continuing Education', 1),
+                ('Post-Baccalaureate', 2),
+                ('Early High School', 3),
+                ('Non-Degree UG', 4),
+                ('International Exchange', 5),
+                ('Senior Citizen Auditor', 6),
+                ('Total Miscellaneous', 7)
+                   ) AS ORDER_2(LABEL, N) ON X.STUDENT_SUB_CLASSIFICATION = ORDER_2.LABEL
+        ORDER BY ORDER_1.N, ORDER_2.N --Gave it an ordering
+        --(End 7)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------------------
+        ------------------------------------------------------------------------------------------------------------------
+        """,
+                            "Names": lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+                        }
+                    },
+                    2: {
+                        "name": "Spring 2025",
+                        "query": f"""
+                                                              SELECT DISTINCT SEV.STUDENT_ID,
+                                                                      CASE WHEN (ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL) THEN
+                                                                      CASE
+                                                                          WHEN STUDENT_ACAD_LEVEL = 'UG' THEN CASE
+                                                                            WHEN STUDENT_CURRENT_TYPE = 'ACE'
+                                                                              THEN 'Early High School'
+                                                                            WHEN STUDENT_CURRENT_TYPE = 'NDFTV'
+                                                                              THEN 'International Exchange'
+                                                                          WHEN PROGRAM = 'Accelerated Nursing'
+                                                                              THEN 'Accelerated Nursing'
+                                                                          WHEN PROGRAM = 'Non-Degree Seeking Students'
+                                                                              THEN 'Non-Degree UG'
+                                                                        WHEN STUDENT_CURRENT_TYPE = 'PB'
+                                                                                THEN 'Post-Baccalaureate'
+
+                                                                          WHEN STUDENT_CLASS_LEVEL = 'Freshman'
+                                                                              THEN CASE
+                                                                                       WHEN FIRST_ADMIT.STPR_ADMIT_STATUS = 'FY'
+                                                                                           THEN 'First-Time Beginning Freshman'
+                                                                                       ELSE 'Other Freshman' END
+                                                                          WHEN STUDENT_CLASS_LEVEL = 'Sophomore'
+                                                                              THEN 'Sophomores'
+                                                                          WHEN STUDENT_CLASS_LEVEL = 'Junior'
+                                                                              THEN 'Juniors'
+                                                                          WHEN STUDENT_CLASS_LEVEL = 'Senior'
+                                                                              THEN 'Seniors'
+                                                                          ELSE 'Non-Degree UG' END
+                                                                          WHEN STUDENT_ACAD_LEVEL = 'GR'
+                                                                              THEN 'Master''s Candidates'
+                                                                          WHEN STUDENT_ACAD_LEVEL = 'CE'
+                                                                              THEN 'Continuing Education'
+                                                                          END
+                                                                          ELSE 'Senior Citizen Auditor' END AS STUDENT_SUB_CLASSIFICATION,
+                                                                      CASE
+                                                                          WHEN STUDENT_LOAD IN ('F', 'O') THEN CASE
+                                                                                                                   WHEN 'M' IN (STUDENT_GENDER, ASSIGNED_GENDER)
+                                                                                                                       THEN 'Full-Time Male'
+                                                                                                                   WHEN 'F' IN (STUDENT_GENDER, ASSIGNED_GENDER)
+                                                                                                                       THEN 'Full-Time Female'
+                                                                                                                    ELSE 'Unknown' END
+                                                                          ELSE CASE
+                                                                                   WHEN 'M' IN (STUDENT_GENDER, ASSIGNED_GENDER)
+                                                                                       THEN 'Part-Time Male'
+                                                                                   WHEN 'F' IN (STUDENT_GENDER, ASSIGNED_GENDER)
+                                                                                       THEN 'Part-Time Female'
+                                                                                    ELSE 'Unknown' END END AS LOAD_GENDER
+                                                      FROM STUDENT_ENROLLMENT_VIEW AS SEV
+                                                               LEFT JOIN (SELECT STPR_STUDENT, STPR_ADMIT_STATUS
+                                                                          FROM (SELECT STPR_STUDENT,
+                                                                                       STPR_ADMIT_STATUS,
+                                                                                       ROW_NUMBER() OVER (PARTITION BY STPR_STUDENT
+                                                                                           ORDER BY STUDENT_PROGRAMS_ADDDATE) AS ADMIT_RANK
+                                                                                FROM STUDENT_PROGRAMS_VIEW
+                                                                                WHERE STPR_ADMIT_STATUS IN ('FY', 'TR', 'RE')) ranked
+                                                                          WHERE ADMIT_RANK = 1) AS FIRST_ADMIT
+                                                                         ON SEV.STUDENT_ID = FIRST_ADMIT.STPR_STUDENT
+                                                               LEFT JOIN (SELECT *
+                                                                     FROM (SELECT STUDENT_ID,
+                                                                                  STP_PROGRAM_TITLE                                                                 AS PROGRAM,
+                                                                                  STP_CURRENT_STATUS,
+                                                                                  ROW_NUMBER() OVER (PARTITION BY STUDENT_ID
+                                                                                      ORDER BY CASE WHEN STP_END_DATE IS NULL THEN 0 ELSE 1 END, STP_END_DATE DESC) AS PROGRAM_RANK
+                                                                           FROM STUDENT_ACAD_PROGRAMS_VIEW
+                                                                           WHERE STP_START_DATE <=
+                                                                                 (SELECT TOP 1 TERMS.TERM_END_DATE
+                                                                                  FROM TERMS
+                                                                                  WHERE TERMS_ID = '2025SP')) ranked
+                                                                     WHERE PROGRAM_RANK = 1) AS SAPV
+                                                                    ON SEV.STUDENT_ID = SAPV.STUDENT_ID
+                                                                LEFT JOIN (VALUES
+                                                                                ('6184447', 'F'),
+                                                                                ('6184697', 'F'),
+                                                                                ('6184977', 'F'),
+                                                                                ('6185039', 'F'),
+                                                                                ('6186217', 'M'),
+                                                                                ('6186670', 'F'),
+                                                                                ('6187467', 'F'),
+                                                                                ('6187468', 'M'),
+                                                                                ('6187470', 'F'),
+                                                                                ('6188264', 'F'),
+                                                                                ('6188541', 'F'),
+                                                                                ('6188544', 'F'),
+                                                                                ('6188731', 'F'),
+                                                                                ('6188797', 'F'),
+                                                                                ('6188940', 'F'),
+                                                                                ('6189200', 'M'),
+                                                                                ('6189252', 'M'),
+                                                                                ('6189523', 'F'),
+                                                                                ('6189571', 'F'),
+                                                                                ('6189572', 'M'),
+                                                                                ('6190155', 'F'),
+                                                                                ('6191064', 'F'),
+                                                                                ('6191066', 'F'),
+                                                                                ('6191067', 'M'),
+                                                                                ('6191303', 'M')
+                                                                                ) AS Y(ID, ASSIGNED_GENDER)
+                                                                                ON SEV.STUDENT_ID = Y.ID
+                                                      WHERE ENROLL_TERM = '2025SP'
+                                                        AND ENROLL_CURRENT_STATUS IN ('Add', 'New')
+                                                        AND ((ENROLL_SCS_PASS_AUDIT != 'A' OR ENROLL_SCS_PASS_AUDIT IS NULL) OR STUDENT_CURRENT_TYPE = 'SC') --Original Data
+        """,
+                        "snapshot_term": "2025SP",
+                        "func_dict": {
+                            "Agg": lambda query: f"""
+        --(Begin 7)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+SELECT X.*
+FROM (
+--(Begin 6)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+         SELECT Y.STUDENT_CLASSIFICATION,
+                X.*
+         FROM (
+--(Begin 5)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                  SELECT CASE
+                             WHEN GROUPING(STUDENT_SUB_CLASSIFICATION) = 1
+                                AND GROUPING(FRESHMAN) = 1
+                                AND GROUPING(STUDENT_CLASSIFICATION) = 0
+                                 THEN CASE
+                                          WHEN STUDENT_CLASSIFICATION = 'Undergraduate'
+                                              THEN 'Total Undergraduates'
+                                          WHEN STUDENT_CLASSIFICATION = 'Graduate and Special'
+                                              THEN 'Total Graduates and Special'
+                                          WHEN STUDENT_CLASSIFICATION = 'Miscellaneous'
+                                              THEN 'Total Miscellaneous' END
+                            WHEN GROUPING(STUDENT_SUB_CLASSIFICATION) = 1
+                            AND GROUPING(FRESHMAN) = 0
+                            AND GROUPING(STUDENT_CLASSIFICATION) = 1
+                                THEN CASE
+                                    WHEN FRESHMAN = 'Freshman' THEN 'Total Freshman' END
+                             WHEN GROUPING(STUDENT_SUB_CLASSIFICATION) = 1
+                                AND GROUPING(STUDENT_CLASSIFICATION) = 1
+                                 AND GROUPING(FRESHMAN) = 1 THEN 'Grand Total'
+                             ELSE STUDENT_SUB_CLASSIFICATION END AS STUDENT_SUB_CLASSIFICATION,
+                         SUM(PART_TIME_MALE)                     AS PART_TIME_MALE,
+                         SUM(PART_TIME_FEMALE)                   AS PART_TIME_FEMALE,
+                         SUM(PART_TIME_TOTAL)                    AS PART_TIME_TOTAL,
+                         SUM(FULL_TIME_MALE)                     AS FULL_TIME_MALE,
+                         SUM(FULL_TIME_FEMALE)                   AS FULL_TIME_FEMALE,
+                         SUM(FULL_TIME_TOTAL)                    AS FULL_TIME_TOTAL,
+                         SUM(MALE_TOTAL)                         AS MALE_TOTAL,
+                         SUM(FEMALE_TOTAL)                       AS FEMALE_TOTAL,
+                         SUM(TOTAL)                              AS TOTAL
+                  FROM (
+--(Begin 4)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                           SELECT STUDENT_CLASSIFICATION,
+                                  FRESHMAN,
+                                  STUDENT_SUB_CLASSIFICATION,
+                                  PART_TIME_MALE,
+                                  PART_TIME_FEMALE,
+                                  (PART_TIME_MALE + PART_TIME_FEMALE)                                     AS PART_TIME_TOTAL,
+                                  FULL_TIME_MALE,
+                                  FULL_TIME_FEMALE,
+                                  (FULL_TIME_MALE + FULL_TIME_FEMALE)                                     AS FULL_TIME_TOTAL,
+                                  (PART_TIME_MALE + FULL_TIME_MALE)                                       AS MALE_TOTAL,
+                                  (PART_TIME_FEMALE + FULL_TIME_FEMALE)                                   AS FEMALE_TOTAL,
+                                  (PART_TIME_MALE + PART_TIME_FEMALE + FULL_TIME_MALE + FULL_TIME_FEMALE) AS TOTAL,
+                                  UNKNOWN
+                           FROM (
+--(Begin 3)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                    SELECT STUDENT_CLASSIFICATION,
+                                           FRESHMAN,
+                                           STUDENT_SUB_CLASSIFICATION,
+                                           [Part-Time Male]   AS PART_TIME_MALE,
+                                           [Part-Time Female] AS PART_TIME_FEMALE,
+                                           [Full-Time Male]   AS FULL_TIME_MALE,
+                                           [Full-Time Female] AS FULL_TIME_FEMALE,
+                                           [Unknown] AS UNKNOWN
+                                    FROM (
+--(Begin 2)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                             SELECT X.STUDENT_ID,
+                                                    Y.STUDENT_CLASSIFICATION,
+                                                    Z.FRESHMAN,
+                                                    X.STUDENT_SUB_CLASSIFICATION,
+                                                    X.LOAD_GENDER
+                                             FROM (
+---(Begin 1)-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                        {query}
+--(End 1)--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                                  ) AS X
+                                    JOIN (VALUES ('First-Time Beginning Freshman', 'Undergraduate'),
+                                                 ('Other Freshman', 'Undergraduate'),
+                                                 ('Sophomores', 'Undergraduate'),
+                                                 ('Juniors', 'Undergraduate'),
+                                                 ('Seniors', 'Undergraduate'),
+                                                 ('Master''s Candidates', 'Graduate and Special'),
+                                                 ('Accelerated Nursing', 'Graduate and Special'),
+                                                 ('Continuing Education', 'Miscellaneous'),
+                                                 ('Post-Baccalaureate', 'Miscellaneous'),
+                                                 ('Early High School', 'Miscellaneous'),
+                                                 ('Non-Degree UG', 'Miscellaneous'),
+                                                 ('International Exchange', 'Miscellaneous'),
+                                                 ('Senior Citizen Auditor', 'Miscellaneous')
+                                          ) AS Y(STUDENT_SUB_CLASSIFICATION, STUDENT_CLASSIFICATION)
+                                             ON X.STUDENT_SUB_CLASSIFICATION = Y.STUDENT_SUB_CLASSIFICATION
+                                    LEFT JOIN (VALUES ('First-Time Beginning Freshman', 'Freshman'),
+                                                      ('Other Freshman', 'Freshman')
+                                               ) AS Z(STUDENT_SUB_CLASSIFICATION, FRESHMAN)
+                                        ON X.STUDENT_SUB_CLASSIFICATION = Z.STUDENT_SUB_CLASSIFICATION
+                                             -- Added Student Classification
+--(End 2)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                         ) AS X PIVOT (COUNT(STUDENT_ID) FOR LOAD_GENDER IN (
+                                        [Part-Time Male],
+                                        [Part-Time Female],
+                                        [Full-Time Male],
+                                        [Full-Time Female],
+                                        [Unknown]
+                                        )) AS X --Original Pivot Table
+--(End 3)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                                ) AS X --With Column Totals
+--(End 4)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                       ) AS X
+                  GROUP BY GROUPING SETS ((STUDENT_SUB_CLASSIFICATION), (STUDENT_CLASSIFICATION), (FRESHMAN), ())
+--(End 5)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+              ) AS X
+         JOIN (VALUES ('First-Time Beginning Freshman', 'Undergraduate'),
+                       ('Other Freshman', 'Undergraduate'),
+                       ('Sophomores', 'Undergraduate'),
+                     ('Juniors', 'Undergraduate'),
+                     ('Seniors', 'Undergraduate'),
+                     ('Master''s Candidates', 'Graduate and Special'),
+                     ('Accelerated Nursing', 'Graduate and Special'),
+                     ('Continuing Education', 'Miscellaneous'),
+                     ('Post-Baccalaureate', 'Miscellaneous'),
+                     ('Early High School', 'Miscellaneous'),
+                     ('Non-Degree UG', 'Miscellaneous'),
+                     ('International Exchange', 'Miscellaneous'),
+                     ('Senior Citizen Auditor', 'Miscellaneous'),
+             --------------------------------------------------------------------
+                    ('Total Freshman', 'Undergraduate'),
+                    ('Total Undergraduates', 'Undergraduate'),
+                    ('Total Graduates and Special', 'Graduate and Special'),
+                    ('Total Miscellaneous', 'Miscellaneous'),
+                    ('Grand Total', 'Grand Total')
+                                          ) AS Y(STUDENT_SUB_CLASSIFICATION, STUDENT_CLASSIFICATION)
+                                             ON X.STUDENT_SUB_CLASSIFICATION = Y.STUDENT_SUB_CLASSIFICATION
+         --Appended on Student Classification Again
+--(End 6)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+     ) AS X
+LEFT JOIN (VALUES ('Undergraduate', 1),
+                  ('Graduate and Special', 2),
+                  ('Miscellaneous', 3),
+                    ('Grand Total', 4))
+    AS ORDER_1(LABEL, N)
+ON X.STUDENT_CLASSIFICATION = ORDER_1.LABEL
+LEFT JOIN (VALUES
+        ('First-Time Beginning Freshman', 1),
+        ('Other Freshman', 2),
+        ('Total Freshman', 3),
+        ('Sophomores', 4),
+        ('Juniors', 5),
+        ('Seniors', 6),
+        ('Total Undergraduates', 7),
+----------------------------------------
+        ('Master''s Candidates', 1),
+        ('Accelerated Nursing', 2),
+        ('Total Graduates and Special', 3),
+----------------------------------------
+        ('Continuing Education', 1),
+        ('Post-Baccalaureate', 2),
+        ('Early High School', 3),
+        ('Non-Degree UG', 4),
+        ('International Exchange', 5),
+        ('Senior Citizen Auditor', 6),
+        ('Total Miscellaneous', 7)
+           ) AS ORDER_2(LABEL, N) ON X.STUDENT_SUB_CLASSIFICATION = ORDER_2.LABEL
+ORDER BY ORDER_1.N, ORDER_2.N --Gave it an ordering
+--(End 7)----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------
+        """,
+                            "Names": lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.* FROM ({query}) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+                        }
                     }
                 }
             }
@@ -2116,7 +2793,7 @@ class Reports:
         self.save_query_results(query, snapshot_term="2025SP")(report, name)
 
     '''
-    ID: Unknown
+    ID: 11
     Name: 2025-03-31-Enrollment Summary & Class Distribution
     Person: Cindy Trimp
     Start Date: 2025-03-31
@@ -2683,7 +3360,7 @@ ORDER BY ORDER_1.N, ORDER_2.N --Gave it an ordering
 
 
     '''
-    ID: Unknown
+    ID: 12
     Name: 2025-04-01-Carroll Retention Rates
     Person: Kathleen O'Leary
     Start Date: 2025-04-01
@@ -14111,6 +14788,52 @@ GROUP BY STATUS
         name = "Term Headcount Percentage By Athlete Status"
         self.save_query_results(query, snapshot_term="2025FA", func_dict = {"Agg": agg, "Names": names})(report, name)
 
+    def getElemEdSpecials(self):
+        query = f"""
+        SELECT DISTINCT TERMS.TERMS_ID  AS TERM,
+        TERMS.TERM_START_DATE,
+        SPECIALIZATIONS.SPEC_DESC AS SPECIALIZATION,
+        STUDENT_ID
+        FROM SPECIALIZATIONS
+        CROSS JOIN TERMS
+        CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+        LEFT JOIN STPR_SPECIALTIES_VIEW AS STUDENT_SPECIALTIES
+                ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+        LEFT JOIN SPECIALIZATIONS AS STU_SPEC ON STUDENT_SPECIALTIES.STPR_SPECIALIZATIONS = STU_SPEC.SPECIALIZATIONS_ID
+        WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+        AND TERMS.TERM_END_DATE < '2025-06-01'
+        AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+        AND STP_START_DATE <= TERMS.TERM_END_DATE
+        AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+        AND STP_CURRENT_STATUS != 'Did Not Enroll'
+        AND (
+        SPECIALIZATIONS.SPECIALIZATIONS_ID = STU_SPEC.SPECIALIZATIONS_ID
+        AND STPR_SPECIALIZATION_START <= TERMS.TERM_END_DATE
+        AND (STPR_SPECIALIZATION_END >= TERMS.TERM_START_DATE OR STPR_SPECIALIZATION_END IS NULL)
+        )
+        AND STP_PROGRAM_TITLE = 'Elementary Education'
+        """
+        agg = lambda query: f"""
+        SELECT TERM,
+                SPECIALIZATION,
+                COUNT(*) AS STUDENT_COUNT
+        FROM (
+        {query}
+        ) AS X
+        GROUP BY TERM, TERM_START_DATE, SPECIALIZATION
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-10-05-Elementary Education Program Review"
+        name = "Program Specialization Counts Per Term"
+        self.save_query_results(query, snapshot_term="2025FA", func_dict = {"Agg": agg, "Names": names})(report, name)
+
     #---------New Students----------------------------------------------------------------------------------------------
 
     def getElemEdNewStudentCountPerTerm(self):
@@ -15744,6 +16467,52 @@ GROUP BY STATUS
         """
         report = "2025-10-06-Special Education Program Review"
         name = "Term Headcount Percentage By Athlete Status"
+        self.save_query_results(query, snapshot_term="2025FA", func_dict = {"Agg": agg, "Names": names})(report, name)
+
+    def getSpecialEdSpecials(self):
+        query = f"""
+        SELECT DISTINCT TERMS.TERMS_ID  AS TERM,
+        TERMS.TERM_START_DATE,
+        SPECIALIZATIONS.SPEC_DESC AS SPECIALIZATION,
+        STUDENT_ID
+        FROM SPECIALIZATIONS
+        CROSS JOIN TERMS
+        CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+        LEFT JOIN STPR_SPECIALTIES_VIEW AS STUDENT_SPECIALTIES
+                ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+        LEFT JOIN SPECIALIZATIONS AS STU_SPEC ON STUDENT_SPECIALTIES.STPR_SPECIALIZATIONS = STU_SPEC.SPECIALIZATIONS_ID
+        WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+        AND TERMS.TERM_END_DATE < '2025-06-01'
+        AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+        AND STP_START_DATE <= TERMS.TERM_END_DATE
+        AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+        AND STP_CURRENT_STATUS != 'Did Not Enroll'
+        AND (
+        SPECIALIZATIONS.SPECIALIZATIONS_ID = STU_SPEC.SPECIALIZATIONS_ID
+        AND STPR_SPECIALIZATION_START <= TERMS.TERM_END_DATE
+        AND (STPR_SPECIALIZATION_END >= TERMS.TERM_START_DATE OR STPR_SPECIALIZATION_END IS NULL)
+        )
+        AND STP_PROGRAM_TITLE = 'Elementary Education K-8 & Special Education K-12'
+        """
+        agg = lambda query: f"""
+        SELECT TERM,
+                SPECIALIZATION,
+                COUNT(*) AS STUDENT_COUNT
+        FROM (
+        {query}
+        ) AS X
+        GROUP BY TERM, TERM_START_DATE, SPECIALIZATION
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-10-06-Special Education Program Review"
+        name = "Program Specialization Counts Per Term"
         self.save_query_results(query, snapshot_term="2025FA", func_dict = {"Agg": agg, "Names": names})(report, name)
 
     # ---------New Students----------------------------------------------------------------------------------------------
@@ -20142,6 +20911,210 @@ GROUP BY STATUS
         name = "Term Headcount Percentage By Pell Status"
         self.save_query_results(query, snapshot_term="2025FA", func_dict={"Agg": agg, "Names": names})(report, name)
 
+    def getSciEdTermHeadcountByVeteranStatus_Percent(self):
+        query = f"""
+                 SELECT DISTINCT TERMS.TERMS_ID  AS TERM,
+                TERMS.TERM_START_DATE,
+                MAJORS.MAJ_DESC AS MAJOR,
+                STUDENT_ID,
+                CASE WHEN EXISTS (
+                    SELECT 1
+                    FROM STA_OTHER_COHORTS_VIEW
+                    WHERE STA_OTHER_COHORT_GROUPS = 'VETS'
+                    AND STA_STUDENT = STUDENT_ID
+                    AND (TERMS.TERM_START_DATE <= STA_OTHER_COHORT_END_DATES OR STA_OTHER_COHORT_END_DATES IS NULL)
+                    AND (TERMS.TERM_END_DATE >= STA_OTHER_COHORT_START_DATES)
+                ) THEN 'Veteran' ELSE 'Not Veteran' END AS VET_STATUS
+         FROM MAJORS
+                  CROSS JOIN TERMS
+                  CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                  LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
+                            ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+                  LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
+                  LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
+         WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+           AND TERMS.TERM_END_DATE < '2025-06-01'
+           AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+           AND STP_START_DATE <= TERMS.TERM_END_DATE
+           AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+           AND STP_CURRENT_STATUS != 'Did Not Enroll'
+           AND (
+             (MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID)
+                 OR (MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
+                 AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
+                 AND (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
+                 )
+             )
+           AND MAJORS.MAJ_DESC = 'Science Education (5-12)'
+        """
+        agg = lambda query: f"""
+        --(Begin 3)------------------------------------------------------------------------------------------------------------
+        SELECT TERM,
+               VET_STATUS,
+               FORMAT(1.0 * COUNT(*) / TERM_COUNT, 'P') AS PERCENTAGE,
+               COUNT(*) AS COUNT
+        FROM (
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT X.*,
+                COUNT(*) OVER (PARTITION BY TERM) AS TERM_COUNT
+        FROM (
+        --(Begin 1)------------------------------------------------------------------------------------------------------------
+                {query}
+        --(End 1)------------------------------------------------------------------------------------------------------------
+                ) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, TERM_START_DATE, VET_STATUS, TERM_COUNT
+        --(End 3)------------------------------------------------------------------------------------------------------------
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-10-13-Science Education Program Review"
+        name = "Term Headcount Percentage By Veteran Status"
+        self.save_query_results(query, snapshot_term="2025FA", func_dict={"Agg": agg, "Names": names})(report, name)
+
+    def getSciEdTermHeadcountByAthleteStatus_Percent(self):
+        query = f"""
+                 SELECT DISTINCT TERMS.TERMS_ID  AS TERM,
+                TERMS.TERM_START_DATE,
+                MAJORS.MAJ_DESC AS MAJOR,
+                STUDENT_ID,
+                CASE WHEN EXISTS (
+                    SELECT 1
+                    FROM STA_OTHER_COHORTS_VIEW
+                    JOIN (SELECT VAL_INTERNAL_CODE AS CODE, VAL_EXTERNAL_REPRESENTATION AS COHORT
+                          FROM VALS
+                          WHERE VALCODE_ID = 'INSTITUTION.COHORTS') AS COHORT_CODES
+                    ON STA_OTHER_COHORTS_VIEW.STA_OTHER_COHORT_GROUPS = COHORT_CODES.CODE
+                    WHERE COHORT IN (
+                                        'Cheerleading',
+                                        'Dance',
+                                        'Football',
+                                        'Indoor Men''s Track',
+                                        'Indoor Women''s Track',
+                                        'Men''s Basketball',
+                                        'Men''s Cross Country',
+                                        'Men''s Golf',
+                                        'Men''s Soccer',
+                                        'Outdoor Men''s Track',
+                                        'Outdoor Women''s Track',
+                                        'Women''s Basketball',
+                                        'Women''s Cross Country',
+                                        'Women''s Golf',
+                                        'Women''s Soccer',
+                                        'Women''s Softball',
+                                        'Women''s Volleyball'
+                                     )
+                    AND STA_STUDENT = STUDENT_ID
+                    AND (TERMS.TERM_START_DATE <= STA_OTHER_COHORT_END_DATES OR STA_OTHER_COHORT_END_DATES IS NULL)
+                    AND (TERMS.TERM_END_DATE >= STA_OTHER_COHORT_START_DATES)
+                ) THEN 'Athlete' ELSE 'Not Athlete' END AS ATHLETE_STATUS
+         FROM MAJORS
+                  CROSS JOIN TERMS
+                  CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+                  LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
+                            ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+                  LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
+                  LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
+         WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+           AND TERMS.TERM_END_DATE < '2025-06-01'
+           AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+           AND STP_START_DATE <= TERMS.TERM_END_DATE
+           AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+           AND STP_CURRENT_STATUS != 'Did Not Enroll'
+           AND (
+             (MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID)
+                 OR (MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
+                 AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
+                 AND (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
+                 )
+             )
+           AND MAJORS.MAJ_DESC = 'Science Education (5-12)'
+        """
+        agg = lambda query: f"""
+        --(Begin 3)------------------------------------------------------------------------------------------------------------
+        SELECT TERM,
+               ATHLETE_STATUS,
+               FORMAT(1.0 * COUNT(*) / TERM_COUNT, 'P') AS PERCENTAGE,
+               COUNT(*) AS COUNT
+        FROM (
+        --(Begin 2)-----------------------------------------------------------------------------------------------------
+        SELECT X.*,
+                COUNT(*) OVER (PARTITION BY TERM) AS TERM_COUNT
+        FROM (
+        --(Begin 1)------------------------------------------------------------------------------------------------------------
+            {query}
+        --(End 1)------------------------------------------------------------------------------------------------------------
+        ) AS X
+        --(End 2)-------------------------------------------------------------------------------------------------------
+             ) AS X
+        GROUP BY TERM, TERM_START_DATE, ATHLETE_STATUS, TERM_COUNT
+        --(End 3)------------------------------------------------------------------------------------------------------------
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-10-13-Science Education Program Review"
+        name = "Term Headcount Percentage By Athlete Status"
+        self.save_query_results(query, snapshot_term="2025FA", func_dict = {"Agg": agg, "Names": names})(report, name)
+
+    def getSciEdSpecials(self):
+        query = f"""
+        SELECT DISTINCT TERMS.TERMS_ID  AS TERM,
+        TERMS.TERM_START_DATE,
+        SPECIALIZATIONS.SPEC_DESC AS SPECIALIZATION,
+        STUDENT_ID
+        FROM SPECIALIZATIONS
+        CROSS JOIN TERMS
+        CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+        LEFT JOIN STPR_SPECIALTIES_VIEW AS STUDENT_SPECIALTIES
+                ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+        LEFT JOIN SPECIALIZATIONS AS STU_SPEC ON STUDENT_SPECIALTIES.STPR_SPECIALIZATIONS = STU_SPEC.SPECIALIZATIONS_ID
+        WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+        AND TERMS.TERM_END_DATE < '2025-06-01'
+        AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+        AND STP_START_DATE <= TERMS.TERM_END_DATE
+        AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+        AND STP_CURRENT_STATUS != 'Did Not Enroll'
+        AND (
+        SPECIALIZATIONS.SPECIALIZATIONS_ID = STU_SPEC.SPECIALIZATIONS_ID
+        AND STPR_SPECIALIZATION_START <= TERMS.TERM_END_DATE
+        AND (STPR_SPECIALIZATION_END >= TERMS.TERM_START_DATE OR STPR_SPECIALIZATION_END IS NULL)
+        )
+        AND STP_PROGRAM_TITLE = 'Science Education (5-12)'
+        """
+        agg = lambda query: f"""
+        SELECT TERM,
+                SPECIALIZATION,
+                COUNT(*) AS STUDENT_COUNT
+        FROM (
+        {query}
+        ) AS X
+        GROUP BY TERM, TERM_START_DATE, SPECIALIZATION
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-10-13-Science Education Program Review"
+        name = "Program Specialization Counts Per Term"
+        self.save_query_results(query, snapshot_term="2025FA", func_dict = {"Agg": agg, "Names": names})(report, name)
+
     # ---------New Students---------------------------------------------------------------------------------------------
 
     def getSciEdNewStudentCountPerTerm(self):
@@ -20803,163 +21776,6 @@ GROUP BY STATUS
         name = "Avg Class Count By Size"
         self.save_query_results(query, snapshot_term="2025FA", func_dict={"Agg": agg, "Names": names})(report, name)
 
-    def getSciEdTermHeadcountByVeteranStatus_Percent(self):
-        query = f"""
-                 SELECT DISTINCT TERMS.TERMS_ID  AS TERM,
-                TERMS.TERM_START_DATE,
-                MAJORS.MAJ_DESC AS MAJOR,
-                STUDENT_ID,
-                CASE WHEN EXISTS (
-                    SELECT 1
-                    FROM STA_OTHER_COHORTS_VIEW
-                    WHERE STA_OTHER_COHORT_GROUPS = 'VETS'
-                    AND STA_STUDENT = STUDENT_ID
-                    AND (TERMS.TERM_START_DATE <= STA_OTHER_COHORT_END_DATES OR STA_OTHER_COHORT_END_DATES IS NULL)
-                    AND (TERMS.TERM_END_DATE >= STA_OTHER_COHORT_START_DATES)
-                ) THEN 'Veteran' ELSE 'Not Veteran' END AS VET_STATUS
-         FROM MAJORS
-                  CROSS JOIN TERMS
-                  CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
-                  LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
-                            ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
-                  LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
-                  LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
-         WHERE TERMS.TERM_START_DATE >= '2019-08-01'
-           AND TERMS.TERM_END_DATE < '2025-06-01'
-           AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
-           AND STP_START_DATE <= TERMS.TERM_END_DATE
-           AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
-           AND STP_CURRENT_STATUS != 'Did Not Enroll'
-           AND (
-             (MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID)
-                 OR (MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
-                 AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
-                 AND (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
-                 )
-             )
-           AND MAJORS.MAJ_DESC = 'Science Education (5-12)'
-        """
-        agg = lambda query: f"""
-        --(Begin 3)------------------------------------------------------------------------------------------------------------
-        SELECT TERM,
-               VET_STATUS,
-               FORMAT(1.0 * COUNT(*) / TERM_COUNT, 'P') AS PERCENTAGE,
-               COUNT(*) AS COUNT
-        FROM (
-        --(Begin 2)-----------------------------------------------------------------------------------------------------
-        SELECT X.*,
-                COUNT(*) OVER (PARTITION BY TERM) AS TERM_COUNT
-        FROM (
-        --(Begin 1)------------------------------------------------------------------------------------------------------------
-                {query}
-        --(End 1)------------------------------------------------------------------------------------------------------------
-                ) AS X
-        --(End 2)-------------------------------------------------------------------------------------------------------
-             ) AS X
-        GROUP BY TERM, TERM_START_DATE, VET_STATUS, TERM_COUNT
-        --(End 3)------------------------------------------------------------------------------------------------------------
-        ORDER BY TERM_START_DATE
-        """
-        names = lambda query: f"""
-        SELECT FIRST_NAME, LAST_NAME, X.*
-        FROM (
-        {query}
-        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
-        ORDER BY LAST_NAME, FIRST_NAME
-        """
-        report = "2025-10-13-Science Education Program Review"
-        name = "Term Headcount Percentage By Veteran Status"
-        self.save_query_results(query, snapshot_term="2025FA", func_dict={"Agg": agg, "Names": names})(report, name)
-
-    def getSciEdTermHeadcountByAthleteStatus_Percent(self):
-        query = f"""
-                 SELECT DISTINCT TERMS.TERMS_ID  AS TERM,
-                TERMS.TERM_START_DATE,
-                MAJORS.MAJ_DESC AS MAJOR,
-                STUDENT_ID,
-                CASE WHEN EXISTS (
-                    SELECT 1
-                    FROM STA_OTHER_COHORTS_VIEW
-                    JOIN (SELECT VAL_INTERNAL_CODE AS CODE, VAL_EXTERNAL_REPRESENTATION AS COHORT
-                          FROM VALS
-                          WHERE VALCODE_ID = 'INSTITUTION.COHORTS') AS COHORT_CODES
-                    ON STA_OTHER_COHORTS_VIEW.STA_OTHER_COHORT_GROUPS = COHORT_CODES.CODE
-                    WHERE COHORT IN (
-                                        'Cheerleading',
-                                        'Dance',
-                                        'Football',
-                                        'Indoor Men''s Track',
-                                        'Indoor Women''s Track',
-                                        'Men''s Basketball',
-                                        'Men''s Cross Country',
-                                        'Men''s Golf',
-                                        'Men''s Soccer',
-                                        'Outdoor Men''s Track',
-                                        'Outdoor Women''s Track',
-                                        'Women''s Basketball',
-                                        'Women''s Cross Country',
-                                        'Women''s Golf',
-                                        'Women''s Soccer',
-                                        'Women''s Softball',
-                                        'Women''s Volleyball'
-                                     )
-                    AND STA_STUDENT = STUDENT_ID
-                    AND (TERMS.TERM_START_DATE <= STA_OTHER_COHORT_END_DATES OR STA_OTHER_COHORT_END_DATES IS NULL)
-                    AND (TERMS.TERM_END_DATE >= STA_OTHER_COHORT_START_DATES)
-                ) THEN 'Athlete' ELSE 'Not Athlete' END AS ATHLETE_STATUS
-         FROM MAJORS
-                  CROSS JOIN TERMS
-                  CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
-                  LEFT JOIN STPR_MAJOR_LIST_VIEW AS STUDENT_MAJORS
-                            ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
-                  LEFT JOIN MAJORS AS MAIN_MAJOR ON SAPV.STP_MAJOR1 = MAIN_MAJOR.MAJORS_ID
-                  LEFT JOIN MAJORS AS ADDNL_MAJOR ON STUDENT_MAJORS.STPR_ADDNL_MAJORS = ADDNL_MAJOR.MAJORS_ID
-         WHERE TERMS.TERM_START_DATE >= '2019-08-01'
-           AND TERMS.TERM_END_DATE < '2025-06-01'
-           AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
-           AND STP_START_DATE <= TERMS.TERM_END_DATE
-           AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
-           AND STP_CURRENT_STATUS != 'Did Not Enroll'
-           AND (
-             (MAJORS.MAJORS_ID = MAIN_MAJOR.MAJORS_ID)
-                 OR (MAJORS.MAJORS_ID = ADDNL_MAJOR.MAJORS_ID
-                 AND STPR_ADDNL_MAJOR_START_DATE <= TERMS.TERM_END_DATE
-                 AND (STPR_ADDNL_MAJOR_END_DATE >= TERMS.TERM_START_DATE OR STPR_ADDNL_MAJOR_END_DATE IS NULL)
-                 )
-             )
-           AND MAJORS.MAJ_DESC = 'Science Education (5-12)'
-        """
-        agg = lambda query: f"""
-        --(Begin 3)------------------------------------------------------------------------------------------------------------
-        SELECT TERM,
-               ATHLETE_STATUS,
-               FORMAT(1.0 * COUNT(*) / TERM_COUNT, 'P') AS PERCENTAGE,
-               COUNT(*) AS COUNT
-        FROM (
-        --(Begin 2)-----------------------------------------------------------------------------------------------------
-        SELECT X.*,
-                COUNT(*) OVER (PARTITION BY TERM) AS TERM_COUNT
-        FROM (
-        --(Begin 1)------------------------------------------------------------------------------------------------------------
-            {query}
-        --(End 1)------------------------------------------------------------------------------------------------------------
-        ) AS X
-        --(End 2)-------------------------------------------------------------------------------------------------------
-             ) AS X
-        GROUP BY TERM, TERM_START_DATE, ATHLETE_STATUS, TERM_COUNT
-        --(End 3)------------------------------------------------------------------------------------------------------------
-        ORDER BY TERM_START_DATE
-        """
-        names = lambda query: f"""
-        SELECT FIRST_NAME, LAST_NAME, X.*
-        FROM (
-        {query}
-        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
-        ORDER BY LAST_NAME, FIRST_NAME
-        """
-        report = "2025-10-13-Science Education Program Review"
-        name = "Term Headcount Percentage By Athlete Status"
-        self.save_query_results(query, snapshot_term="2025FA", func_dict = {"Agg": agg, "Names": names})(report, name)
 
     # ----------Completion Rates---------------------------------------------------------------------------------------
 
@@ -21931,6 +22747,52 @@ GROUP BY STATUS
         """
         report = "2025-10-13-English Education Program Review"
         name = "Term Headcount Percentage By Athlete Status"
+        self.save_query_results(query, snapshot_term="2025FA", func_dict = {"Agg": agg, "Names": names})(report, name)
+
+    def getEngEdSpecials(self):
+        query = f"""
+        SELECT DISTINCT TERMS.TERMS_ID  AS TERM,
+        TERMS.TERM_START_DATE,
+        SPECIALIZATIONS.SPEC_DESC AS SPECIALIZATION,
+        STUDENT_ID
+        FROM SPECIALIZATIONS
+        CROSS JOIN TERMS
+        CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+        LEFT JOIN STPR_SPECIALTIES_VIEW AS STUDENT_SPECIALTIES
+                ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+        LEFT JOIN SPECIALIZATIONS AS STU_SPEC ON STUDENT_SPECIALTIES.STPR_SPECIALIZATIONS = STU_SPEC.SPECIALIZATIONS_ID
+        WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+        AND TERMS.TERM_END_DATE < '2025-06-01'
+        AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+        AND STP_START_DATE <= TERMS.TERM_END_DATE
+        AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+        AND STP_CURRENT_STATUS != 'Did Not Enroll'
+        AND (
+        SPECIALIZATIONS.SPECIALIZATIONS_ID = STU_SPEC.SPECIALIZATIONS_ID
+        AND STPR_SPECIALIZATION_START <= TERMS.TERM_END_DATE
+        AND (STPR_SPECIALIZATION_END >= TERMS.TERM_START_DATE OR STPR_SPECIALIZATION_END IS NULL)
+        )
+        AND STP_PROGRAM_TITLE = 'English Education (5-12)'
+        """
+        agg = lambda query: f"""
+        SELECT TERM,
+                SPECIALIZATION,
+                COUNT(*) AS STUDENT_COUNT
+        FROM (
+        {query}
+        ) AS X
+        GROUP BY TERM, TERM_START_DATE, SPECIALIZATION
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-10-13-English Education Program Review"
+        name = "Program Specialization Counts Per Term"
         self.save_query_results(query, snapshot_term="2025FA", func_dict = {"Agg": agg, "Names": names})(report, name)
 
     #----------New Students---------------------------------------------------------------------------------------------
@@ -23566,6 +24428,52 @@ GROUP BY STATUS
         name = "Term Headcount Percentage By Athlete Status"
         self.save_query_results(query, snapshot_term="2025FA", func_dict = {"Agg": agg, "Names": names})(report, name)
 
+    def getMathEdSpecials(self):
+        query = f"""
+        SELECT DISTINCT TERMS.TERMS_ID  AS TERM,
+        TERMS.TERM_START_DATE,
+        SPECIALIZATIONS.SPEC_DESC AS SPECIALIZATION,
+        STUDENT_ID
+        FROM SPECIALIZATIONS
+        CROSS JOIN TERMS
+        CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+        LEFT JOIN STPR_SPECIALTIES_VIEW AS STUDENT_SPECIALTIES
+                ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+        LEFT JOIN SPECIALIZATIONS AS STU_SPEC ON STUDENT_SPECIALTIES.STPR_SPECIALIZATIONS = STU_SPEC.SPECIALIZATIONS_ID
+        WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+        AND TERMS.TERM_END_DATE < '2025-06-01'
+        AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+        AND STP_START_DATE <= TERMS.TERM_END_DATE
+        AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+        AND STP_CURRENT_STATUS != 'Did Not Enroll'
+        AND (
+        SPECIALIZATIONS.SPECIALIZATIONS_ID = STU_SPEC.SPECIALIZATIONS_ID
+        AND STPR_SPECIALIZATION_START <= TERMS.TERM_END_DATE
+        AND (STPR_SPECIALIZATION_END >= TERMS.TERM_START_DATE OR STPR_SPECIALIZATION_END IS NULL)
+        )
+        AND STP_PROGRAM_TITLE = 'Mathematics Education (5-12)'
+        """
+        agg = lambda query: f"""
+        SELECT TERM,
+                SPECIALIZATION,
+                COUNT(*) AS STUDENT_COUNT
+        FROM (
+        {query}
+        ) AS X
+        GROUP BY TERM, TERM_START_DATE, SPECIALIZATION
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-10-14-Math Education Program Review"
+        name = "Program Specialization Counts Per Term"
+        self.save_query_results(query, snapshot_term="2025FA", func_dict = {"Agg": agg, "Names": names})(report, name)
+
     # ----------New Students---------------------------------------------------------------------------------------------
 
     def getMathEdNewStudentCountPerTerm(self):
@@ -25197,6 +26105,52 @@ GROUP BY STATUS
         """
         report = "2025-10-14-Social Studies Education Program Review"
         name = "Term Headcount Percentage By Athlete Status"
+        self.save_query_results(query, snapshot_term="2025FA", func_dict = {"Agg": agg, "Names": names})(report, name)
+
+    def getSSEdSpecials(self):
+        query = f"""
+        SELECT DISTINCT TERMS.TERMS_ID  AS TERM,
+        TERMS.TERM_START_DATE,
+        SPECIALIZATIONS.SPEC_DESC AS SPECIALIZATION,
+        STUDENT_ID
+        FROM SPECIALIZATIONS
+        CROSS JOIN TERMS
+        CROSS JOIN STUDENT_ACAD_PROGRAMS_VIEW AS SAPV
+        LEFT JOIN STPR_SPECIALTIES_VIEW AS STUDENT_SPECIALTIES
+                ON SAPV.STUDENT_ID = STPR_STUDENT AND STP_ACADEMIC_PROGRAM = STPR_ACAD_PROGRAM
+        LEFT JOIN SPECIALIZATIONS AS STU_SPEC ON STUDENT_SPECIALTIES.STPR_SPECIALIZATIONS = STU_SPEC.SPECIALIZATIONS_ID
+        WHERE TERMS.TERM_START_DATE >= '2019-08-01'
+        AND TERMS.TERM_END_DATE < '2025-06-01'
+        AND (TERMS.TERMS_ID LIKE '%FA' OR TERMS.TERMS_ID LIKE '%SP')
+        AND STP_START_DATE <= TERMS.TERM_END_DATE
+        AND (STP_END_DATE >= TERMS.TERM_START_DATE OR STP_END_DATE IS NULL)
+        AND STP_CURRENT_STATUS != 'Did Not Enroll'
+        AND (
+        SPECIALIZATIONS.SPECIALIZATIONS_ID = STU_SPEC.SPECIALIZATIONS_ID
+        AND STPR_SPECIALIZATION_START <= TERMS.TERM_END_DATE
+        AND (STPR_SPECIALIZATION_END >= TERMS.TERM_START_DATE OR STPR_SPECIALIZATION_END IS NULL)
+        )
+        AND STP_PROGRAM_TITLE = 'Social Studies Education (5-12)'
+        """
+        agg = lambda query: f"""
+        SELECT TERM,
+                SPECIALIZATION,
+                COUNT(*) AS STUDENT_COUNT
+        FROM (
+        {query}
+        ) AS X
+        GROUP BY TERM, TERM_START_DATE, SPECIALIZATION
+        ORDER BY TERM_START_DATE
+        """
+        names = lambda query: f"""
+        SELECT FIRST_NAME, LAST_NAME, X.*
+        FROM (
+        {query}
+        ) AS X JOIN PERSON P ON X.STUDENT_ID = P.ID
+        ORDER BY LAST_NAME, FIRST_NAME
+        """
+        report = "2025-10-14-Social Studies Education Program Review"
+        name = "Program Specialization Counts Per Term"
         self.save_query_results(query, snapshot_term="2025FA", func_dict = {"Agg": agg, "Names": names})(report, name)
 
     # ----------New Students---------------------------------------------------------------------------------------------
